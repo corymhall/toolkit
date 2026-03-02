@@ -1,0 +1,4 @@
+interface:
+  display_name: "Neovim Plugin Development"
+  short_description: "Build and review Neovim Lua plugins"
+  default_prompt: "Use $neovim-plugin-development to implement or review Neovim plugin changes with startup/lazy-loading, API/config, keymap/autocmd, health, docs, and verification checks."

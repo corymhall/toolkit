@@ -1,0 +1,46 @@
+# Recommended golangci-lint v2.x baseline for production Go repos.
+# Validate with:
+#   golangci-lint config verify -c .golangci.yml
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    # Loop-capture and test-loop hygiene.
+    - copyloopvar
+
+    # Error contracts and wrapping discipline.
+    - wrapcheck
+    - errorlint
+    - errname
+    - nilnil
+
+    # Context/concurrency safety.
+    - containedctx
+    - noctx
+
+    # Test helper quality.
+    - thelper
+
+    # Import/name/doc consistency.
+    - importas
+    - godoclint
+
+    # Modernization checks from golang/tools modernize suite.
+    - modernize
+
+  # Add linter-specific settings as needed, for example import alias policies.
+
+formatters:
+  enable:
+    # Choose one formatter strategy for CI consistency.
+    - gofumpt
+    - goimports
+
+run:
+  tests: true
+  timeout: 5m
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

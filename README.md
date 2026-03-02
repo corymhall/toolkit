@@ -1,10 +1,22 @@
 # toolkit
 
-A collection of formulas, skills, and templates for [Gas Town](https://github.com/steveyegge/gastown) — the multi-agent workspace manager built on [Beads](https://github.com/steveyegge/beads) issue tracking.
+A collection of skills, formulas, and templates for AI-assisted software engineering. Includes general-purpose development skills and a [Gas Town](https://github.com/steveyegge/gastown) spec-to-beads planning pipeline.
 
-## Spec-to-Beads Pipeline
+## Skills
 
-The headline feature: a composable pipeline that takes a feature from brief to execution-ready beads. Three expansion formulas, each independently runnable.
+| Skill | Description |
+|-------|-------------|
+| [brainstorming](skills/brainstorming/) | Interactive spec writing through dialogue — clarify intent, explore approaches, write a design spec. |
+| [multi-model-evaluate](skills/multi-model-evaluate/) | Dispatch the same question to multiple AI models, synthesize consensus and disagreements. |
+| [go-development](skills/go-development/) | Implement, refactor, and review production Go code using Google-style conventions. |
+| [neovim-plugin-development](skills/neovim-plugin-development/) | Build, review, and modernize Neovim plugins in Lua. |
+| [ai-contribution-readiness-audit](skills/ai-contribution-readiness-audit/) | Evaluate a repo's readiness for AI code contributions and produce concrete fixes. |
+| [review-implementation](skills/review-implementation/) | Review code changes against a spec to verify implementation correctness. |
+| [epic-delivery](skills/epic-delivery/) | Dispatch beads to polecats for swarm-style execution with dependency-aware task waves. |
+
+## Gas Town: Spec-to-Beads Pipeline
+
+A composable pipeline for [Gas Town](https://github.com/steveyegge/gastown) that takes a feature from brief to execution-ready [Beads](https://github.com/steveyegge/beads). Three expansion formulas, each independently runnable.
 
 ```
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
@@ -16,48 +28,27 @@ The headline feature: a composable pipeline that takes a feature from brief to e
 └─────────────┘      └─────────────┘      └─────────────┘
 ```
 
-**Draft Spec** — Explores the codebase, asks focused questions, proposes approaches, writes a spec. Interactive dialogue or autonomous from a detailed brief.
+**Draft Spec** — Explores the codebase, asks focused questions, proposes approaches, writes a spec.
 
-**Enrich** — Reads a spec, finds gaps across 6 analytical dimensions (completeness, ambiguity, feasibility, scope, risks, consistency). Auto-fixes what's obvious, asks about what needs judgment. Repeatable — each pass deepens the spec.
+**Enrich** — Finds gaps across 6 analytical dimensions (completeness, ambiguity, feasibility, scope, risks, consistency). Auto-fixes what's obvious, asks about what needs judgment. Repeatable.
 
-**Beadify** — The execution entry point. Explores the codebase (3 parallel agents), decomposes the spec into tasks, runs 3 review passes (completeness, dependencies, clarity), then creates beads with validated dependencies.
+**Beadify** — Explores the codebase (3 parallel agents), decomposes the spec into tasks, runs 3 review passes, creates beads with validated dependencies.
 
-Any entry point works. Already have a spec? Skip to beadify. Want more rigor? Run enrich multiple times. Wrote the spec yourself? Go straight to beadify.
+Any entry point works. Already have a spec? Skip to beadify. Want more rigor? Run enrich multiple times.
 
 See [beads/formulas/README.md](beads/formulas/README.md) for full formula documentation.
 
-## Design Principles
+### Design principles
 
-**One document:** `spec.md` is the single design record. No separate PRD, plan, or design doc. It scales from 10 lines (small feature) to 200 lines (large feature) by adding depth, not documents.
+**One document:** `spec.md` is the single design record. It scales from 10 lines to 200 by adding depth, not documents.
 
-**Two artifacts:** The spec (design record) and beads (execution). Everything else is transient — created during a formula run, deleted after.
+**Two artifacts:** The spec (design record) and beads (execution). Everything else is transient.
 
-**Composable:** Each formula is a standalone expansion that also composes into larger workflows. No rigid pipeline — use what you need.
+**Composable:** Each formula runs standalone or composes into workflows. No rigid pipeline.
 
-**Signal over noise:** Enrich uses analytical dimensions that surface real gaps, not exhaustive question generation. No "generate 10 questions per category" — just find what's actually missing or ambiguous.
+**Signal over noise:** Analytical dimensions that surface real gaps, not exhaustive question generation.
 
-## What's here
-
-| Directory | Contents |
-|-----------|----------|
-| `beads/formulas/` | `.formula.toml` files — the spec-to-beads pipeline. 3 expansion formulas + 1 workflow orchestrator. |
-| `docs/templates/` | The [spec template](docs/templates/spec.md) — standard format for all specs. |
-| `skills/brainstorming/` | Interactive spec writing through dialogue — the skill version of `draft-spec-expansion`. |
-| `skills/epic-delivery/` | Dispatch beads to polecats for swarm-style execution. Sets up integration branch, creates convoy, dispatches task waves in parallel respecting dependencies. |
-| `skills/multi-model-evaluate/` | Dispatch the same question to multiple AI models, synthesize their perspectives. For ad-hoc multi-model review of any document or idea. |
-| `skills/review-implementation/` | Review code changes against the spec to verify implementation correctness. |
-
-## Installing formulas
-
-Copy formulas into your town-level formulas directory to make them available across all rigs:
-
-```bash
-cp beads/formulas/*.formula.toml ~/gt/.beads/formulas/
-```
-
-Or copy to a specific rig's `.beads/formulas/` directory for project-scoped use.
-
-## Quick start
+### Quick start
 
 ```bash
 # From a brief to a spec (interactive)
@@ -82,12 +73,24 @@ gt sling spec-to-beads-workflow <crew> \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```
 
-Or skip straight to beadify if you already have a spec:
+### Installing formulas
+
+Copy formulas into your town-level formulas directory:
 
 ```bash
-gt sling beadify-expansion <crew> \
-  --var feature="ipv6-support"
+cp beads/formulas/*.formula.toml ~/gt/.beads/formulas/
 ```
+
+Or copy to a specific rig's `.beads/formulas/` directory for project-scoped use.
+
+## What's here
+
+| Directory | Contents |
+|-----------|----------|
+| `skills/` | Claude Code / Codex skills — development, review, planning, and multi-model evaluation. |
+| `beads/formulas/` | Gas Town `.formula.toml` files — 3 expansion formulas + 1 workflow orchestrator. |
+| `docs/templates/` | The [spec template](docs/templates/spec.md) — standard format for all specs. |
+| `docs/plans/` | Specs for features built in this repo. |
 
 ## Acknowledgements
 
@@ -95,7 +98,7 @@ gt sling beadify-expansion <crew> \
 - [Xexr/gt-toolkit](https://github.com/Xexr/gt-toolkit) — the expansion/workflow formula architecture, multi-stage pipeline patterns, and bidirectional review approach
 - [Xexr/marketplace](https://github.com/Xexr/marketplace) — the epic-delivery and review-implementation skills
 - [steveyegge/gastown](https://github.com/steveyegge/gastown) — the Gas Town multi-agent workspace and molecule/convoy execution model
-- The upstream `mol-idea-to-plan` and `mol-prd-review` formulas — the PRD review dimensions (requirements, gaps, ambiguity, feasibility, scope, stakeholders) that informed the enrich formula's analytical approach
+- The upstream `mol-idea-to-plan` and `mol-prd-review` formulas — the PRD review dimensions that informed the enrich formula's analytical approach
 
 ## License
 
