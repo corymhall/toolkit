@@ -34,9 +34,15 @@ go test ./...
 Fallback (portable baseline):
 
 ```bash
-bad="$(git ls-files -z --cached --others --exclude-standard -- '*.go' | xargs -0 gofmt -l)"
+bad=""
+while IFS= read -r -d '' f; do
+  out="$(gofmt -l "$f")"
+  if [ -n "$out" ]; then
+    bad="${bad}${out}\n"
+  fi
+done < <(git ls-files -z --cached --others --exclude-standard -- '*.go')
 if [ -n "$bad" ]; then
-  printf 'gofmt required for:\n%s\n' "$bad"
+  printf 'gofmt required for:\n%b' "$bad"
   exit 1
 fi
 go vet ./...

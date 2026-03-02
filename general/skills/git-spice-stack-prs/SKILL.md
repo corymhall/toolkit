@@ -25,6 +25,9 @@ Run:
 git status --short --branch
 git-spice --version
 git-spice log short -a --no-prompt || true
+TRUNK="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')"
+TRUNK="${TRUNK:-main}"
+echo "Using trunk: $TRUNK"
 ```
 
 Decide:
@@ -34,10 +37,10 @@ Decide:
 ### 2) Initialize git-spice (if needed)
 Run with explicit trunk and remote:
 ```bash
-git-spice repo init --trunk master --remote origin --no-prompt
+git-spice repo init --trunk "$TRUNK" --remote origin --no-prompt
 ```
 
-Use `main` instead of `master` when applicable.
+If your organization uses a non-default trunk, set `TRUNK` explicitly before init.
 
 ### 3) Create or Track Stack Branches
 For new stacked work:
@@ -105,19 +108,19 @@ Example:
 If a PR still shows `DIRTY` after restack:
 ```bash
 gh pr view <num> --json mergeStateStatus,baseRefName,headRefName,url
-git log --oneline origin/master..HEAD
+git log --oneline "origin/$TRUNK"..HEAD
 ```
 
 If ancestry still includes merged commits, do explicit rebase:
 ```bash
-git rebase --onto origin/master <old-base-tip> <branch>
-git-spice branch track --base master --no-prompt
+git rebase --onto "origin/$TRUNK" <old-base-tip> <branch>
+git-spice branch track --base "$TRUNK" --no-prompt
 git-spice branch restack --no-prompt
 ```
 
 If submit fails because base branch was deleted after merge, re-track base then re-submit:
 ```bash
-git-spice branch track --base master --no-prompt
+git-spice branch track --base "$TRUNK" --no-prompt
 git-spice stack submit --update-only --no-web --no-prompt
 ```
 
@@ -137,7 +140,7 @@ Interpretation:
 
 Then run project verification:
 ```bash
-go test ./...
+<project-test-command>
 gh pr checks <num>
 ```
 
@@ -178,7 +181,7 @@ Store:
 ## Quality Gates
 Before claiming stack-ready:
 1. `git-spice log short -a --no-prompt` shows expected linear order.
-2. `go test ./...` (or project-equivalent full suite) passes on stack tip.
+2. Project-equivalent full-suite command passes on stack tip (for example `go test ./...`).
 3. All PRs exist and point to intended base branches.
 4. PR bodies include concise `Summary` and `Testing` sections.
 
