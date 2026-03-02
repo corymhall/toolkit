@@ -80,10 +80,65 @@ git-spice upstack restack
 git-spice stack submit --update-only --no-web
 ```
 
-After lower PR merge:
+After lower PR merge (single-worktree):
 ```bash
 git-spice repo sync
+git-spice branch restack
 git-spice stack submit --update-only --no-web
+```
+
+After lower PR merge (multi-worktree, recommended):
+1. Run sync in the merged branch's own worktree first so git-spice can delete/rewire it.
+2. Restack from the next open branch's worktree.
+3. Restack downstream worktrees in order.
+4. Submit stack updates.
+
+Example:
+```bash
+(cd .worktrees/<merged-branch> && git-spice repo sync --no-prompt)
+(cd .worktrees/<next-open-branch> && git-spice branch restack --no-prompt)
+(cd .worktrees/<downstream-1> && git-spice branch restack --no-prompt)
+(cd .worktrees/<downstream-2> && git-spice branch restack --no-prompt)
+(cd .worktrees/<tip-branch> && git-spice stack submit --update-only --no-web --no-prompt)
+```
+
+If a PR still shows `DIRTY` after restack:
+```bash
+gh pr view <num> --json mergeStateStatus,baseRefName,headRefName,url
+git log --oneline origin/master..HEAD
+```
+
+If ancestry still includes merged commits, do explicit rebase:
+```bash
+git rebase --onto origin/master <old-base-tip> <branch>
+git-spice branch track --base master --no-prompt
+git-spice branch restack --no-prompt
+```
+
+If submit fails because base branch was deleted after merge, re-track base then re-submit:
+```bash
+git-spice branch track --base master --no-prompt
+git-spice stack submit --update-only --no-web --no-prompt
+```
+
+### 6.1) Verify No Behavior Drift After Rebase
+Use this when the goal is "restack only, no behavior changes".
+
+Check patch equivalence:
+```bash
+git show <old-tip> --pretty=format: | git patch-id --stable
+git show <new-tip> --pretty=format: | git patch-id --stable
+git diff --name-status <old-tip>..<new-tip>
+```
+
+Interpretation:
+- Same patch-id + empty diff means no content drift.
+- If commits were dropped as "already upstream", verify only those dropped commits were merged earlier.
+
+Then run project verification:
+```bash
+go test ./...
+gh pr checks <num>
 ```
 
 ### 7) Keep PR Descriptions Clean
