@@ -1,0 +1,993 @@
+# Beadify Formula
+#
+# Spec → Beads. The single execution entry point.
+#
+# Takes a spec (any depth) and produces a fully-structured beads hierarchy
+# with validated dependencies. Performs its own codebase exploration and
+# task decomposition internally.
+#
+# Steps:
+#   1. Validate spec exists
+#   2. Codebase exploration (3 parallel agents)
+#   3. Task decomposition (spec + codebase → beads-draft.md)
+#   4. Review pass 1: Completeness
+#   5. Review pass 2: Dependencies
+#   6. Review pass 3: Clarity
+#   7. Human preview
+#   8. Execute (bd create)
+#   9. Cleanup transient files
+#
+# Usage:
+#   gt sling beadify <crew> --var feature="ipv6-support"
+
+description = """
+Spec to beads. Reads a spec, explores the codebase, decomposes into tasks,
+reviews, and creates beads with validated dependencies.
+
+**Input:** docs/plans/{{feature}}/spec.md (any depth — 10 lines or 200)
+**Output:** Beads epic with tasks and dependency graph
+
+Beadify does everything internally:
+- Codebase exploration (3 parallel agents)
+- Task decomposition (spec + codebase → tasks)
+- 3 sequential review passes (completeness, dependencies, clarity)
+- Human preview before committing
+- Bead creation via bd commands
+- Transient file cleanup
+
+All intermediate files are deleted after bead creation. The only persisted
+artifacts are the spec and the beads themselves.
+
+## Execution Style
+
+Use intent-level delegation over rigid tool choreography.
+- Prioritize outcome, constraints, inputs, and artifacts.
+- Treat concrete tool-call examples as optional implementations.
+- When a required decision is missing, call `request_user_input` instead of
+  asking multiple-choice questions in plain text.
+- Ask 1 concise question at a time (max 3 per call), provide mutually
+  exclusive options, put the recommended option first with "(Recommended)",
+  and wait for the tool response before continuing.
+
+## Step Lifecycle (Molecule Work Loop)
+
+This formula runs as a molecule — each step is a wisp bead. Use the
+standard molecule work loop to advance through steps:
+
+```bash
+# 1. Find your current step:
+bd mol current <molecule-id>
+
+# 2. Execute the step (follow its instructions)
+
+# 3. Close the step when done:
+bd close <step-id>
+
+# 4. Find the next step:
+bd mol current <molecule-id>
+
+# 5. Repeat until molecule complete
+```
+
+`bd mol current` returns the next ready step (open + all blocking deps
+closed). Closing a step unblocks the next one in the dependency chain.
+
+**Crash recovery:** Each `bd close` is durable. If your session crashes,
+the next session runs `gt prime` which detects the molecule on your hook
+and shows progress. `bd mol current` picks up at the next unclosed step.
+
+Do NOT batch-close all steps at the end — close each one as you finish it.
+
+## Bead Commands Reference
+
+```bash
+# Create an epic (with optional parent)
+bd create "Title" -t epic -p <priority> -d "Description" \\
+  [--parent <parent-id>]
+
+# Create a task issue (with optional parent and blocker deps)
+bd create "Title" -t task -p <priority> -d "Description" \\
+  --acceptance "- [ ] Criterion 1\\n- [ ] Criterion 2" \\
+  [--parent <parent-id>] \\
+  [--deps "<blocker-id-1>,<blocker-id-2>"]
+
+# --parent: sets parent-child relationship at creation time
+# --deps:   specifies blocker dependencies (this task is BLOCKED BY the listed IDs)
+#           multiple IDs are comma-separated
+
+# Add blocker dependency after creation (if needed)
+# Syntax: bd dep add <blocked-id> <blocker-id>
+# Meaning: <blocked-id> depends on (is blocked by) <blocker-id>
+bd dep add <blocked-id> <blocker-id>
+
+# Check for dependency cycles
+bd dep cycles
+
+# List items ready to work (no unresolved blockers)
+bd ready
+
+# Show a bead
+bd show <bead-id>
+```
+
+Do NOT use `bd start` or `bd progress` — these do not exist.
+"""
+formula = "beadify-expansion"
+type = "expansion"
+version = 1
+
+[vars]
+[vars.feature]
+description = "Feature name (maps to docs/plans/{{feature}}/spec.md)"
+required = true
+
+# ============================================================================
+# KICKOFF
+# ============================================================================
+
+[[template]]
+id = "{target}.kickoff"
+title = "Beadify Kickoff"
+description = """
+═══════════════════════════════════════════════════════════════
+ BEADIFY
+ Spec → Beads. Explore, decompose, review, create.
+
+ Input:  docs/plans/{{feature}}/spec.md
+ Output: Beads epic with tasks and dependency graph
+═══════════════════════════════════════════════════════════════
+
+Output this banner to the user, then close this step to begin.
+"""
+
+# ============================================================================
+# STEP 1: VALIDATE SPEC
+# ============================================================================
+
+[[template]]
+id = "{target}.validate-spec"
+title = "Validate spec exists"
+needs = ["{target}.kickoff"]
+description = """
+Validate that the spec exists and is substantive.
+
+## Branch Safety
+
+Do not write artifacts on `main`/`master`.
+
+```bash
+BRANCH=$(git branch --show-current)
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+  echo "Refusing to run on $BRANCH." >&2
+  echo "Switch to a feature branch first." >&2
+  exit 1
+fi
+```
+
+## Validate
+
+1. Check that `docs/plans/{{feature}}/spec.md` exists.
+   If missing: STOP. Report: "No spec found at docs/plans/{{feature}}/spec.md."
+
+2. Read the spec and confirm it has at minimum:
+   - An Overview section (what we're building)
+   - A Design section (how it works)
+   - A Scope section (what's in/out)
+
+   If any required section is missing, STOP and report which sections are missing.
+
+3. Assess spec depth:
+   - **Thin:** Design section is bullet points, no sub-sections. ~10-30 lines total.
+   - **Medium:** Design has some sub-sections. ~30-100 lines.
+   - **Deep:** Design has multiple sub-sections with file paths, interfaces. ~100+ lines.
+
+   Report the depth — this informs how much the codebase exploration needs to
+   supplement. But exploration always runs regardless.
+
+## Output
+
+```
+Spec validated: docs/plans/{{feature}}/spec.md ✓
+Depth: [thin / medium / deep]
+Sections found: [list]
+
+Proceeding to codebase exploration...
+```
+"""
+
+# ============================================================================
+# STEP 2: CODEBASE EXPLORATION (3 parallel agents)
+# ============================================================================
+
+[[template]]
+id = "{target}.codebase-exploration"
+title = "Explore codebase"
+needs = ["{target}.validate-spec"]
+description = """
+Dispatch THREE parallel exploration agents to build codebase understanding
+grounded in what the spec needs. Each agent reads the full spec to know
+what's relevant to their focus area.
+
+All outputs are transient — written as .tmp files and deleted after task
+decomposition consumes them.
+
+## Dispatch All Three in Parallel
+
+### Agent 1: Architecture & Module Boundaries
+
+Subagent task brief:
+
+You are analyzing a codebase to support breaking a spec into implementation tasks.
+
+## Read First
+- `docs/plans/{{feature}}/spec.md` — the feature spec (REQUIRED)
+
+## Your Focus: Architecture & Module Boundaries
+
+Explore the codebase and produce a thorough analysis of:
+
+### 1. Project Structure
+- Top-level directory layout and what each directory contains
+- Package/module organization and boundaries
+- Build system, entry points, configuration files
+
+### 2. Dependency Graph
+- How do modules depend on each other?
+- What are the core packages everything depends on?
+- Are there clear layers (data, service, API, UI)?
+
+### 3. Where This Feature Fits
+- Based on the spec, which part of the architecture does this feature belong in?
+- Does it extend an existing module or need a new one?
+- What architectural boundaries must it respect?
+
+### 4. Build & Test
+- How is the project built?
+- How are tests run?
+- Any CI/CD to be aware of?
+
+Be specific — cite file paths, not generalities.
+
+## OUTPUT
+Write to: docs/plans/{{feature}}/architecture.tmp
+
+
+### Agent 2: Integration Surface
+
+Subagent task brief:
+
+You are analyzing a codebase to support breaking a spec into implementation tasks.
+
+## Read First
+- `docs/plans/{{feature}}/spec.md` — the feature spec (REQUIRED)
+
+## Your Focus: Integration Surface
+
+For each element in the spec's Design section, trace what existing code it touches.
+
+### 1. Files That Need Modification
+For each area of the spec:
+- Which existing files need changes
+- WHAT in those files changes (specific functions, types, routes)
+- WHY (which spec element drives the change)
+
+Read the actual files. Don't guess from filenames.
+
+### 2. Interfaces & Types
+- Existing interfaces/types the feature will consume
+- New interfaces/types it needs to expose
+- Read actual type definitions — note field names, method signatures
+
+### 3. Extension Points
+- Plugin systems, middleware chains, event hooks, registries
+- How do similar features register themselves?
+- Configuration files that need entries
+
+### 4. Data Layer
+- Existing data models/schemas relevant to the spec
+- New tables/fields needed
+- How migrations are handled
+- ORM/query patterns used
+
+Be specific — quote function signatures, type definitions, file paths.
+
+## OUTPUT
+Write to: docs/plans/{{feature}}/integration-surface.tmp
+
+
+### Agent 3: Patterns & Conventions
+
+Subagent task brief:
+
+You are analyzing a codebase to support breaking a spec into implementation tasks.
+
+## Read First
+- `docs/plans/{{feature}}/spec.md` — the feature spec (REQUIRED)
+
+## Your Focus: Patterns & Conventions
+
+Understand HOW things are built so tasks follow established patterns.
+
+### 1. Precedent: Similar Features
+- Find the closest existing feature to what the spec describes
+- How is it structured? What files does it span?
+- This is the template for how to build the new feature
+
+### 2. Coding Patterns
+- Component/module structure conventions
+- Naming conventions (files, functions, types)
+- Configuration and constants patterns
+
+### 3. Error Handling
+- How errors are created, propagated, handled
+- Custom error types
+- User-facing vs internal error patterns
+
+### 4. Testing
+- Test framework(s) and organization
+- Common patterns (table-driven, mocks, fixtures)
+- Test helpers and utilities
+- Expected coverage level
+
+### 5. Code Standards
+- CLAUDE.md, CONTRIBUTING.md conventions
+- Linting/formatting rules
+- Documented anti-patterns
+
+Be specific — show examples from actual code with file paths.
+
+## OUTPUT
+Write to: docs/plans/{{feature}}/patterns-conventions.tmp
+
+
+## Wait for All Three
+
+Timeout: 10 minutes per agent. If any fails, continue with available results.
+"""
+
+# ============================================================================
+# STEP 3: TASK DECOMPOSITION
+# ============================================================================
+
+[[template]]
+id = "{target}.task-decomposition"
+title = "Decompose spec into tasks"
+needs = ["{target}.codebase-exploration"]
+description = """
+Read the spec and codebase analysis, then decompose into a beads draft.
+
+This is the core step — it does the work that was previously a separate
+"plan writing" stage. The output is a beads draft (hierarchy of epics and
+tasks), not a plan document.
+
+## Inputs
+
+Read these files:
+1. `docs/plans/{{feature}}/spec.md` — what to build
+2. `docs/plans/{{feature}}/architecture.tmp` — where it fits
+3. `docs/plans/{{feature}}/integration-surface.tmp` — what code to touch
+4. `docs/plans/{{feature}}/patterns-conventions.tmp` — how to build it
+
+## Decomposition Principles
+
+**Tasks must be self-contained.** Each task description must be implementable
+by an agent with zero context beyond the task description and the codebase.
+No "see above" or "as described in Phase 1."
+
+**Be specific, not generic.** Don't write "add error handling" — write "use
+the existing `AppError` type from `internal/errors/errors.go`, wrapping with
+`fmt.Errorf("feature: %w", err)`."
+
+**Maximize parallelism.** Only add dependencies where a task truly cannot
+START until another COMPLETES. When in doubt, leave the dependency out.
+False blockers kill parallelism. Missing blockers can be added later.
+
+**File paths from codebase analysis.** Every task that modifies or creates
+files should name them specifically, informed by the integration surface
+and patterns analysis.
+
+**Acceptance criteria must be verifiable.** Not "works correctly" but
+"returns 200 with JSON body matching schema X when called with valid input."
+
+## Mapping Rules
+
+### Hierarchy
+
+```
+Feature Epic: "{{feature}}"
+├── [Phase/Group Epic (optional)]
+│   ├── Task: [title]
+│   ├── Task: [title]
+│   └── Task: [title]
+└── [Phase/Group Epic (optional)]
+    └── Task: [title]
+```
+
+- **1 feature epic** (always)
+- **Phase/group sub-epics** (optional — use only when there are natural
+  groupings of 3+ related tasks. For small specs with <6 tasks, a flat
+  list under the feature epic is fine.)
+- **1 task per discrete unit of work** — something one agent can complete
+  in one session
+
+### Task Content
+
+For each task, extract and combine from the spec and codebase analysis:
+
+- **Title:** Action verb + specific object ("Add IPv6 CIDR support to VpcArgs")
+- **Description:** What to do + files to modify/create + patterns to follow +
+  key details from codebase analysis. Self-contained.
+- **Acceptance criteria:** Verifiable checkboxes. Include test criteria where
+  the patterns analysis shows tests are expected.
+- **Priority:** P1 for foundational tasks others depend on, P2 for everything else.
+- **Dependencies:** Only true blockers — task X produces something task Y
+  needs as input to start.
+
+### What Generates Tasks
+
+- Each element in the spec's Design section → one or more tasks
+- Shared types/interfaces used by multiple tasks → dedicated early task
+- Each item in the spec's Testing section → test criteria on relevant tasks
+  (or a dedicated test task if testing is substantial)
+- Spec's Scope "Out" items → do NOT generate tasks for these
+- Spec's Open Questions → do NOT generate tasks; note in epic description
+
+## Output
+
+Write to: `docs/plans/{{feature}}/beads-draft.md`
+
+Use this format:
+
+```markdown
+# Beads Draft: {{feature}}
+
+**Source:** docs/plans/{{feature}}/spec.md
+
+---
+
+## Feature Epic: {{feature}}
+
+**Type:** epic
+**Priority:** P1
+**Description:** [1-2 sentences from spec Overview]
+
+---
+
+[If using phase grouping:]
+
+### Group: [Group Name]
+
+**Type:** epic
+**Priority:** P1
+**Parent:** Feature epic
+**Description:** [Group objective]
+
+[End grouping]
+
+#### Task: [Task Title]
+
+**Type:** task
+**Priority:** [P1/P2]
+**Parent:** [Feature epic or group name]
+**Depends on:** [none or other task titles]
+**Description:**
+[Full self-contained description — what, files, patterns, key details]
+
+**Acceptance:**
+- [ ] [Verifiable criterion]
+- [ ] [Verifiable criterion]
+
+---
+
+[Repeat for all tasks]
+
+## Dependencies
+
+| Blocked Task | Blocked By | Reason |
+|-------------|------------|--------|
+| [Task title] | [Task title] | [Why] |
+
+**Reading this table:** "Blocked Task" cannot start until "Blocked By" completes.
+
+## Summary
+
+- Feature epic: 1
+- Group epics: N (or 0 if flat)
+- Tasks: M
+- Dependencies: K
+- Ready immediately (no blockers): W
+```
+"""
+
+# ============================================================================
+# STEP 4: REVIEW PASS 1 — COMPLETENESS
+# ============================================================================
+
+[[template]]
+id = "{target}.review-completeness"
+title = "Review: Completeness"
+needs = ["{target}.task-decomposition"]
+description = """
+Review the draft for completeness against the spec. Fix before proceeding.
+
+## Dispatch Review Agent
+
+Subagent task brief:
+
+You are reviewing a beads draft for completeness against its source spec.
+
+## Your Role: Completeness
+
+Verify that EVERY element in the spec's Design section has task coverage.
+Answer: 'Did the decomposition miss any work from the spec?'
+
+## Inputs
+- `docs/plans/{{feature}}/beads-draft.md` — the draft
+- `docs/plans/{{feature}}/spec.md` — the source spec
+
+## Checks
+
+### 1. Design Coverage
+Walk every element in the spec's Design section. Each should map to at
+least one task. Flag anything without coverage.
+
+### 2. Scope Compliance
+Verify NO tasks exist for items listed in spec's "Out" scope.
+
+### 3. Acceptance Criteria
+Each task should have specific, verifiable acceptance criteria — not
+vague "works correctly" statements.
+
+### 4. Self-Containment
+Each task description should be implementable without reading other tasks.
+Flag cross-references like "as described above" or "see Task 1.2."
+
+### 5. Testing
+If the spec has a Testing section, verify those scenarios appear as
+acceptance criteria on relevant tasks.
+
+## Output
+
+Return findings as:
+```
+## Completeness Review
+
+**Spec Design elements:** N
+**Covered by tasks:** M
+**Missing:** [list or 'none']
+
+### Gaps
+- [What's missing]
+
+### Verdict: PASS / FAIL ([N] issues)
+```
+
+Return as response, not a file.
+
+
+## Apply Fixes
+
+If issues found:
+1. Read `docs/plans/{{feature}}/beads-draft.md`
+2. Fix: add missing tasks, improve acceptance criteria, make descriptions
+   self-contained, remove out-of-scope tasks
+3. Write updated draft back
+4. Report what changed
+
+If clean: report "Completeness: PASS" and proceed.
+"""
+
+# ============================================================================
+# STEP 5: REVIEW PASS 2 — DEPENDENCIES
+# ============================================================================
+
+[[template]]
+id = "{target}.review-dependencies"
+title = "Review: Dependencies"
+needs = ["{target}.review-completeness"]
+description = """
+Review the draft's dependency structure. Fix before proceeding.
+
+## Dispatch Review Agent
+
+Subagent task brief:
+
+You are reviewing the dependency structure of a beads draft.
+
+## Your Role: Dependencies
+
+Verify dependencies are correct, minimal, and maximize parallelism.
+Answer: 'Are the blockers real, and are we missing any?'
+
+## Inputs
+- `docs/plans/{{feature}}/beads-draft.md` — the draft
+- `docs/plans/{{feature}}/spec.md` — the source spec
+
+## Checks
+
+### 1. False Blockers
+For EACH dependency: does the blocker truly need to COMPLETE before the
+blocked task can START? Or could they run in parallel? Flag any dependency
+where the answer is "could run in parallel."
+
+### 2. Missing Blockers
+For each task: does it reference types/interfaces created by another task?
+Does it modify a file another task also modifies?
+
+### 3. Circular Dependencies
+Check for cycles: A blocks B blocks C blocks A.
+
+### 4. Parallelism Assessment
+- How many tasks are ready immediately?
+- What's the critical path length?
+- Could changes increase parallelism?
+
+## Output
+
+Return findings as:
+```
+## Dependencies Review
+
+**Total dependencies:** N
+**False blockers (remove):** M
+**Missing blockers (add):** K
+**Circular chains:** [none / list]
+
+### Issues
+- [What to fix]
+
+### Parallelism
+- Ready immediately: N tasks
+- Critical path: M tasks
+
+### Verdict: PASS / FAIL ([N] issues)
+```
+
+Return as response, not a file.
+
+
+## Apply Fixes
+
+If issues found:
+1. Read `docs/plans/{{feature}}/beads-draft.md`
+2. Remove false blockers, add missing blockers
+3. Update summary counts
+4. Write updated draft back
+5. Report what changed
+
+If clean: report "Dependencies: PASS" and proceed.
+"""
+
+# ============================================================================
+# STEP 6: REVIEW PASS 3 — CLARITY
+# ============================================================================
+
+[[template]]
+id = "{target}.review-clarity"
+title = "Review: Clarity"
+needs = ["{target}.review-dependencies"]
+description = """
+Review each task for implementation readiness. Fix before proceeding.
+
+## Dispatch Review Agent
+
+Subagent task brief:
+
+You are reviewing beads tasks for implementation readiness.
+
+## Your Role: Clarity
+
+Verify each task can be picked up by a fresh agent with zero context
+beyond the task description and the codebase.
+Answer: 'Could someone implement each task from its description alone?'
+
+## Input
+- `docs/plans/{{feature}}/beads-draft.md` — the draft
+
+## Checks (for EACH task)
+
+### 1. Title Clarity
+Specific enough to understand at a glance? Uses action verbs?
+
+### 2. Description Completeness
+Specific file paths included? Function signatures or interface names?
+Patterns to follow referenced? Enough context to start?
+
+### 3. Acceptance Criteria Verifiability
+Each criterion objectively verifiable? Test criteria where appropriate?
+
+### 4. Vague Language
+Flag: 'appropriate', 'relevant', 'necessary', 'proper', 'handle errors
+correctly', 'add tests', 'update as needed', 'configure properly'.
+Replace with specifics.
+
+## Output
+
+Return findings as:
+```
+## Clarity Review
+
+**Tasks reviewed:** N
+**Clear and ready:** M
+**Need improvement:** K
+
+### Issues
+- [Task title]: [What's unclear → suggested fix]
+
+### Verdict: PASS / FAIL ([N] issues)
+```
+
+Return as response, not a file.
+
+
+## Apply Fixes
+
+If issues found:
+1. Read `docs/plans/{{feature}}/beads-draft.md`
+2. Improve titles, descriptions, acceptance criteria
+3. Replace vague language with specifics
+4. Write updated draft back
+5. Report what changed
+
+If clean: report "Clarity: PASS" and proceed.
+
+## Review Summary
+
+After all three passes:
+```
+## Review Passes Complete
+
+Pass 1 (Completeness): [PASS/FAIL — N fixes]
+Pass 2 (Dependencies): [PASS/FAIL — N fixes]
+Pass 3 (Clarity): [PASS/FAIL — N fixes]
+
+Proceeding to human preview...
+```
+"""
+
+# ============================================================================
+# STEP 7: HUMAN PREVIEW
+# ============================================================================
+
+[[template]]
+id = "{target}.human-preview"
+title = "Preview and approve"
+needs = ["{target}.review-clarity"]
+description = """
+Show the human a summary of what will be created and get approval.
+
+## Read the Draft
+
+Read `docs/plans/{{feature}}/beads-draft.md` and present a concise summary:
+
+```
+## Beadify Preview: {{feature}}
+
+Epic: {{feature}}
+[Groups: N (if any)]
+Tasks: M
+Dependencies: K
+Ready immediately: W
+
+### Structure
+
+[Feature Epic]
+├── [Group Name (if grouped)]
+│   ├── Task: [title] (P1, no deps)
+│   ├── Task: [title] (P2, blocked by: [title])
+│   └── Task: [title] (P2, no deps)
+└── [Group Name (if grouped)]
+    └── Task: [title] (P2, blocked by: [title])
+
+### Dependency Chain
+
+[Visual showing the critical path]
+
+### Review Results
+
+- Completeness: [PASS/FAIL]
+- Dependencies: [PASS/FAIL]
+- Clarity: [PASS/FAIL]
+```
+
+## Gate
+
+Call `request_user_input`:
+- Question: `Create these beads?`
+- Header: `Beadify`
+- Options:
+  - `Create (Recommended)`: Proceed to bead creation
+  - `Show details`: Display full draft with all task descriptions
+  - `Edit`: Open the draft for manual editing before creation
+
+If "Show details": display full beads-draft.md contents, then re-ask the gate question.
+
+If "Edit": tell the user the draft is at `docs/plans/{{feature}}/beads-draft.md`,
+wait for them to indicate they're done, then re-read the draft and re-present
+the summary.
+
+If "Create": proceed to execution.
+"""
+
+# ============================================================================
+# STEP 8: EXECUTE
+# ============================================================================
+
+[[template]]
+id = "{target}.execute"
+title = "Create beads"
+needs = ["{target}.human-preview"]
+description = """
+Execute bd commands to create the full beads hierarchy from the draft.
+
+## Execution Order
+
+Create in dependency order so all blocker IDs are available at creation time.
+
+### 1. Resolve Feature Epic
+
+Check for an existing epic for this feature:
+
+```bash
+bd list --title-contains "{{feature}}" --type epic
+```
+
+If found and it's the right root epic, reuse it. Otherwise create:
+
+```bash
+bd create "{{feature}}" -t epic -p P1 -d "[Description from draft]"
+```
+
+Capture `EPIC_ID`.
+
+### 2. Create Group Sub-Epics (if any)
+
+For each group in the draft:
+```bash
+bd create "[Group Name]" -t epic -p P1 \\
+  --parent $EPIC_ID \\
+  -d "[Group description]"
+```
+
+Capture each `GROUP_ID`.
+
+### 3. Create Tasks
+
+Create in order: tasks with no dependencies first, then tasks whose
+dependencies have already been created.
+
+For tasks WITHOUT dependencies:
+```bash
+bd create "[Title]" -t task -p [P1/P2] \\
+  --parent $PARENT_ID \\
+  -d "[Description]" \\
+  --acceptance "[Criteria]"
+```
+
+For tasks WITH dependencies:
+```bash
+bd create "[Title]" -t task -p [P1/P2] \\
+  --parent $PARENT_ID \\
+  --deps "$BLOCKER1_ID,$BLOCKER2_ID" \\
+  -d "[Description]" \\
+  --acceptance "[Criteria]"
+```
+
+Acceptance criteria use `\\n` for newlines:
+```bash
+--acceptance "- [ ] Criterion 1\\n- [ ] Criterion 2"
+```
+
+Capture each `TASK_ID`.
+
+### 4. Verify
+
+```bash
+bd dep cycles    # Must be empty
+bd ready         # Should show expected unblocked count
+bd show $EPIC_ID # Verify structure
+```
+
+Fix any cycles by removing the least critical dependency.
+
+### 5. Ensure Integration Branch
+
+```bash
+gt mq integration create $EPIC_ID
+gt mq integration status $EPIC_ID
+```
+
+If already exists, this is a no-op. Switch to the integration branch if
+not already on it.
+
+## ID Tracking
+
+Maintain a mapping as you create:
+
+```
+Draft Reference → Bead ID
+─────────────────────────
+Feature epic   → [id]
+Group A        → [id]
+Task: Title 1  → [id]
+Task: Title 2  → [id]
+```
+
+## Error Handling
+
+If `bd create` fails: report the error, do NOT retry blindly. Check the
+error message. If stuck, report what was created so far and stop.
+"""
+
+# ============================================================================
+# STEP 9: CLEANUP & REPORT
+# ============================================================================
+
+[[template]]
+id = "{target}.cleanup"
+title = "Cleanup and report"
+needs = ["{target}.execute"]
+description = """
+Delete all transient files and report completion.
+
+## Delete Transient Files
+
+```bash
+rm -f docs/plans/{{feature}}/architecture.tmp
+rm -f docs/plans/{{feature}}/integration-surface.tmp
+rm -f docs/plans/{{feature}}/patterns-conventions.tmp
+rm -f docs/plans/{{feature}}/beads-draft.md
+```
+
+## Commit Spec (if not already committed)
+
+```bash
+BRANCH=$(git branch --show-current)
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+  echo "Refusing to commit on $BRANCH." >&2
+  exit 1
+fi
+
+git add docs/plans/{{feature}}/spec.md
+git diff --cached --quiet docs/plans/{{feature}}/spec.md || \
+  git commit -m "feat(plans): add {{feature}} spec
+
+  Co-Authored-By: Codex <agent>"
+```
+
+## Push
+
+```bash
+git push -u origin "$(git branch --show-current)" || git push
+```
+
+## Report
+
+```
+## Beadify Complete: {{feature}}
+
+**Feature epic:** [bead-id]
+**Integration branch:** [branch name]
+**Tasks created:** M
+**Dependencies:** K
+**Ready to start:** W
+
+### Review Results
+- Completeness: [PASS/FAIL]
+- Dependencies: [PASS/FAIL]
+- Clarity: [PASS/FAIL]
+
+### ID Mapping
+
+| Task | Bead ID |
+|------|---------|
+| [title] | [id] |
+| [title] | [id] |
+
+### Ready Queue
+[List of tasks with no blockers — these can start immediately]
+
+**Spec:** docs/plans/{{feature}}/spec.md
+**All transient files cleaned up ✓**
+```
+"""

@@ -1,0 +1,223 @@
+# Spec-to-Beads Workflow
+#
+# Composes all three expansion formulas into an end-to-end pipeline:
+#   draft-spec → enrich → beadify
+#
+# For maximum rigor from brief to execution-ready beads.
+#
+# Usage:
+#   gt sling spec-to-beads-workflow <crew> \
+#     --var feature="ipv6-support" \
+#     --var brief="Add IPv6 CIDR block and subnet support to VPC components"
+
+description = """
+Full pipeline from brief to execution-ready beads.
+
+Composes three expansion formulas sequentially:
+1. **Draft Spec** — brief → spec.md (interactive)
+2. **Enrich** — spec → enriched spec (gap analysis + decisions)
+3. **Beadify** — spec → beads with validated dependencies
+
+Use this when you want the maximum-rigor path from a raw idea to
+execution. For lighter workflows, run individual expansions directly.
+
+**Input:** Feature name + brief description
+**Output:** Reviewed spec + beads epic with tasks and dependency graph
+
+## Step Lifecycle (Molecule Work Loop)
+
+This formula runs as a molecule — each step is a wisp bead. Use the
+standard molecule work loop to advance through steps:
+
+```bash
+bd mol current <molecule-id>
+# execute the step
+bd close <step-id>
+bd mol current <molecule-id>
+# repeat until complete
+```
+
+Do NOT batch-close all steps at the end — close each one as you finish it.
+"""
+formula = "spec-to-beads-workflow"
+type = "workflow"
+version = 1
+
+[vars]
+[vars.feature]
+description = "Feature name (becomes directory name under docs/plans/)"
+required = true
+
+[vars.brief]
+description = "Feature brief — 1-3 sentences describing what to build"
+required = true
+
+
+# ============================================================================
+# KICKOFF
+# ============================================================================
+
+[[steps]]
+id = "kickoff"
+title = "Spec-to-Beads Kickoff"
+description = """
+═══════════════════════════════════════════════════════════════
+ SPEC-TO-BEADS WORKFLOW
+ Full pipeline: brief → spec → enriched spec → beads
+
+ Feature: {{feature}}
+ Brief:   {{brief}}
+
+ Stages:
+   1. Draft Spec — codebase exploration + interactive dialogue
+   2. Enrich — 6-dimension gap analysis + auto-fix + decisions
+   3. Beadify — task decomposition + 3 review passes + bead creation
+
+ Output:
+   - docs/plans/{{feature}}/spec.md (reviewed spec)
+   - Beads epic with tasks and dependency graph
+═══════════════════════════════════════════════════════════════
+
+Output this banner to the user, then close this step to begin.
+"""
+
+# ============================================================================
+# STAGE 1: DRAFT SPEC (expansion placeholder)
+# ============================================================================
+
+[[steps]]
+id = "stage-draft-spec"
+title = "Stage 1: Draft Spec"
+needs = ["kickoff"]
+description = """
+Placeholder expanded by `draft-spec-expansion`.
+
+Turn the brief into a first-draft spec through codebase exploration
+and interactive dialogue.
+
+**Input:** {{brief}}
+**Output:** docs/plans/{{feature}}/spec.md
+"""
+
+# ============================================================================
+# CHECKPOINT: After Draft Spec
+# ============================================================================
+
+[[steps]]
+id = "checkpoint-after-draft"
+title = "Checkpoint: Spec Drafted"
+needs = ["stage-draft-spec"]
+description = """
+## Checkpoint
+
+Draft spec (Stage 1) is complete.
+
+**Artifact:** docs/plans/{{feature}}/spec.md
+
+**If this is your first step in a fresh session**, close this step and continue.
+
+**Otherwise**, cycle your context:
+1. Close this step: `bd close <step-id>`
+2. Handoff: `gt handoff -s "Spec-to-beads: draft complete" -m "Draft spec written at docs/plans/{{feature}}/spec.md. Next: enrich pass for gap analysis."`
+"""
+
+# ============================================================================
+# STAGE 2: ENRICH (expansion placeholder)
+# ============================================================================
+
+[[steps]]
+id = "stage-enrich"
+title = "Stage 2: Enrich"
+needs = ["checkpoint-after-draft"]
+description = """
+Placeholder expanded by `enrich-expansion`.
+
+Read the spec, find gaps across 6 dimensions, auto-fix what's obvious,
+ask about what needs judgment, fold everything back in.
+
+**Input:** docs/plans/{{feature}}/spec.md
+**Output:** Updated docs/plans/{{feature}}/spec.md (enriched)
+"""
+
+# ============================================================================
+# CHECKPOINT: After Enrich
+# ============================================================================
+
+[[steps]]
+id = "checkpoint-after-enrich"
+title = "Checkpoint: Spec Enriched"
+needs = ["stage-enrich"]
+description = """
+## Checkpoint
+
+Enrich (Stage 2) is complete.
+
+**Artifact:** docs/plans/{{feature}}/spec.md (enriched)
+
+**If this is your first step in a fresh session**, close this step and continue.
+
+**Otherwise**, cycle your context:
+1. Close this step: `bd close <step-id>`
+2. Handoff: `gt handoff -s "Spec-to-beads: enrich complete" -m "Spec enriched at docs/plans/{{feature}}/spec.md. Next: beadify to create execution beads."`
+"""
+
+# ============================================================================
+# STAGE 3: BEADIFY (expansion placeholder)
+# ============================================================================
+
+[[steps]]
+id = "stage-beadify"
+title = "Stage 3: Beadify"
+needs = ["checkpoint-after-enrich"]
+description = """
+Placeholder expanded by `beadify-expansion`.
+
+Read the spec, explore the codebase, decompose into tasks, run 3 review
+passes, create beads with validated dependencies.
+
+**Input:** docs/plans/{{feature}}/spec.md
+**Output:** Beads epic with tasks and dependency graph
+"""
+
+# ============================================================================
+# COMPLETE
+# ============================================================================
+
+[[steps]]
+id = "complete"
+title = "Workflow Complete"
+needs = ["stage-beadify"]
+description = """
+Spec-to-beads workflow is complete.
+
+**Summary:**
+- Stage 1: Spec drafted from brief (interactive)
+- Stage 2: Spec enriched (6-dimension analysis, auto-fixes, decisions)
+- Stage 3: Beads created (task decomposition, 3 review passes)
+
+**Artifacts:**
+- docs/plans/{{feature}}/spec.md (reviewed spec)
+- Beads epic with tasks and dependency graph
+
+**Next steps:**
+- Use epic-delivery to dispatch beads to polecats for implementation
+- Or start working on ready tasks: `bd ready`
+"""
+
+# ============================================================================
+# COMPOSITION: Expand placeholder steps
+# ============================================================================
+
+[compose]
+
+[[compose.expand]]
+target = "stage-draft-spec"
+with = "draft-spec-expansion"
+
+[[compose.expand]]
+target = "stage-enrich"
+with = "enrich-expansion"
+
+[[compose.expand]]
+target = "stage-beadify"
+with = "beadify-expansion"

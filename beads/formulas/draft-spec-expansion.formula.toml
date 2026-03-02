@@ -1,0 +1,317 @@
+# Draft Spec Formula
+#
+# Brief → spec.md. Explores the codebase, asks focused questions,
+# writes a first-draft spec using the standard template.
+#
+# This is the formula version of the brainstorming skill. Use the skill
+# for interactive sessions; use this formula when composing workflows.
+#
+# Steps:
+#   1. Explore codebase
+#   2. Draft spec (interactive — asks questions, proposes approaches)
+#   3. Commit
+#
+# Usage:
+#   gt sling draft-spec <crew> \
+#     --var feature="ipv6-support" \
+#     --var brief="Add IPv6 CIDR block and subnet support to VPC components"
+
+description = """
+Turn a brief into a first-draft spec.
+
+Explores the codebase, asks focused questions to clarify the idea,
+proposes approaches, and writes a spec using the standard template.
+
+**Input:** A feature name and brief description
+**Output:** docs/plans/{{feature}}/spec.md
+
+This is interactive — the agent will ask 3-7 focused questions and
+propose approaches before writing. For a fully autonomous draft,
+provide a detailed brief that answers likely questions upfront.
+
+After drafting:
+- Run `gt sling enrich` for gap analysis and refinement (optional)
+- Run `gt sling beadify` to create execution beads
+
+## Step Lifecycle (Molecule Work Loop)
+
+This formula runs as a molecule — each step is a wisp bead. Use the
+standard molecule work loop to advance through steps:
+
+```bash
+bd mol current <molecule-id>
+# execute the step
+bd close <step-id>
+bd mol current <molecule-id>
+# repeat until complete
+```
+
+Do NOT batch-close all steps at the end — close each one as you finish it.
+"""
+formula = "draft-spec-expansion"
+type = "expansion"
+version = 1
+
+[vars]
+[vars.feature]
+description = "Feature name (becomes the directory name under docs/plans/)"
+required = true
+
+[vars.brief]
+description = "Feature brief — 1-3 sentences describing what to build"
+required = true
+
+# ============================================================================
+# KICKOFF
+# ============================================================================
+
+[[template]]
+id = "{target}.kickoff"
+title = "Draft Spec Kickoff"
+description = """
+═══════════════════════════════════════════════════════════════
+ DRAFT SPEC
+ Brief → spec.md through codebase exploration and dialogue.
+
+ Feature: {{feature}}
+ Brief:   {{brief}}
+
+ Output:  docs/plans/{{feature}}/spec.md
+═══════════════════════════════════════════════════════════════
+
+Output this banner to the user, then close this step to begin.
+"""
+
+# ============================================================================
+# STEP 1: EXPLORE CODEBASE
+# ============================================================================
+
+[[template]]
+id = "{target}.explore"
+title = "Explore codebase"
+needs = ["{target}.kickoff"]
+description = """
+Explore the codebase to understand how the feature fits in.
+
+## Branch Safety
+
+Do not write artifacts on `main`/`master`.
+
+```bash
+BRANCH=$(git branch --show-current)
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+  echo "On $BRANCH — switch to a feature branch before writing artifacts." >&2
+  exit 1
+fi
+```
+
+## Dispatch Explorer
+
+Subagent task brief:
+
+You are exploring a codebase to help design a new feature.
+
+## Feature Brief
+{{brief}}
+
+## What to Discover
+
+1. **Where this feature fits**
+   - What part of the codebase is relevant?
+   - What existing modules/components does it touch?
+   - What's the entry point?
+
+2. **Existing patterns**
+   - How are similar features built?
+   - What conventions exist (naming, structure, config)?
+   - What component library or framework patterns are used?
+
+3. **Related features**
+   - What adjacent features exist?
+   - What can be reused or extended?
+   - What data/state is already available?
+
+4. **Tech stack and constraints**
+   - Frameworks, libraries, build system
+   - Testing approach
+   - Any documented conventions (CLAUDE.md, README, CONTRIBUTING)
+
+Be thorough but focused on what helps design this specific feature.
+
+## OUTPUT
+Write to: docs/plans/{{feature}}/codebase-context.tmp
+
+
+## Wait for Completion
+
+Timeout: 10 minutes.
+"""
+
+# ============================================================================
+# STEP 2: DRAFT SPEC (interactive)
+# ============================================================================
+
+[[template]]
+id = "{target}.draft"
+title = "Draft the spec"
+needs = ["{target}.explore"]
+description = """
+Write the spec through interactive dialogue. This is the core step.
+
+## Setup
+
+```bash
+mkdir -p docs/plans/{{feature}}
+```
+
+## Inputs
+
+- Feature brief: {{brief}}
+- Codebase context: `docs/plans/{{feature}}/codebase-context.tmp` (if available)
+
+## Process
+
+### 1. Understand the Idea
+
+Read the codebase context, then ask 3-7 focused questions to clarify:
+- Purpose and constraints
+- Scope boundaries (what's in, what's explicitly out)
+- Key design decisions where multiple valid approaches exist
+
+Use `request_user_input` for each question batch. Prefer multiple choice.
+Put recommended option first with "(Recommended)".
+
+If the brief is detailed enough that questions are obvious, ask fewer.
+If the brief is vague, ask up to 7.
+
+### 2. Propose Approaches
+
+Once you understand the requirements:
+- Propose 2-3 approaches with trade-offs
+- Lead with your recommendation and reasoning
+- Use `request_user_input` to let the user choose
+
+If only one reasonable approach exists, state it and confirm.
+
+### 3. Present Design Incrementally
+
+Present the design in sections (200-300 words each). After each section,
+check with the user via `request_user_input`:
+- `Looks good (Recommended)`: continue to next section
+- `Needs changes`: user explains what to adjust
+- `Go back`: revisit a previous section
+
+Cover what's relevant to the feature — not every section is needed:
+- Architecture / high-level structure
+- Components and their responsibilities
+- Data model (if applicable)
+- User flows (if applicable)
+- Error handling
+- Integration points with existing code
+
+### 4. Write the Spec
+
+Write to `docs/plans/{{feature}}/spec.md` using the standard template:
+
+```markdown
+# <Feature Name>
+
+## Overview
+
+<What we're building, why, and for whom.>
+
+## Design
+
+<How it works. Be specific — name files, functions, patterns.
+Use sub-sections as needed for larger features.>
+
+## Scope
+
+In: <what this covers>
+Out: <what we're NOT doing, with rationale>
+
+## Decisions
+
+<Include only if trade-offs were discussed>
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+
+## Risks
+
+<Include only if risks were identified>
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+
+## Testing
+
+<Include only if testing approach was discussed>
+
+## Open Questions
+
+<Include only if unresolved items remain>
+```
+
+**Required sections:** Overview, Design, Scope.
+**Optional sections:** Include only when they carry real content.
+
+### 5. Confirm
+
+Show the user the complete spec and confirm via `request_user_input`:
+- `Looks good (Recommended)`: proceed to commit
+- `Needs changes`: user explains what to adjust, you revise
+"""
+
+# ============================================================================
+# STEP 3: CLEANUP & COMMIT
+# ============================================================================
+
+[[template]]
+id = "{target}.commit"
+title = "Cleanup and commit"
+needs = ["{target}.draft"]
+description = """
+Delete transient files and commit the spec.
+
+## Cleanup
+
+```bash
+rm -f docs/plans/{{feature}}/codebase-context.tmp
+```
+
+## Commit
+
+```bash
+BRANCH=$(git branch --show-current)
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+  echo "Refusing to commit on $BRANCH." >&2
+  exit 1
+fi
+
+git add docs/plans/{{feature}}/spec.md
+git commit -m "feat(plans): draft {{feature}} spec
+
+  Initial spec from brainstorming session.
+
+  Co-Authored-By: Codex <agent>"
+```
+
+## Push
+
+```bash
+git push -u origin "$(git branch --show-current)" || git push
+```
+
+## Report
+
+```
+## Spec Drafted: {{feature}}
+
+**Spec:** docs/plans/{{feature}}/spec.md
+
+### Next Steps
+- `gt sling enrich --var feature={{feature}}` — find gaps and refine (optional)
+- `gt sling beadify --var feature={{feature}}` — create execution beads
+```
+"""
