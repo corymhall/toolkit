@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git-Spice Stack PRs"
+  short_description: "Stacked PR workflow with git-spice tools"
+  default_prompt: "Use $git-spice-stack-prs to create, restack, submit, and maintain a clean stacked PR chain."
