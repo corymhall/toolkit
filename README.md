@@ -11,7 +11,9 @@ A collection of skills, formulas, and templates for AI-assisted software enginee
 | [go-development](skills/go-development/) | Implement, refactor, and review production Go code using Google-style conventions. |
 | [neovim-plugin-development](skills/neovim-plugin-development/) | Build, review, and modernize Neovim plugins in Lua. |
 | [ai-contribution-readiness-audit](skills/ai-contribution-readiness-audit/) | Evaluate a repo's readiness for AI code contributions and produce concrete fixes. |
-| [review-implementation](skills/review-implementation/) | Review code changes against a spec to verify implementation correctness. |
+| [review-pr](skills/review-pr/) | Review a teammate's PR and produce draft comments for your approval before posting to GitHub. |
+| [review-implementation](skills/review-implementation/) | Review code changes against a spec to verify implementation completeness and correctness. |
+| [receiving-code-review](skills/receiving-code-review/) | Protocol for handling review feedback — verify before implementing, push back when wrong, no performative agreement. |
 | [epic-delivery](skills/epic-delivery/) | Dispatch beads to polecats for swarm-style execution with dependency-aware task waves. |
 
 ## Gas Town: Spec-to-Beads Pipeline

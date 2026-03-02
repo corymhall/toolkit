@@ -1134,6 +1134,19 @@ options:
 
 **If "No":** End the skill. Issues remain open for future work.
 
+## Acting on Findings
+
+When implementing fixes from this review, follow the **receiving-code-review**
+skill protocol:
+
+1. **Verify before implementing** — check each finding against the codebase before acting
+2. **Prioritize** — blocking issues first, then suggestions, then nits
+3. **Push back if wrong** — if a finding is incorrect for this codebase, discard it with reasoning
+4. **One at a time** — implement and test each fix individually
+5. **No performative agreement** — just fix it, don't narrate gratitude
+
+See `skills/receiving-code-review/SKILL.md` for the full protocol.
+
 ## Execution Checklist
 
 **Track each step in an internal checklist:**
