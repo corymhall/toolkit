@@ -1136,16 +1136,8 @@ options:
 
 ## Acting on Findings
 
-When implementing fixes from this review, follow the **receiving-code-review**
-skill protocol:
-
-1. **Verify before implementing** — check each finding against the codebase before acting
-2. **Prioritize** — blocking issues first, then suggestions, then nits
-3. **Push back if wrong** — if a finding is incorrect for this codebase, discard it with reasoning
-4. **One at a time** — implement and test each fix individually
-5. **No performative agreement** — just fix it, don't narrate gratitude
-
-See [receiving-code-review](https://github.com/obra/superpowers/tree/main/skills/receiving-code-review) (obra/superpowers) for the full protocol.
+When implementing fixes from this review, use the **receiving-code-review**
+skill if available.
 
 ## Execution Checklist
 
