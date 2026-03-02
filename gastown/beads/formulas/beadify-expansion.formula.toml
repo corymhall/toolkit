@@ -18,7 +18,7 @@
 #   9. Cleanup transient files
 #
 # Usage:
-#   gt sling beadify <crew> --var feature="ipv6-support"
+#   gt sling beadify <crew> --var feature="ipv6-support" [--var epic_id="abc123"]
 
 description = """
 Spec to beads. Reads a spec, explores the codebase, decomposes into tasks,
@@ -123,6 +123,10 @@ version = 1
 [vars.feature]
 description = "Feature name (maps to docs/plans/{{feature}}/spec.md)"
 required = true
+
+[vars.epic_id]
+description = "Optional existing root epic ID to reuse (recommended when known)"
+required = false
 
 # ============================================================================
 # KICKOFF
@@ -829,7 +833,14 @@ Create in dependency order so all blocker IDs are available at creation time.
 
 ### 1. Resolve Feature Epic
 
-Check for an existing epic for this feature:
+If `epic_id` var is provided, validate and use it:
+
+```bash
+bd show {{epic_id}}
+EPIC_ID={{epic_id}}
+```
+
+If no `epic_id` is provided (or it is invalid), recover by resolving/creating:
 
 ```bash
 bd list --title-contains "{{feature}}" --type epic
@@ -841,7 +852,7 @@ If found and it's the right root epic, reuse it. Otherwise create:
 bd create "{{feature}}" -t epic -p P1 -d "[Description from draft]"
 ```
 
-Capture `EPIC_ID`.
+Set `EPIC_ID` to the resolved or created root epic.
 
 ### 2. Create Group Sub-Epics (if any)
 
@@ -899,15 +910,16 @@ bd show $EPIC_ID # Verify structure
 
 Fix any cycles by removing the least critical dependency.
 
-### 5. Ensure Integration Branch
+### 5. Ensure Integration Branch (Safety Check)
 
 ```bash
 gt mq integration create $EPIC_ID
 gt mq integration status $EPIC_ID
 ```
 
-If already exists, this is a no-op. Switch to the integration branch if
-not already on it.
+The workflow bootstrap stage should already have created this branch.
+This step is intentionally idempotent for recovery in partial runs.
+If not already on the integration branch, switch to it.
 
 ## ID Tracking
 
