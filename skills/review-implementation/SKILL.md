@@ -1145,7 +1145,7 @@ skill protocol:
 4. **One at a time** — implement and test each fix individually
 5. **No performative agreement** — just fix it, don't narrate gratitude
 
-See `skills/receiving-code-review/SKILL.md` for the full protocol.
+See [receiving-code-review](https://github.com/obra/superpowers/tree/main/skills/receiving-code-review) (obra/superpowers) for the full protocol.
 
 ## Execution Checklist
 

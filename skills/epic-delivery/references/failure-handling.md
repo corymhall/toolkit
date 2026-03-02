@@ -99,6 +99,7 @@ Indicators:
 - Bead in progress but no active polecat.
 - MR submitted but refinery not progressing.
 - Repeated no-change cycles beyond threshold.
+- Bead in `merge-blocked` with no upstream merge progress for multiple cycles.
 
 Before presenting options, inspect dependency impact:
 

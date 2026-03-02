@@ -96,9 +96,12 @@ bd create "Title" -t task -p <priority> -d "Description" \\
 #           multiple IDs are comma-separated
 
 # Add blocker dependency after creation (if needed)
-# Syntax: bd dep add <blocked-id> <blocker-id>
+# Syntax: bd dep add <blocked-id> <blocker-id> [--type <dep-type>]
 # Meaning: <blocked-id> depends on (is blocked by) <blocker-id>
+# Use --type merge-blocks for code-order dependencies that must wait for merge.
+# Use default blocks for non-merge sequencing dependencies.
 bd dep add <blocked-id> <blocker-id>
+bd dep add <blocked-id> <blocker-id> --type merge-blocks
 
 # Check for dependency cycles
 bd dep cycles
@@ -871,6 +874,12 @@ bd create "[Title]" -t task -p [P1/P2] \\
   --deps "$BLOCKER1_ID,$BLOCKER2_ID" \\
   -d "[Description]" \\
   --acceptance "[Criteria]"
+```
+
+If any listed dependency is a code-order dependency, convert it to merge-gated:
+```bash
+bd dep remove $TASK_ID $BLOCKER_ID
+bd dep add $TASK_ID $BLOCKER_ID --type merge-blocks
 ```
 
 Acceptance criteria use `\\n` for newlines:

@@ -9,7 +9,8 @@
 
 ## 1. Monitoring loop
 
-Poll every 2 minutes. Track merged MRs as the primary readiness signal.
+Poll every 2 minutes. With `merge-blocks` dependencies, `bd ready` is the
+primary readiness gate and merged MRs are the primary progress signal.
 Use an `awaiter` subagent for this loop so monitoring continues while long waits occur.
 Do not pause after a single cycle; re-arm wait + poll repeatedly until completion,
 handoff threshold, or a true blocker.
@@ -23,22 +24,23 @@ gt convoy status <convoy-id>
 
 Then branch behavior:
 
-1. If merged MR count increased since last cycle:
-- Announce landed work.
-- Re-check completion criteria.
-- If not complete, run:
+1. Run ready check each cycle:
+- Get ready leaves:
 
 ```bash
 bd ready --parent <epic-id> --json
 ```
 
-- Apply merge-gate checks for each candidate.
-- Sling each newly eligible leaf with `gt sling <leaf> <rig> --no-convoy`.
-- If that sling fails with known `bd mol wisp ... --root-only` compatibility errors, retry once with:
+- Sling each eligible leaf with `gt sling <leaf> <rig> --no-convoy`.
+- If sling fails with known `bd mol wisp ... --root-only` compatibility errors, retry once with:
   `gt sling <leaf> <rig> --no-convoy --hook-raw-bead`.
+- For legacy trees that still use `blocks` for code-order deps, run manual merge-proof checks before sling.
+
+2. If merged MR count increased since last cycle:
+- Announce landed work.
 - Reset no-change counter to 0.
 
-2. If merged MR count unchanged:
+3. If merged MR count unchanged and no new dispatch happened:
 - Increment no-change counter.
 - At 5+ no-change cycles (~10 minutes), escalate to user.
 
@@ -61,7 +63,7 @@ Treat epic wave as complete using leaf-task completion, not parent-epic closure.
 Required:
 
 1. Integration status shows no pending queue items.
-2. No open/in-progress leaf tasks remain (`task`, `bug`, `feature`, `chore`).
+2. No open/in-progress/merge-blocked leaf tasks remain (`task`, `bug`, `feature`, `chore`).
 
 Checks:
 
@@ -69,6 +71,7 @@ Checks:
 gt mq integration status <epic-id>
 bd list --parent <epic-id> --status open --limit 0 --json
 bd list --parent <epic-id> --status in_progress --limit 0 --json
+bd list --parent <epic-id> --status merge-blocked --limit 0 --json
 ```
 
 Interpretation rule:
@@ -138,10 +141,13 @@ bd list --parent <epic-id> --tree
 - If leaves still open: return to monitor loop.
 - If all leaves closed/deferred: go to validation.
 
-4. Re-run ready/merge-gate dispatch for newly eligible leaves:
+4. Re-run ready dispatch for newly eligible leaves:
 
 ```bash
 bd ready --parent <epic-id> --json
 ```
+
+If this tree still uses legacy `blocks` dependencies for code-order gating,
+apply manual merge-proof checks before sling.
 
 The convoy is the persistent state machine. Do not create sidecar state files.

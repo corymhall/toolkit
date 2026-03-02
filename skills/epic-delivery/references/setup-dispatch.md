@@ -76,16 +76,15 @@ bd ready --parent <epic-id> --json
 Filter output before slinging:
 - Keep only `task`, `bug`, `feature`, `chore`.
 - Confirm each ID is part of this epic tree.
-- For wave 2+, require dependency merge proof for every candidate.
+- Treat `bd ready` as authoritative when dependencies are modeled with `merge-blocks`.
 
 ### 2.3 Apply merge gate
 
-Before slinging candidate `B`, verify each dependency `A` has merge proof:
-1. MR exists with `source_issue: A`.
-2. MR targets this epic's integration branch.
-3. MR is merged (or closed-as-merged).
+Default flow:
+- If dependency modeling is migrated (`merge-blocks` used for code-order deps), no per-candidate merge-proof check is required.
+- If the tree is still legacy (`blocks` used for code-order deps), use manual merge-proof checks before sling.
 
-Use:
+Legacy-check commands:
 
 ```bash
 gt mq integration status <epic-id>
@@ -115,9 +114,27 @@ Guardrails:
 - Do not switch to raw-hook mode for unrelated errors (dependency gate, spawn capacity, routing, etc.).
 - Keep `--no-convoy` on the fallback retry.
 
-## 3. Merge-gate criteria
+## 3. Dependency gating criteria
 
-Use this checklist for every dependent candidate:
+Default policy:
+- Use `merge-blocks` for code-order dependencies.
+- Keep `blocks` for non-merge sequencing dependencies.
+
+Commands:
+
+```bash
+# Add merge-gated dependency (preferred for code-order deps)
+bd dep add <blocked-id> <blocker-id> --type merge-blocks
+
+# Convert legacy blocks dep to merge-blocks
+bd dep remove <blocked-id> <blocker-id>
+bd dep add <blocked-id> <blocker-id> --type merge-blocks
+```
+
+With `merge-blocks` in place, `bd ready` is the main dispatch gate.
+Do not require per-candidate MR proof checks in normal flow.
+
+Legacy fallback (only when dependency model has not been migrated):
 - Dependency bead closed? Nice to know, not sufficient.
 - Dependency MR merged into integration branch? Required.
 - Queue still pending refinery work for dependency? Not ready.

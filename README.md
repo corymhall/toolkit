@@ -13,7 +13,7 @@ A collection of skills, formulas, and templates for AI-assisted software enginee
 | [ai-contribution-readiness-audit](skills/ai-contribution-readiness-audit/) | Evaluate a repo's readiness for AI code contributions and produce concrete fixes. |
 | [review-pr](skills/review-pr/) | Review a teammate's PR and produce draft comments for your approval before posting to GitHub. |
 | [review-implementation](skills/review-implementation/) | Review code changes against a spec to verify implementation completeness and correctness. |
-| [receiving-code-review](skills/receiving-code-review/) | Protocol for handling review feedback — verify before implementing, push back when wrong, no performative agreement. |
+| [receiving-code-review](https://github.com/obra/superpowers/tree/main/skills/receiving-code-review) | Protocol for handling review feedback — verify before implementing, push back when wrong. *(upstream: obra/superpowers)* |
 | [epic-delivery](skills/epic-delivery/) | Dispatch beads to polecats for swarm-style execution with dependency-aware task waves. |
 
 ## Gas Town: Spec-to-Beads Pipeline
