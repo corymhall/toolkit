@@ -1,4 +1,4 @@
 interface:
   display_name: "Epic Delivery"
-  short_description: "Deliver a beads epic via staged convoy tracking and merge-gated manual sling"
-  default_prompt: "Use $epic-delivery to run staged convoy tracking and merge-gated manual leaf dispatch for this epic. Use the awaiter subagent for long-running monitor waits, then validate integration readiness without running gt mq integration land."
+  short_description: "Deliver a beads epic via stage+launch convoy with daemon-managed scheduling"
+  default_prompt: "Use $epic-delivery to validate merge-blocks dependencies, stage and launch convoy for this epic, capture a post-launch snapshot, and avoid manual monitor/dispatch loops. Do not run gt mq integration land."

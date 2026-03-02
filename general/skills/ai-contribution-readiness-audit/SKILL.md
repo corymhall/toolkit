@@ -74,6 +74,8 @@ Open `templates/ci-gates-template.md` for CI and Makefile exemplars to adapt.
 - Every recommendation must reference actual paths, commands, or patterns from the target repo.
 - Reject any recommendation that could be pasted unchanged into an unrelated repo.
 - Prefer extending existing repo artifacts before introducing new ones.
+- Every proposed command must be copied from repo reality (Makefile/justfile/package scripts/CI) or marked `UNVERIFIED` with what needs confirmation.
+- Every proposed file path must be validated as existing (for edits) or explicitly justified (for creates).
 
 **Minimalism:**
 - Prefer the smallest effective change.

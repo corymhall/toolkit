@@ -1,153 +1,38 @@
-# Monitoring and Handoff Reference
+# Post-Launch Snapshot Reference
 
 ## TOC
 
-1. Monitoring loop
-2. Completion criteria
-3. 15-cycle handoff protocol
-4. Resume protocol
+1. Immediate snapshot
+2. What this skill does not do
+3. Resume later for completion
 
-## 1. Monitoring loop
+## 1. Immediate snapshot
 
-Poll every 2 minutes. With `merge-blocks` dependencies, `bd ready` is the
-primary readiness gate and merged MRs are the primary progress signal.
-Use an `awaiter` subagent for this loop so monitoring continues while long waits occur.
-Do not pause after a single cycle; re-arm wait + poll repeatedly until completion,
-handoff threshold, or a true blocker.
-
-Cycle commands:
-
-```bash
-gt mq integration status <epic-id>
-gt convoy status <convoy-id>
-```
-
-Then branch behavior:
-
-1. Run ready check each cycle:
-- Get ready leaves:
-
-```bash
-bd ready --parent <epic-id> --json
-```
-
-- Sling each eligible leaf with `gt sling <leaf> <rig> --no-convoy`.
-- If sling fails with known `bd mol wisp ... --root-only` compatibility errors, retry once with:
-  `gt sling <leaf> <rig> --no-convoy --hook-raw-bead`.
-- For legacy trees that still use `blocks` for code-order deps, run manual merge-proof checks before sling.
-
-2. If merged MR count increased since last cycle:
-- Announce landed work.
-- Reset no-change counter to 0.
-
-3. If merged MR count unchanged and no new dispatch happened:
-- Increment no-change counter.
-- At 5+ no-change cycles (~10 minutes), escalate to user.
-
-Wait behavior:
-
-- Use `awaiter` subagent delay/wait primitives for ~120s between cycles.
-- Do not end the workflow just because no immediate output appears.
-- After each awaiter return, immediately continue to the next monitor cycle unless
-  a stop condition is met (completion, escalation threshold, handoff threshold).
-- If `awaiter` is unavailable, fall back to `sleep 120` in-session and continue the same loop.
-
-Reporting cadence:
-- Report immediately on transitions: new merge, new sling dispatch, escalation, completion.
-- During steady no-change periods, batch status and report every 5 cycles (or at handoff).
-
-## 2. Completion criteria
-
-Treat epic wave as complete using leaf-task completion, not parent-epic closure.
-
-Required:
-
-1. Integration status shows no pending queue items.
-2. No open/in-progress/merge-blocked leaf tasks remain (`task`, `bug`, `feature`, `chore`).
-
-Checks:
-
-```bash
-gt mq integration status <epic-id>
-bd list --parent <epic-id> --status open --limit 0 --json
-bd list --parent <epic-id> --status in_progress --limit 0 --json
-bd list --parent <epic-id> --status merge-blocked --limit 0 --json
-```
-
-Interpretation rule:
-- Open parent epics alone do not mean work is still running.
-- If open/in-progress results contain only `epic` items and there are no pending MRs, treat this as bookkeeping-only state.
-
-Bookkeeping-only closure step:
-
-```bash
-# Close open child epics under the top epic when all leaves are done.
-bd close <child-epic-1> <child-epic-2> ...
-
-# Then close the top epic itself.
-bd close <epic-id>
-```
-
-After closure, proceed to validation/reporting.
-
-If deferred leaves exist, include them in final report and close convoy manually if needed:
-
-```bash
-gt convoy close <convoy-id> --force
-```
-
-## 3. 15-cycle handoff protocol
-
-After 15 cycles, hand off if work remains in flight.
-
-```bash
-gt handoff -s "Epic delivery: <epic-id> monitoring" -m "
-IMPORTANT: Resume this epic-delivery workflow FIRST.
-
-Epic: <epic-id>
-Convoy: <convoy-id>
-Integration branch: <branch-name>
-Progress: N/total MRs merged, M deferred, K in-flight
-Pending MRs: <ids>
-Open leaves: <ids>
-Active polecats: <count>
-Refinery re-assignments: <notes>
-Last slung: <timestamp>
-No-change counter: <value>
-Phase: MONITORING
-Next action: reload skill, continue monitor cycle
-"
-```
-
-## 4. Resume protocol
-
-Mandatory first step: reload the core workflow (`SKILL.md`) before taking actions.
-
-Then:
-
-1. Check convoy state:
+After `gt convoy launch <convoy-id>`, capture one status snapshot:
 
 ```bash
 gt convoy status <convoy-id>
+gt mq integration status <epic-id>
 ```
 
-2. Check epic tree:
+Report:
+- convoy lifecycle status
+- pending/merged integration queue summary
+- any immediate launch errors that require human action
 
-```bash
-bd list --parent <epic-id> --tree
-```
+## 2. What this skill does not do
 
-3. Route:
-- If leaves still open: return to monitor loop.
-- If all leaves closed/deferred: go to validation.
+This skill does not run a continuous monitor loop.
 
-4. Re-run ready dispatch for newly eligible leaves:
+Do not:
+- poll every N minutes in-session
+- manually sling newly ready leaves after launch
+- duplicate daemon scheduling behavior
 
-```bash
-bd ready --parent <epic-id> --json
-```
+After launch, daemon/refinery own ongoing scheduling and merge progression.
 
-If this tree still uses legacy `blocks` dependencies for code-order gating,
-apply manual merge-proof checks before sling.
+## 3. Resume later for completion
 
-The convoy is the persistent state machine. Do not create sidecar state files.
+If execution is still in flight, stop after snapshot.
+
+When user wants completion verification, rerun this skill on the same epic and proceed to validation/reporting checks.

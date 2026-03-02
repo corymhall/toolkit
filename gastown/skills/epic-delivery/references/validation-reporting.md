@@ -60,7 +60,7 @@ bd create "Fix: <issue 2>" -t bug --parent <bugfix-epic-id>
 gt convoy add <convoy-id> <fix-1-id> <fix-2-id>
 ```
 
-Then return to dispatch/monitor flow. After fixes merge, re-run all configured gates from the beginning.
+Then return to stage/launch flow. After fixes merge, re-run all configured gates from the beginning.
 
 ## 4. Produce plan-vs-actual summary
 
