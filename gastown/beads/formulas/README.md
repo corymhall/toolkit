@@ -41,7 +41,7 @@ Turns a brief into a first-draft spec through codebase exploration and interacti
 
 **Steps:**
 1. Explore codebase — dispatch agent to understand project structure, patterns, related features
-2. Draft spec — ask 3-7 focused questions, propose 2-3 approaches, present design incrementally, write spec using [standard template](../../docs/templates/spec.md)
+2. Draft spec — ask 3-7 focused questions, propose 2-3 approaches, present design incrementally, write spec using [standard template](../docs/templates/spec.md)
 3. Cleanup and commit
 
 **Interactive:** The agent asks focused questions and proposes approaches before writing. For a more autonomous draft, provide a detailed brief.
@@ -150,7 +150,7 @@ gt sling beadify-expansion <crew> \
 
 ## Spec Template
 
-All formulas produce and consume specs using the [standard template](../../docs/templates/spec.md):
+All formulas produce and consume specs using the [standard template](../docs/templates/spec.md):
 
 **Required sections:** Overview, Design, Scope
 **Optional sections:** Decisions, Risks, Testing, Open Questions
@@ -160,7 +160,7 @@ The format scales naturally:
 - **Medium work** (4-10 tasks): 30-100 lines — Design sub-sections, Decisions table
 - **Large work** (10+ tasks): 100+ lines — full Design sub-sections, Risks, Testing
 
-See [docs/templates/spec.md](../../docs/templates/spec.md) for the full template.
+See [docs/templates/spec.md](../docs/templates/spec.md) for the full template.
 
 ## Workflow Formula
 

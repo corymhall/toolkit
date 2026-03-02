@@ -1,24 +1,35 @@
 # toolkit
 
-A collection of skills, formulas, and templates for AI-assisted software engineering. Includes general-purpose development skills and a [Gas Town](https://github.com/steveyegge/gastown) spec-to-beads planning pipeline.
+A collection of skills, formulas, and templates for AI-assisted software engineering. Organized into two namespaces you can install independently.
 
-## Skills
+## General Skills
+
+Language-specific development skills, review tools, and multi-model evaluation. No dependencies on Gas Town or Beads.
 
 | Skill | Description |
 |-------|-------------|
-| [brainstorming](skills/brainstorming/) | Interactive spec writing through dialogue — clarify intent, explore approaches, write a design spec. |
-| [multi-model-evaluate](skills/multi-model-evaluate/) | Dispatch the same question to multiple AI models, synthesize consensus and disagreements. |
-| [go-development](skills/go-development/) | Implement, refactor, and review production Go code using Google-style conventions. |
-| [neovim-plugin-development](skills/neovim-plugin-development/) | Build, review, and modernize Neovim plugins in Lua. |
-| [ai-contribution-readiness-audit](skills/ai-contribution-readiness-audit/) | Evaluate a repo's readiness for AI code contributions and produce concrete fixes. |
-| [review-pr](skills/review-pr/) | Review a teammate's PR and produce draft comments for your approval before posting to GitHub. |
-| [review-implementation](skills/review-implementation/) | Review code changes against a spec to verify implementation completeness and correctness. |
+| [multi-model-evaluate](general/skills/multi-model-evaluate/) | Dispatch the same question to multiple AI models, synthesize consensus and disagreements. |
+| [review-pr](general/skills/review-pr/) | Review a teammate's PR and produce draft comments for your approval before posting to GitHub. |
+| [go-development](general/skills/go-development/) | Implement, refactor, and review production Go code using Google-style conventions. |
+| [neovim-plugin-development](general/skills/neovim-plugin-development/) | Build, review, and modernize Neovim plugins in Lua. |
+| [ai-contribution-readiness-audit](general/skills/ai-contribution-readiness-audit/) | Evaluate a repo's readiness for AI code contributions and produce concrete fixes. |
 | [receiving-code-review](https://github.com/obra/superpowers/tree/main/skills/receiving-code-review) | Protocol for handling review feedback — verify before implementing, push back when wrong. *(upstream: obra/superpowers)* |
-| [epic-delivery](skills/epic-delivery/) | Dispatch beads to polecats for swarm-style execution with dependency-aware task waves. |
 
-## Gas Town: Spec-to-Beads Pipeline
+## Gas Town
 
-A composable pipeline for [Gas Town](https://github.com/steveyegge/gastown) that takes a feature from brief to execution-ready [Beads](https://github.com/steveyegge/beads). Three expansion formulas, each independently runnable.
+Skills and formulas for the [Gas Town](https://github.com/steveyegge/gastown) multi-agent workspace built on [Beads](https://github.com/steveyegge/beads) issue tracking.
+
+### Skills
+
+| Skill | Description |
+|-------|-------------|
+| [brainstorming](gastown/skills/brainstorming/) | Interactive spec writing through dialogue — clarify intent, explore approaches, write a design spec. |
+| [review-implementation](gastown/skills/review-implementation/) | Review code changes against a spec to verify implementation completeness and correctness. |
+| [epic-delivery](gastown/skills/epic-delivery/) | Dispatch beads to polecats for swarm-style execution with dependency-aware task waves. |
+
+### Spec-to-Beads Pipeline
+
+A composable pipeline that takes a feature from brief to execution-ready beads. Three expansion formulas, each independently runnable.
 
 ```
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
@@ -38,9 +49,9 @@ A composable pipeline for [Gas Town](https://github.com/steveyegge/gastown) that
 
 Any entry point works. Already have a spec? Skip to beadify. Want more rigor? Run enrich multiple times.
 
-See [beads/formulas/README.md](beads/formulas/README.md) for full formula documentation.
+See [gastown/beads/formulas/README.md](gastown/beads/formulas/README.md) for full formula documentation.
 
-### Design principles
+#### Design principles
 
 **One document:** `spec.md` is the single design record. It scales from 10 lines to 200 by adding depth, not documents.
 
@@ -50,7 +61,7 @@ See [beads/formulas/README.md](beads/formulas/README.md) for full formula docume
 
 **Signal over noise:** Analytical dimensions that surface real gaps, not exhaustive question generation.
 
-### Quick start
+#### Quick start
 
 ```bash
 # From a brief to a spec (interactive)
@@ -75,12 +86,10 @@ gt sling spec-to-beads-workflow <crew> \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```
 
-### Installing formulas
-
-Copy formulas into your town-level formulas directory:
+#### Installing formulas
 
 ```bash
-cp beads/formulas/*.formula.toml ~/gt/.beads/formulas/
+cp gastown/beads/formulas/*.formula.toml ~/gt/.beads/formulas/
 ```
 
 Or copy to a specific rig's `.beads/formulas/` directory for project-scoped use.
@@ -89,10 +98,11 @@ Or copy to a specific rig's `.beads/formulas/` directory for project-scoped use.
 
 | Directory | Contents |
 |-----------|----------|
-| `skills/` | Claude Code / Codex skills — development, review, planning, and multi-model evaluation. |
-| `beads/formulas/` | Gas Town `.formula.toml` files — 3 expansion formulas + 1 workflow orchestrator. |
-| `docs/templates/` | The [spec template](docs/templates/spec.md) — standard format for all specs. |
-| `docs/plans/` | Specs for features built in this repo. |
+| `general/skills/` | Language-specific development, review, and evaluation skills. No Gas Town dependency. |
+| `gastown/skills/` | Gas Town skills — brainstorming, implementation review, epic delivery. |
+| `gastown/beads/formulas/` | Gas Town `.formula.toml` files — 3 expansion formulas + 1 workflow orchestrator. |
+| `gastown/docs/templates/` | The [spec template](gastown/docs/templates/spec.md) — standard format for all specs. |
+| `gastown/docs/plans/` | Specs for features built in this repo. |
 
 ## Acknowledgements
 
