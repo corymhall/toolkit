@@ -44,6 +44,7 @@ See [beads/formulas/README.md](beads/formulas/README.md) for full formula docume
 | `docs/templates/` | The [spec template](docs/templates/spec.md) — standard format for all specs. |
 | `skills/brainstorming/` | Interactive spec writing through dialogue — the skill version of `draft-spec-expansion`. |
 | `skills/epic-delivery/` | Dispatch beads to polecats for swarm-style execution. Sets up integration branch, creates convoy, dispatches task waves in parallel respecting dependencies. |
+| `skills/multi-model-evaluate/` | Dispatch the same question to multiple AI models, synthesize their perspectives. For ad-hoc multi-model review of any document or idea. |
 | `skills/review-implementation/` | Review code changes against the spec to verify implementation correctness. |
 
 ## Installing formulas
