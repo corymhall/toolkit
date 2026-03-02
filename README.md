@@ -90,7 +90,11 @@ gt sling beadify-expansion <crew> \
 
 ## Acknowledgements
 
-The brainstorming approach draws inspiration from [obra/superpowers](https://github.com/obra/superpowers/tree/main). The expansion formula architecture builds on patterns from [Xexr/gt-toolkit](https://github.com/Xexr/gt-toolkit).
+- [obra/superpowers](https://github.com/obra/superpowers) — the brainstorming skill and interactive design dialogue approach
+- [Xexr/gt-toolkit](https://github.com/Xexr/gt-toolkit) — the expansion/workflow formula architecture, multi-stage pipeline patterns, and bidirectional review approach
+- [Xexr/marketplace](https://github.com/Xexr/marketplace) — the epic-delivery and review-implementation skills
+- [steveyegge/gastown](https://github.com/steveyegge/gastown) — the Gas Town multi-agent workspace and molecule/convoy execution model
+- The upstream `mol-idea-to-plan` and `mol-prd-review` formulas — the PRD review dimensions (requirements, gaps, ambiguity, feasibility, scope, stakeholders) that informed the enrich formula's analytical approach
 
 ## License
 
