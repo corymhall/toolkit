@@ -16,9 +16,9 @@ Full pipeline from brief to execution-ready beads.
 
 Composes four stages sequentially:
 1. **Bootstrap** — ensure feature epic + integration branch exist
-2. **Draft Spec** — brief → spec.md (interactive)
-3. **Enrich** — spec → enriched spec (gap analysis + decisions)
-4. **Beadify** — spec → beads with validated dependencies
+2. **Draft Spec** — brief → spec.md with required serialized sections
+3. **Enrich** — preserve/fill serialized context (gap analysis + decisions)
+4. **Beadify** — spec → beads with validated dependency + traceability coverage
 
 Use this when you want the maximum-rigor path from a raw idea to
 execution. For lighter workflows, run individual expansions directly.
@@ -74,11 +74,17 @@ description = """
  Feature: {{feature}}
  Brief:   {{brief}}
 
- Stages:
+Stages:
    1. Bootstrap — epic + integration branch setup
    2. Draft Spec — codebase exploration + interactive dialogue
    3. Enrich — 6-dimension gap analysis + auto-fix + decisions
    4. Beadify — task decomposition + 3 review passes + bead creation
+
+ Serialized fidelity requirements across stages:
+   - Non-Negotiables
+   - Forbidden Approaches
+   - Decision Log
+   - Traceability
 
  Output:
    - docs/plans/{{feature}}/spec.md (reviewed spec)
@@ -190,6 +196,14 @@ Draft spec (Stage 2) is complete.
 
 **Artifact:** docs/plans/{{feature}}/spec.md
 
+Before handoff, verify the artifact contains:
+- Non-Negotiables
+- Forbidden Approaches
+- Decision Log
+- Traceability
+
+If any are missing, return to Stage 2 and fill them before handoff.
+
 **If this is your first step in a fresh session**, close this step and continue.
 
 **Otherwise**, cycle your context:
@@ -229,6 +243,12 @@ description = """
 Enrich (Stage 3) is complete.
 
 **Artifact:** docs/plans/{{feature}}/spec.md (enriched)
+
+Before handoff, verify enrich preserved:
+- Non-Negotiables (still explicit and testable)
+- Forbidden Approaches (still explicit)
+- Decision Log (stable IDs + rationale)
+- Traceability (updated mappings for new/changed sections)
 
 **If this is your first step in a fresh session**, close this step and continue.
 
@@ -271,6 +291,8 @@ Spec-to-beads workflow is complete.
 - Stage 2: Spec drafted from brief (interactive)
 - Stage 3: Spec enriched (6-dimension analysis, auto-fixes, decisions)
 - Stage 4: Beads created (task decomposition, 3 review passes)
+- Fresh-session fidelity: Non-Negotiables + Forbidden Approaches + Decision Log +
+  Traceability carried from spec through bead generation
 
 **Artifacts:**
 - docs/plans/{{feature}}/spec.md (reviewed spec)

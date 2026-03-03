@@ -152,13 +152,13 @@ gt sling beadify-expansion <crew> \
 
 All formulas produce and consume specs using the [standard template](../docs/templates/spec.md):
 
-**Required sections:** Overview, Design, Scope
-**Optional sections:** Decisions, Risks, Testing, Open Questions
+**Required sections:** Overview, Design, Scope, Non-Negotiables, Forbidden Approaches, Decision Log, Traceability
+**Optional sections:** Risks, Testing, Open Questions
 
 The format scales naturally:
 - **Small work** (1-3 tasks): 10-20 lines — bullet points in Design, one-line Scope
-- **Medium work** (4-10 tasks): 30-100 lines — Design sub-sections, Decisions table
-- **Large work** (10+ tasks): 100+ lines — full Design sub-sections, Risks, Testing
+- **Medium work** (4-10 tasks): 30-100 lines — Design sub-sections + Decision Log entries
+- **Large work** (10+ tasks): 100+ lines — full Design sub-sections, Decision Log, Risks, Testing, Traceability
 
 See [docs/templates/spec.md](../docs/templates/spec.md) for the full template.
 

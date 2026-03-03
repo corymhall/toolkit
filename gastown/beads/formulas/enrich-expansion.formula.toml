@@ -21,7 +21,8 @@
 
 description = """
 Read a spec, make it better. Finds gaps, fixes what's obvious, asks about
-what needs human judgment, folds everything back into the spec.
+what needs human judgment, and folds everything back into the spec while
+preserving serialized context for fresh-session delegation.
 
 **Input:** docs/plans/{{feature}}/spec.md (any depth)
 **Output:** Updated docs/plans/{{feature}}/spec.md (enriched)
@@ -120,14 +121,23 @@ Validate that the spec exists and is substantive enough to analyze.
    If missing: STOP. Report: "No spec found at docs/plans/{{feature}}/spec.md."
 
 2. Read the spec and confirm it has at minimum:
-   - An Overview section
-   - A Design section
-   - A Scope section
+   - Overview
+   - Design
+   - Scope
+   - Non-Negotiables
+   - Forbidden Approaches
+   - Decision Log
+   - Traceability
 
-   If required sections are missing, STOP and report which ones.
+   If any required sections are missing, STOP and report which ones.
 
-3. Assess current depth and note which optional sections exist:
-   - Decisions table: [present / absent]
+3. Validate Decision Log integrity:
+   - Each row has Decision ID, topic, chosen option, rejected alternatives,
+     rationale, and status.
+   - IDs are stable and meaningful (`D-1`, `D-2`, ...).
+   - Do not allow blank or placeholder-only decision rows.
+
+4. Assess current depth and note which optional sections exist:
    - Risks table: [present / absent]
    - Testing section: [present / absent]
    - Open Questions: [present / absent]
@@ -138,6 +148,7 @@ Validate that the spec exists and is substantive enough to analyze.
 ```
 Spec validated: docs/plans/{{feature}}/spec.md ✓
 Depth: [thin / medium / deep]
+Required sections verified: [list]
 Optional sections present: [list]
 Optional sections absent: [list]
 
@@ -231,6 +242,7 @@ decision.
 Analyze the spec through each dimension. For each dimension, only report
 findings that are genuine issues. If a dimension is clean, say so in one
 line and move on. Do NOT generate findings for the sake of completeness.
+Prefer precision and completeness over concision when preserving context.
 
 ### Dimension 1: Completeness
 
@@ -302,6 +314,17 @@ Does the spec contradict itself or the codebase?
 Use the codebase context to verify. Quote specific code when a
 contradiction exists.
 
+### Fidelity Preservation Check (run before classification)
+
+- Preserve all `Non-Negotiables`; they must remain explicit and testable.
+- Preserve all `Forbidden Approaches`; do not soften or remove bans silently.
+- Preserve `Decision Log` rows with stable IDs and rationale.
+- Preserve `Traceability`; each Design subsection should map to at least one
+  traceability row.
+
+If a fidelity conflict appears, create a Decision item rather than silently
+rewriting or deleting prior intent.
+
 ## Classification
 
 For EACH finding, classify:
@@ -361,15 +384,17 @@ Write to: `docs/plans/{{feature}}/enrichment-findings.tmp`
 
 ## Decision Items
 
-### D-1: [Short title]
+### D-1: [Decision ID | Short title]
 - **Dimension:** [which]
 - **What:** [the gap or ambiguity]
 - **Why human needed:** [why this can't be auto-resolved]
+- **Decision ID:** D-1
 - **Options:**
   - [Option A]: [tradeoff]
   - [Option B]: [tradeoff]
 - **Recommendation:** [which option and why, if you have one]
 - **Spec section:** [which section the answer affects]
+- **Current Decision Log row:** [existing row / new row]
 
 ### D-2: ...
 ```
@@ -520,7 +545,7 @@ Incorporate human decision answers into the spec.
 1. Read `docs/plans/{{feature}}/spec.md` (already has auto-fixes from step 4)
 2. For each answered decision:
    - Write the answer into the relevant spec section as a design statement
-   - If it belongs in Decisions table, add a row
+   - Add or update the matching Decision Log row (preserve Decision ID)
    - If it clarifies Design, update the Design section
    - If it refines Scope, update In/Out
 3. For each deferred decision:
@@ -542,7 +567,7 @@ Incorporate human decision answers into the spec.
 
 docs/plans/{{feature}}/spec.md updated with:
 - [N] decisions folded into Design section
-- [K] decisions added to Decisions table
+- [K] decisions added/updated in Decision Log
 - [J] items added to Open Questions
 
 Spec is now enriched. Proceeding to cleanup...
@@ -614,7 +639,10 @@ git push -u origin "$(git branch --show-current)" || git push
 - Overview: ✓
 - Design: [depth assessment]
 - Scope: ✓
-- Decisions: [N entries]
+- Non-Negotiables: [N entries]
+- Forbidden Approaches: [N entries]
+- Decision Log: [N entries]
+- Traceability: [N mapped elements]
 - Risks: [present/absent]
 - Testing: [present/absent]
 - Open Questions: [N items]

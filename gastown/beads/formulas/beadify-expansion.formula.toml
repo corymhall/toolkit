@@ -177,9 +177,13 @@ fi
    If missing: STOP. Report: "No spec found at docs/plans/{{feature}}/spec.md."
 
 2. Read the spec and confirm it has at minimum:
-   - An Overview section (what we're building)
-   - A Design section (how it works)
-   - A Scope section (what's in/out)
+   - Overview (what we're building)
+   - Design (how it works)
+   - Scope (what's in/out)
+   - Non-Negotiables
+   - Forbidden Approaches
+   - Decision Log
+   - Traceability
 
    If any required section is missing, STOP and report which sections are missing.
 
@@ -367,6 +371,9 @@ This is the core step — it does the work that was previously a separate
 "plan writing" stage. The output is a beads draft (hierarchy of epics and
 tasks), not a plan document.
 
+When in doubt, preserve detail. Do not shorten away constraints that a fresh
+session would need to implement correctly.
+
 ## Inputs
 
 Read these files:
@@ -395,6 +402,11 @@ and patterns analysis.
 
 **Acceptance criteria must be verifiable.** Not "works correctly" but
 "returns 200 with JSON body matching schema X when called with valid input."
+
+**Serialization over summary.** Tasks must preserve the spec's hard intent:
+- Every Non-Negotiable must map to one or more tasks
+- Forbidden Approaches must remain forbidden in task wording
+- Decision Log entries must either map to tasks or be explicitly deferred
 
 ## Mapping Rules
 
@@ -429,6 +441,14 @@ For each task, extract and combine from the spec and codebase analysis:
 - **Priority:** P1 for foundational tasks others depend on, P2 for everything else.
 - **Dependencies:** Only true blockers — task X produces something task Y
   needs as input to start.
+- **Source traceability:**
+  - Design anchors: [subsection heading or anchor]
+  - Decision refs: [D-1, D-2]
+  - Non-Negotiables covered: [N-1, N-2]
+  - Forbidden approaches checked: [F-1, F-2]
+
+If a task cannot be linked to at least one design anchor plus one of
+[Decision ref or Non-Negotiable], revise it before proceeding.
 
 ### What Generates Tasks
 
@@ -480,6 +500,12 @@ Use this format:
 **Description:**
 [Full self-contained description — what, files, patterns, key details]
 
+**Traceability:**
+- Design anchors: [section/subsection]
+- Decision refs: [D-* or "none"]
+- Non-Negotiables: [N-*]
+- Forbidden checks: [F-*]
+
 **Acceptance:**
 - [ ] [Verifiable criterion]
 - [ ] [Verifiable criterion]
@@ -495,6 +521,12 @@ Use this format:
 | [Task title] | [Task title] | [Why] |
 
 **Reading this table:** "Blocked Task" cannot start until "Blocked By" completes.
+
+## Traceability Matrix
+
+| Task | Design Anchor | Decision Refs | Non-Negotiables | Forbidden Approaches |
+|------|---------------|---------------|------------------|---------------------|
+| [Task title] | [Design section] | [D-1] | [N-1] | [F-1] |
 
 ## Summary
 
@@ -552,6 +584,12 @@ Flag cross-references like "as described above" or "see Task 1.2."
 ### 5. Testing
 If the spec has a Testing section, verify those scenarios appear as
 acceptance criteria on relevant tasks.
+
+### 6. Constraint Traceability
+- Every Decision Log entry maps to at least one task, or is explicitly deferred.
+- Every Non-Negotiable maps to one or more tasks.
+- No task conflicts with a Forbidden Approach unless Decision Log documents an exception.
+- Traceability Matrix is complete and internally consistent.
 
 ## Output
 

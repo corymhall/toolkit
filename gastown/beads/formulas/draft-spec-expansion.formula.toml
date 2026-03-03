@@ -20,7 +20,9 @@ description = """
 Turn a brief into a first-draft spec.
 
 Explores the codebase, asks focused questions to clarify the idea,
-proposes approaches, and writes a spec using the standard template.
+proposes approaches, and writes a spec using a fixed serialization template
+that preserves non-negotiables, forbidden approaches, decision rationale,
+and traceability for fresh-session delegation.
 
 **Input:** A feature name and brief description
 **Output:** docs/plans/{{feature}}/spec.md
@@ -184,6 +186,21 @@ Put recommended option first with "(Recommended)".
 If the brief is detailed enough that questions are obvious, ask fewer.
 If the brief is vague, ask up to 7.
 
+Favor exhaustive serialization over brevity in this stage:
+- Do not compress constraints into short summaries
+- Keep concrete examples, edge cases, and exclusions when captured
+- If unsure whether detail matters, include it in Decision Log or Traceability
+
+Before drafting, capture these required artifacts from the conversation:
+- Non-negotiables (hard requirements with no exceptions)
+- Forbidden approaches (explicit do-not-do list + rationale)
+- Decision log candidates (topic, options considered, chosen option, rationale)
+
+Assign stable IDs immediately:
+- Non-negotiables: `N-1`, `N-2`, ...
+- Forbidden approaches: `F-1`, `F-2`, ...
+- Decisions: `D-1`, `D-2`, ...
+
 ### 2. Propose Approaches
 
 Once you understand the requirements:
@@ -230,12 +247,34 @@ Use sub-sections as needed for larger features.>
 In: <what this covers>
 Out: <what we're NOT doing, with rationale>
 
-## Decisions
+## Non-Negotiables
 
-<Include only if trade-offs were discussed>
+- [N-1] <Hard requirement>
+- [N-2] <Hard requirement>
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
+## Forbidden Approaches
+
+- [F-1] <Disallowed approach> — <why>
+- [F-2] <Disallowed approach> — <why>
+
+## Decision Log
+
+Every material trade-off from the session must be serialized here.
+
+| Decision ID | Topic | Chosen Option | Rejected Alternatives | Rationale | Status |
+|-------------|-------|---------------|------------------------|-----------|--------|
+| D-1 | <topic> | <chosen> | <alt A; alt B> | <why> | Resolved/Deferred |
+
+If no trade-offs exist, include one explicit row:
+`| D-0 | none | n/a | n/a | No material trade-offs identified | Resolved |`
+
+## Traceability
+
+| Spec Element | Source | Notes |
+|--------------|--------|-------|
+| Non-Negotiables | user answers | [how captured] |
+| Design subsection X | codebase-context.tmp + dialogue | [why included] |
+| Decision D-1 | trade-off discussion | [downstream impact] |
 
 ## Risks
 
@@ -253,7 +292,8 @@ Out: <what we're NOT doing, with rationale>
 <Include only if unresolved items remain>
 ```
 
-**Required sections:** Overview, Design, Scope.
+**Required sections:** Overview, Design, Scope, Non-Negotiables,
+Forbidden Approaches, Decision Log, Traceability.
 **Optional sections:** Include only when they carry real content.
 
 ### 5. Confirm
