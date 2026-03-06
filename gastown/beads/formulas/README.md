@@ -1,6 +1,8 @@
 # Formulas
 
-Spec-centric design and execution formulas for the `gt sling` pipeline. Three composable expansion formulas and one workflow orchestrator that take a feature from initial idea through to execution-ready beads.
+Spec-centric design and execution formulas for the `gt sling` pipeline. Three composable expansion formulas and two workflow orchestrators for different execution styles:
+- delegation-safe (spec -> enrich -> beadify -> dispatch)
+- single-session tracked delivery (spec -> enrich -> implement in one session)
 
 ## Architecture
 
@@ -8,11 +10,11 @@ The formulas follow an **expansion/workflow pattern**:
 
 - **Expansion formulas** (`*-expansion.formula.toml`) contain the actual multi-step logic. They use `type = "expansion"` and define `[[template]]` steps with `{target}` placeholders. Expansions run standalone (a synthetic `main` target resolves placeholders automatically) or compose into larger workflows.
 
-- **Workflow formulas** (`*-workflow.formula.toml`) are orchestrators that compose expansion formulas into end-to-end pipelines with checkpoints between stages.
+- **Workflow formulas** (`*-workflow.formula.toml`) are orchestrators that compose expansion formulas into end-to-end pipelines with either handoff checkpoints or single-session continuity.
 
-**One document, one execution system:**
+**One document, adaptable execution systems:**
 - `spec.md` — the design record (only persisted document)
-- Beads — the execution artifacts (created by beadify)
+- Beads — either full execution decomposition (beadify) or lightweight tracking (single-session workflow)
 - Everything else is transient (created during a formula run, deleted after)
 
 ## The Pipeline
@@ -191,13 +193,47 @@ gt sling spec-to-beads-workflow <crew> \
 
 ---
 
+### Single-Session Tracking
+
+**Formula:** `single-session-tracking-workflow`
+
+Single uninterrupted Codex session from plan through implementation and verification.
+No polecat delegation. Keeps Gastown visibility with either:
+- `milestones` mode: a few milestone child tasks
+- `epic-only` mode: one root epic with progress notes
+
+```
+Kickoff -> Bootstrap -> Draft Spec -> Enrich -> Tracking Setup -> Implement -> Verify + Finalize
+```
+
+Use this when context continuity matters more than parallel delegation.
+
+**Vars:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `feature` | yes | Feature name |
+| `brief` | yes | 1-3 sentence description |
+| `epic_id` | no | Existing root epic to reuse |
+| `tracking` | no | `milestones` (default) or `epic-only` |
+
+**Usage:**
+```bash
+gt sling single-session-tracking-workflow <crew> \
+  --var feature="ipv6-support" \
+  --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
+  --var tracking="milestones"
+```
+
+---
+
 ## Design Principles
 
 **One document:** The spec is the single design record. No separate PRD, no separate plan. The spec scales from 10 lines to 200 by adding depth, not documents.
 
-**Composable capabilities:** Each formula is a standalone building block. Run one, run all three, or compose them into workflows. No rigid pipeline.
+**Composable capabilities:** Each formula is a standalone building block. Run one, run all three, or compose into the workflow that fits the delivery mode (delegation-safe or single-session).
 
-**Transient process:** Codebase context, review findings, beads drafts — all created and deleted within a single formula run. Only the spec and beads persist.
+**Transient process:** Codebase context, review findings, beads drafts — all created and deleted within a single formula run. Durable artifacts are the spec plus selected tracking/execution beads.
 
 **Signal over noise:** Enrich uses 6 analytical dimensions that surface real gaps, not exhaustive question generation. Auto-fix what's obvious, ask only about genuine decisions.
 
