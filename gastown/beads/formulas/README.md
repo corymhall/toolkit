@@ -197,13 +197,14 @@ gt sling spec-to-beads-workflow <crew> \
 
 **Formula:** `single-session-tracking-workflow`
 
-Single uninterrupted Codex session from plan through implementation and verification.
+Single uninterrupted Codex session from plan through implementation, explicit
+final review, and verification.
 No polecat delegation. Keeps Gastown visibility with either:
 - `milestones` mode: a few milestone child tasks
 - `epic-only` mode: one root epic with progress notes
 
 ```
-Kickoff -> Bootstrap -> Draft Spec -> Enrich -> Tracking Setup -> Implement -> Verify + Finalize
+ Kickoff -> Bootstrap -> Draft Spec -> Enrich -> Tracking Setup -> Implement -> Final Review -> Verify + Finalize
 ```
 
 Use this when context continuity matters more than parallel delegation.
@@ -224,6 +225,60 @@ gt sling single-session-tracking-workflow <crew> \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
   --var tracking="milestones"
 ```
+
+---
+
+## Review Worker Formula
+
+### Implementation Review Worker
+
+**Formula:** `mol-review-implementation`
+
+Single-reviewer implementation-vs-spec audit. Intended to be slung once per
+runtime and once per review lens, with parent-side synthesis handled by the
+calling workflow.
+
+Use this as the autonomous review worker for the final stage of
+`single-session-tracking-workflow` or other Codex-native workflows that want a
+structured review artifact without a human-interactive skill session.
+
+**Review model:**
+- Core categories stay fixed: completeness, quality, scope, standards
+- `categories` should usually stay `all`
+- Domain expertise is applied through `review_profile`, not new categories
+- One run writes one shared report artifact
+- Report artifacts belong under rig-root `.runtime/reviews/...`, not in the
+  polecat's repo clone
+- Review workers are report-only tasks and should not commit review artifacts
+
+**Typical usage:**
+```bash
+gt sling mol-review-implementation <target> --agent codex \
+  --var feature="ipv6-support" \
+  --var reviewer_label="codex" \
+  --var spec_scope="/Users/chall/gt/toolkit/.runtime/reviews/ipv6-support/run-001/spec.md" \
+  --var impl_scope="integration/ipv6-support" \
+  --var categories="all" \
+  --var review_profile="general" \
+  --var output_path="/Users/chall/gt/toolkit/.runtime/reviews/ipv6-support/run-001/codex-review.md"
+```
+
+**Vars:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `feature` | yes | Feature name |
+| `reviewer_label` | yes | Label for this reviewer run |
+| `spec_scope` | yes | Spec or planning scope to review |
+| `impl_scope` | yes | Implementation scope to review |
+| `categories` | no | Review dimensions; defaults to `all` |
+| `review_profile` | no | Domain lens; defaults to `general` |
+| `output_path` | yes | Shared absolute output path for the review report |
+
+The intended default final-review stack is:
+- general Codex review
+- general Claude review
+- optional specialist review when domain fit is strong
 
 ---
 

@@ -17,13 +17,14 @@
 description = """
 Single-session plan-and-execute workflow with lightweight Gastown tracking.
 
-Composes six stages sequentially:
+Composes seven stages sequentially:
 1. **Bootstrap** - ensure root epic + integration branch exist
 2. **Draft Spec** - produce `spec.md` with serialized constraints
 3. **Enrich** - tighten spec gaps while preserving decisions/traceability
 4. **Tracking Setup** - keep status in beads (epic-only or lightweight milestones)
 5. **Implement** - execute all work in THIS session (subagents optional)
-6. **Verify + Finalize** - validate, update tracking, and summarize
+6. **Final Review** - run explicit sidecar review workers and synthesize findings
+7. **Verify + Finalize** - validate, update tracking, and summarize
 
 Use this when you want Codex continuity benefits from a single uninterrupted
 thread, but still want visibility in Gastown.
@@ -98,7 +99,8 @@ description = """
    3. Enrich (gap analysis)
    4. Tracking Setup (epic-only or milestone tasks)
    5. Implement (same session, optional subagents)
-   6. Verify + Finalize
+   6. Final Review (Codex + Claude sidecars, optional specialist)
+   7. Verify + Finalize
 
  Artifacts:
    - docs/plans/{{feature}}/spec.md
@@ -167,6 +169,8 @@ feature: {{feature}}
 brief: {{brief}}
 epic_id: $EPIC_ID
 tracking_mode: $TRACKING_MODE
+review_categories: all
+review_profiles_selected: general
 CTX
 ```
 
@@ -287,19 +291,44 @@ Implement the feature end-to-end in THIS session. No polecat delegation.
 Create/update `docs/plans/{{feature}}/session-ledger.md` with:
 - Current status
 - Implementation checklist derived from spec Design
+- Milestone self-check entries
 - Commands run + outcomes
 - Files changed
 - Open risks/blockers
 
 Update this ledger after each major implementation slice.
 
+## Select Domain Profiles
+
+Before implementation gets deep, choose the review/implementation domain lens.
+
+Selection order:
+1. explicit choice in spec or session context
+2. obvious repo/file heuristics
+3. default to `general`
+
+Examples:
+- Go-heavy work -> `go-development`
+- Neovim plugin work -> `neovim-plugin-development`
+
+Record the selected profiles in `session-context.md` and mirror them in the
+session ledger. Keep this conservative - choose specialist profiles only when
+the signal is strong.
+
 ## Execution Loop
 
 1. Read `docs/plans/{{feature}}/spec.md`
 2. Execute one implementation slice
 3. Run relevant checks for that slice
-4. Update `session-ledger.md`
-5. Update beads tracking:
+4. Write a milestone self-check covering:
+   - what changed
+   - what spec section or decision it satisfied
+   - what proof model was used
+   - what remains risky or unclear
+   - whether the next milestone still makes sense
+5. If the slice feels risky, run one bounded drift-review subagent before continuing
+6. Update `session-ledger.md`
+7. Update beads tracking:
    - milestone mode: set `implementation complete` to in_progress early,
      close when done
    - epic-only mode: append progress note to root epic
@@ -308,13 +337,122 @@ Prefer small, verified increments over one large final diff.
 """
 
 # ============================================================================
-# STAGE 6: VERIFY + FINALIZE
+# STAGE 6: FINAL REVIEW
+# ============================================================================
+
+[[steps]]
+id = "stage-final-review"
+title = "Stage 6: Run Final Review and Synthesize"
+needs = ["stage-implement"]
+description = """
+Run the explicit end-of-session review stage before claiming completion.
+
+## Visibility Constraint
+
+Fresh slung review workers do not automatically share this session's dirty
+workspace state. Before launching sidecar reviewers, ensure the review inputs
+are materialized into state they can actually read.
+
+At minimum, that means:
+- the spec and supporting review artifacts exist in shared/committed form
+- the code to review is visible from the branch/workspace the sidecars will inspect
+
+Do not sling fresh review workers against parent-only untracked artifacts or
+local-only dirty changes and assume they can see them.
+
+## Review Checkpoint
+
+Before slinging any final review workers:
+
+1. create a reviewable checkpoint commit
+2. push the integration branch
+3. materialize shared review inputs under the rig root `.runtime` directory
+
+Suggested shared directory:
+
+```bash
+RIG_ROOT=$(git rev-parse --show-toplevel | sed 's#/crew/.*##')
+REVIEW_RUN_ID=$(date +%Y%m%d-%H%M%S)
+REVIEW_DIR="$RIG_ROOT/.runtime/reviews/{{feature}}/$REVIEW_RUN_ID"
+mkdir -p "$REVIEW_DIR"
+cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
+test -f docs/plans/{{feature}}/session-context.md && cp docs/plans/{{feature}}/session-context.md "$REVIEW_DIR/session-context.md"
+test -f docs/plans/{{feature}}/session-ledger.md && cp docs/plans/{{feature}}/session-ledger.md "$REVIEW_DIR/session-ledger.md"
+git add -A
+git commit -m "checkpoint: prepare {{feature}} for external review"
+git push
+```
+
+The review checkpoint is not final completion. It is the stable state fresh
+review workers should inspect.
+
+## Review Inputs
+
+- pushed integration-branch state
+- shared review input files under `$REVIEW_DIR`
+
+## Required Review Runs
+
+Always run:
+- one general review with `--agent codex`
+- one general review with `--agent claude`
+
+Optionally run:
+- one specialist review if `review_profiles_selected` contains a strong
+  domain-specific profile such as `go-development` or
+  `neovim-plugin-development`
+
+## Review Commands
+
+Write reports under:
+- `$REVIEW_DIR/codex-review.md`
+- `$REVIEW_DIR/claude-review.md`
+- optional specialist review report if used
+
+Use the review worker formula:
+
+```bash
+gt sling mol-review-implementation <target> --agent codex \
+  --var feature="{{feature}}" \
+  --var reviewer_label="codex" \
+  --var spec_scope="$REVIEW_DIR/spec.md" \
+  --var impl_scope="$(git branch --show-current)" \
+  --var categories="all" \
+  --var review_profile="general" \
+  --var output_path="$REVIEW_DIR/codex-review.md"
+
+gt sling mol-review-implementation <target> --agent claude \
+  --var feature="{{feature}}" \
+  --var reviewer_label="claude" \
+  --var spec_scope="$REVIEW_DIR/spec.md" \
+  --var impl_scope="$(git branch --show-current)" \
+  --var categories="all" \
+  --var review_profile="general" \
+  --var output_path="$REVIEW_DIR/claude-review.md"
+```
+
+If a specialist profile is selected, add one more review run with that profile.
+
+## Synthesis
+
+After the review reports exist:
+- read reports from `$REVIEW_DIR`
+- compare findings across reviewers
+- deduplicate overlaps
+- classify blocking vs non-blocking issues
+- if blocking issues exist, return to implementation/fix work before proceeding
+- if reviewers materially disagree, summarize the disagreement clearly
+- append the synthesis outcome to `session-ledger.md`
+"""
+
+# ============================================================================
+# STAGE 7: VERIFY + FINALIZE
 # ============================================================================
 
 [[steps]]
 id = "stage-verify-finalize"
-title = "Stage 6: Verify, Finalize, and Report"
-needs = ["stage-implement"]
+title = "Stage 7: Verify, Finalize, and Report"
+needs = ["stage-final-review"]
 description = """
 Run final verification, then finalize tracking state and summary.
 
@@ -343,6 +481,7 @@ TRACKING_MODE=$(awk -F': ' '/^tracking_mode:/{print $2}' docs/plans/{{feature}}/
 Append to root epic:
 - spec path
 - ledger path
+- review artifact paths
 - verification commands run
 - unresolved risks (if any)
 - completion status
@@ -370,6 +509,7 @@ Single-session tracking workflow complete.
 - docs/plans/{{feature}}/spec.md
 - docs/plans/{{feature}}/session-context.md
 - docs/plans/{{feature}}/session-ledger.md
+- <rig-root>/.runtime/reviews/{{feature}}/<run-id>/*.md
 
 **Tracking:**
 - Root epic updated with progress and final summary
