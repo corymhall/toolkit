@@ -117,6 +117,7 @@ Do NOT use `bd start` or `bd progress` — these do not exist.
 """
 formula = "beadify-expansion"
 type = "expansion"
+pour = true
 version = 1
 
 [vars]

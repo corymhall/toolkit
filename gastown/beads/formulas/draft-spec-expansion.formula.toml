@@ -52,6 +52,7 @@ Do NOT batch-close all steps at the end — close each one as you finish it.
 """
 formula = "draft-spec-expansion"
 type = "expansion"
+pour = true
 version = 1
 
 [vars]
