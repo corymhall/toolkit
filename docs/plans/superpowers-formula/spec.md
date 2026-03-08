@@ -258,6 +258,17 @@ reviewers. The workflow should not duplicate every general review with a
 profiled version by default. The intended model is two general reviewers plus
 at most one extra specialist lens when the domain fit is strong.
 
+When launching multiple sling-based reviewers, the parent workflow must avoid
+blindly firing concurrent slings at a rig target if an idle polecat may be
+reused. The workflow should either:
+
+- use explicit distinct polecat targets, or
+- launch reviewers sequentially and confirm the first worker is truly busy
+  before launching the next
+
+Real workflow exercise showed that concurrent slings to the same rig can race
+and attach different review wisps to the same reused worker.
+
 ### Review Visibility Constraint
 
 Fresh slung review workers do not automatically share the parent session's
@@ -540,6 +551,7 @@ Out:
 | D-11 | Visibility model for sling-based review | Final sling-based review must run on committed/materialized state visible to fresh workers | Review dirty parent-session state directly from fresh polecats | Real workflow exercise showed fresh slung workers cannot see local-only parent artifacts and uncommitted changes | Resolved |
 | D-12 | Review artifact location | Shared rig-root `.runtime/reviews/...` artifacts | Repo-relative report files committed from review worker branches | Review reports are transient synthesis inputs and should not force sidecars to create landed code changes | Resolved |
 | D-13 | Final review kickoff | Parent creates a pushed review checkpoint before slinging sidecars | Sling reviewers directly against dirty in-session state | Fresh polecats need a stable, visible branch state to review accurately | Resolved |
+| D-14 | Multi-review launch strategy | Use explicit distinct workers or sequential launch confirmation | Fire concurrent rig-target slings blindly | Real workflow exercise showed idle-polecat reuse can cause two review wisps to collide on one worker | Resolved |
 
 ## Traceability
 
@@ -560,13 +572,15 @@ Out:
 | [N-12] materialized review inputs | live workflow exercise | Real slung review workers could not see untracked spec artifacts or dirty parent-session state in fresh polecat clones |
 | [N-13] shared `.runtime` review outputs | live workflow exercise + user dialogue | Live run showed repo-relative output caused a sidecar to commit and submit the report; user proposed moving reports to shared gitignored runtime storage |
 | [N-14] review checkpoint commit | user dialogue + live workflow exercise | User proposed pushing the integration branch before review so sidecars can inspect a stable visible state |
+| Multi-review launch discipline | live workflow exercise | Concurrent rig-target slings reused the same idle polecat and overwrote the expected two-worker separation |
 | Design: review worker inputs and outputs | built-in review formulas + dialogue | Influenced by the structured input/output contracts in built-in review formulas and the desire to use `--agent` externally |
 | Design: milestone-boundary review | user dialogue | Derived from the agreed model of self-check first, escalate to one subagent only when drift risk is present |
 | Design: evidence-based TDD policy | user dialogue | Derived from the agreed model of default red/green evidence plus explicit alternative proof strategies when classic TDD is awkward |
 | Design: domain profiles | user dialogue | Derived from the discussion of proactively loading domain skills and adding specialist reviewers without exploding category count |
 | Design: review visibility constraint | live workflow exercise | Derived from actually slinging Codex and Claude review workers against this dirty branch and observing they could not read parent-only artifacts |
 | Design: shared runtime review artifacts | live workflow exercise + user dialogue | Derived from the need for review workers to return artifacts without committing them as feature work |
-| D-1 through D-13 | trade-off discussion | Reflect the shift from “new superpowers formula” toward “upgrade single-session with explicit review sidecars, adaptive milestone checks, evidence-based proof, optional domain lenses, materialized review inputs, and shared runtime artifacts” |
+| Design: launch/monitoring discipline | live workflow exercise | Derived from observing that `gt peek` exposed real worker state while concurrent rig-target slings could race on a reused idle polecat |
+| D-1 through D-14 | trade-off discussion | Reflect the shift from “new superpowers formula” toward “upgrade single-session with explicit review sidecars, adaptive milestone checks, evidence-based proof, optional domain lenses, materialized review inputs, shared runtime artifacts, and explicit launch discipline” |
 
 ## Risks
 
@@ -582,6 +596,7 @@ Out:
 | Domain profiles add too much complexity too early | Workflow setup may become harder than the review value justifies | Keep `general` as the default and make specialist profiles optional only when the domain fit is obvious |
 | Final review sidecars cannot see parent-local state | The review stage may hang or produce misleading results | Materialize review inputs before slinging, or use in-session subagents for pre-materialization checks |
 | Review sidecars may accidentally land report artifacts | Review workers can create noisy commits/MRs unrelated to feature code | Write review reports to shared `.runtime` storage and treat the work as report-only completion |
+| Concurrent review launches may collide on one reused worker | Expected parallel reviews may silently collapse into one polecat with overwritten hooks | Use explicit worker targets or sequential launch confirmation and monitor with `gt peek` |
 
 ## Testing
 

@@ -433,6 +433,40 @@ gt sling mol-review-implementation <target> --agent claude \
 
 If a specialist profile is selected, add one more review run with that profile.
 
+## Launch Discipline
+
+Do not blindly fire multiple slings at the same rig target in parallel when an
+idle polecat may be reused. Two concurrent slings can race and attach different
+review wisps to the same worker.
+
+Preferred approaches:
+- use explicit distinct polecat targets, or
+- launch the first reviewer, confirm it is working, then launch the second
+
+## Monitoring
+
+Use multiple signals, but treat them differently:
+
+- `gt peek <rig>/<polecat>` is the primary monitoring tool
+  - best for seeing whether the worker is actually progressing or just sitting
+    at the initial assigned prompt
+- `gt polecat status <rig>/<polecat>` is secondary
+  - good for lifecycle state, last activity, and clone path
+- `gt hook show <rig>/<polecat>` is secondary
+  - good for confirming which wisp is currently attached
+- `find "$REVIEW_DIR" -type f` is the completion signal
+  - use it to detect when review artifacts actually exist
+
+If `gt peek` shows the worker still sitting at the initial assigned prompt,
+nudge it explicitly:
+
+```bash
+gt nudge <rig>/<polecat> "Run gt hook and execute the hooked mol-review-implementation now. This is a report-only task writing to the shared .runtime review directory; do not commit the report."
+```
+
+Do not synthesize review results until the expected shared report files exist
+under `$REVIEW_DIR`.
+
 ## Synthesis
 
 After the review reports exist:
