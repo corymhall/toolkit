@@ -17,14 +17,15 @@
 description = """
 Single-session plan-and-execute workflow with lightweight Gastown tracking.
 
-Composes seven stages sequentially:
+Composes eight stages sequentially:
 1. **Bootstrap** - ensure root epic + integration branch exist
 2. **Draft Spec** - produce `spec.md` with serialized constraints
 3. **Enrich** - tighten spec gaps while preserving decisions/traceability
 4. **Tracking Setup** - keep status in beads (epic-only or lightweight milestones)
 5. **Implement** - execute all work in THIS session (subagents optional)
-6. **Final Review** - run explicit sidecar review workers and synthesize findings
-7. **Verify + Finalize** - validate, update tracking, and summarize
+6. **Launch Final Review** - create a review checkpoint and sling sidecar reviewers
+7. **Monitor + Synthesize** - keep monitoring until reviewers reach terminal state, then synthesize findings
+8. **Verify + Finalize** - validate, update tracking, and summarize
 
 Use this when you want Codex continuity benefits from a single uninterrupted
 thread, but still want visibility in Gastown.
@@ -99,8 +100,9 @@ description = """
    3. Enrich (gap analysis)
    4. Tracking Setup (epic-only or milestone tasks)
    5. Implement (same session, optional subagents)
-   6. Final Review (Codex + Claude sidecars, optional specialist)
-   7. Verify + Finalize
+   6. Launch Final Review (Codex + Claude sidecars, optional specialist)
+   7. Monitor + Synthesize
+   8. Verify + Finalize
 
  Artifacts:
    - docs/plans/{{feature}}/spec.md
@@ -337,15 +339,15 @@ Prefer small, verified increments over one large final diff.
 """
 
 # ============================================================================
-# STAGE 6: FINAL REVIEW
+# STAGE 6: FINAL REVIEW LAUNCH
 # ============================================================================
 
 [[steps]]
-id = "stage-final-review"
-title = "Stage 6: Run Final Review and Synthesize"
+id = "stage-final-review-launch"
+title = "Stage 6: Launch Final Review Workers"
 needs = ["stage-implement"]
 description = """
-Run the explicit end-of-session review stage before claiming completion.
+Create the review checkpoint and launch the explicit end-of-session review workers.
 
 ## Visibility Constraint
 
@@ -371,7 +373,8 @@ Before slinging any final review workers:
 Suggested shared directory:
 
 ```bash
-RIG_ROOT=$(git rev-parse --show-toplevel | sed 's#/crew/.*##')
+TOP=$(git rev-parse --show-toplevel)
+RIG_ROOT=$(printf '%s\n' "$TOP" | sed -E 's#/crew/[^/]+$##; s#/polecats/[^/]+/[^/]+$##')
 REVIEW_RUN_ID=$(date +%Y%m%d-%H%M%S)
 REVIEW_DIR="$RIG_ROOT/.runtime/reviews/{{feature}}/$REVIEW_RUN_ID"
 mkdir -p "$REVIEW_DIR"
@@ -467,9 +470,86 @@ gt nudge <rig>/<polecat> "Run gt hook and execute the hooked mol-review-implemen
 Do not synthesize review results until the expected shared report files exist
 under `$REVIEW_DIR`.
 
+Do not synthesize review results in this step. Launch the workers, record the
+worker identities and expected report paths in `session-ledger.md`, then move to
+the monitoring step.
+"""
+
+# ============================================================================
+# STAGE 7: MONITOR + SYNTHESIZE
+# ============================================================================
+
+[[steps]]
+id = "stage-final-review-monitor"
+title = "Stage 7: Monitor Review Workers and Synthesize"
+needs = ["stage-final-review-launch"]
+description = """
+Monitor the launched review workers until each required reviewer reaches a
+terminal state, then synthesize the results.
+
+## Primary Monitoring Signal
+
+Treat `gt peek <rig>/<polecat>` as the primary truth source for live progress.
+Use it to answer: is the worker actually executing the review, or just sitting
+at the initial assigned prompt?
+
+Secondary signals:
+- `gt polecat status <rig>/<polecat>` for lifecycle state and last activity
+- `gt hook show <rig>/<polecat>` for current hooked wisp
+- `find "$REVIEW_DIR" -type f` for actual review artifact existence
+
+## Terminal Conditions
+
+Do not stop monitoring until every required reviewer reaches one of these
+terminal conditions:
+
+- the expected report file exists in `$REVIEW_DIR`
+- the reviewer wisp is closed
+- the reviewer polecat is idle with no hook
+- or the reviewer is explicitly classified as stalled/failed after retry policy
+  is exhausted
+
+## Monitoring Loop
+
+Keep polling until terminal conditions are met. A typical pass should:
+
+```bash
+gt peek <rig>/<polecat>
+gt polecat status <rig>/<polecat>
+gt hook show <rig>/<polecat>
+find "$REVIEW_DIR" -type f | sort
+```
+
+Then decide whether to continue waiting, retry, or classify failure.
+
+## Retry Policy
+
+- If `gt peek` shows the worker still at the initial assigned prompt after the
+  first wait window, send one explicit nudge
+- If it still has not started after the second wait window, classify startup as
+  failed and record that in `session-ledger.md`
+- If the hook clears but the expected report is missing, inspect the worker
+  notes and clone before deciding whether the run failed
+- If the worker is clearly making progress, keep monitoring and do not
+  summarize yet
+
+Example startup nudge:
+
+```bash
+gt nudge <rig>/<polecat> "Run gt hook and execute the hooked mol-review-implementation now. This is a report-only task writing to the shared .runtime review directory; do not commit the report."
+```
+
+## Anti-Patterns
+
+Do NOT:
+- stop monitoring just because no report exists yet
+- summarize intermediate state as final state
+- synthesize before reports exist or failures are explicitly classified
+- ask the human whether to keep monitoring unless retry policy is exhausted
+
 ## Synthesis
 
-After the review reports exist:
+After the required reports exist:
 - read reports from `$REVIEW_DIR`
 - compare findings across reviewers
 - deduplicate overlaps
@@ -480,13 +560,13 @@ After the review reports exist:
 """
 
 # ============================================================================
-# STAGE 7: VERIFY + FINALIZE
+# STAGE 8: VERIFY + FINALIZE
 # ============================================================================
 
 [[steps]]
 id = "stage-verify-finalize"
-title = "Stage 7: Verify, Finalize, and Report"
-needs = ["stage-final-review"]
+title = "Stage 8: Verify, Finalize, and Report"
+needs = ["stage-final-review-monitor"]
 description = """
 Run final verification, then finalize tracking state and summary.
 
