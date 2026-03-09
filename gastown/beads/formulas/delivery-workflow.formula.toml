@@ -1,4 +1,4 @@
-# Single-Session Tracking Workflow
+# Delivery Workflow
 #
 # End-to-end delivery in ONE Codex session:
 #   bootstrap -> draft-spec -> enrich -> lightweight tracking -> implement
@@ -8,7 +8,7 @@
 # while still recording status in beads.
 #
 # Usage:
-#   gt sling single-session-tracking-workflow <crew> \
+#   gt sling delivery-workflow <crew> \
 #     --var feature="ipv6-support" \
 #     --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
 #     [--var epic_id="abc123"] \
@@ -16,7 +16,7 @@
 
 
 description = """
-Single-session plan-and-execute workflow with lightweight Gastown tracking.
+Default Codex-native delivery workflow with lightweight Gastown tracking.
 
 Composes eight stages sequentially:
 1. **Bootstrap** - ensure root epic + integration branch exist
@@ -54,7 +54,7 @@ bd mol current <molecule-id>
 
 Do NOT batch-close all steps at the end - close each one as you finish it.
 """
-formula = "single-session-tracking-workflow"
+formula = "delivery-workflow"
 type = "workflow"
 pour = true
 version = 1
@@ -85,10 +85,10 @@ default = "milestones"
 
 [[steps]]
 id = "kickoff"
-title = "Single-Session Tracking Kickoff"
+title = "Delivery Workflow Kickoff"
 description = """
 ═══════════════════════════════════════════════════════════════
- SINGLE-SESSION TRACKING WORKFLOW
+ DELIVERY WORKFLOW
  Plan and implement end-to-end in one Codex session.
 
  Feature:  {{feature}}

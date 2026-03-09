@@ -2,7 +2,7 @@
 
 Spec-centric design and execution formulas for the `gt sling` pipeline. Three composable expansion formulas and two workflow orchestrators for different execution styles:
 - delegation-safe (spec -> enrich -> beadify -> dispatch)
-- single-session tracked delivery (spec -> enrich -> implement in one session)
+- default Codex-native delivery (spec -> enrich -> implement, review, and finalize in one session)
 
 ## Architecture
 
@@ -193,9 +193,9 @@ gt sling spec-to-beads-workflow <crew> \
 
 ---
 
-### Single-Session Tracking
+### Delivery Workflow
 
-**Formula:** `single-session-tracking-workflow`
+**Formula:** `delivery-workflow`
 
 Single uninterrupted Codex session from plan through implementation, explicit
 final review, and verification.
@@ -220,7 +220,7 @@ Use this when context continuity matters more than parallel delegation.
 
 **Usage:**
 ```bash
-gt sling single-session-tracking-workflow <crew> \
+gt sling delivery-workflow <crew> \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
   --var tracking="milestones"
@@ -239,7 +239,7 @@ runtime and once per review lens, with parent-side synthesis handled by the
 calling workflow.
 
 Use this as the autonomous review worker for the final stage of
-`single-session-tracking-workflow` or other Codex-native workflows that want a
+`delivery-workflow` or other Codex-native workflows that want a
 structured review artifact without a human-interactive skill session.
 
 **Review model:**

@@ -18,7 +18,7 @@ description = """
 Single-reviewer implementation audit for spec alignment and delivery quality.
 
 Use this as the autonomous review worker in larger workflows such as
-`single-session-tracking-workflow`. One run = one reviewer = one report.
+`delivery-workflow`. One run = one reviewer = one report.
 
 ## Review Contract
 

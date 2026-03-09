@@ -16,7 +16,7 @@ not benefit as much from hyper-detailed task plans or mandatory fresh subagents
 for each tiny step. Because of that, the best adaptation is not a wholesale
 superpowers clone.
 
-Instead, this design keeps `single-session-tracking-workflow` as the primary
+Instead, this design keeps `delivery-workflow` as the primary
 execution path, then adds an explicit, first-class implementation review stage
 near the end of that workflow. The review stage should run through a new narrow
 review formula that can be slung to different runtimes using `gt sling
@@ -66,7 +66,7 @@ adaptation is:
 ### Primary Workflow Shape
 
 The primary execution workflow should continue to be
-`single-session-tracking-workflow`, with an updated final section that makes
+`delivery-workflow`, with an updated final section that makes
 review explicit.
 
 At a high level, the sequence becomes:
@@ -307,7 +307,7 @@ after synthesizing the review output.
 
 ### Parent-Side Synthesis
 
-Synthesis should remain in the parent `single-session-tracking-workflow`
+Synthesis should remain in the parent `delivery-workflow`
 session, not inside the review worker formula.
 
 The parent workflow should:
@@ -412,7 +412,7 @@ test-first sequencing is not the best literal fit.
 
 ### Integration Into Single-Session Tracking
 
-The final stage of `single-session-tracking-workflow` should be expanded so
+The final stage of `delivery-workflow` should be expanded so
 that review is explicit rather than manual.
 
 The intended behavior is:
@@ -454,7 +454,7 @@ core, not port the full interactive surface.
 ## Scope
 
 In:
-- Extend `single-session-tracking-workflow` with an explicit implementation
+- Extend `delivery-workflow` with an explicit implementation
   review stage.
 - Design a new autonomous review worker formula for one reviewer run.
 - Use `gt sling --agent` to run that review worker across multiple runtimes.
@@ -471,7 +471,7 @@ In:
   review outputs from sidecar workers.
 
 Out:
-- Replacing `single-session-tracking-workflow` with a new top-level workflow.
+- Replacing `delivery-workflow` with a new top-level workflow.
 - Porting superpowers’ full subagent-per-task execution model.
 - Porting the full interactive `review-implementation` skill into formula form.
 
@@ -538,7 +538,7 @@ Out:
 
 | Decision ID | Topic | Chosen Option | Rejected Alternatives | Rationale | Status |
 |-------------|-------|---------------|------------------------|-----------|--------|
-| D-1 | Execution model | Keep `single-session-tracking-workflow` as the primary delivery path | Create a new top-level superpowers-style master workflow | The current single-session approach better matches Codex’s long-running context strengths | Resolved |
+| D-1 | Execution model | Keep `delivery-workflow` as the primary delivery path | Create a new top-level superpowers-style master workflow | The current single-session approach better matches Codex’s long-running context strengths | Resolved |
 | D-2 | Review architecture | Add a narrow single-review worker formula and sling it once per runtime | Convert the whole `review-implementation` skill into a formula; make review remain manual | A narrow worker is easier to automate, compose, and reason about inside formulas | Resolved |
 | D-3 | Runtime selection | Use `gt sling --agent` outside the formula | Encode model/runtime branching inside the formula | Runtime choice is operational context, not part of the formula’s logic | Resolved |
 | D-4 | Review ownership | Parent workflow synthesizes multiple reviewer reports | Each review worker tries to synthesize across models; a convoy formula owns all synthesis | The parent session already owns overall delivery context and final decision-making | Resolved |

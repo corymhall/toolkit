@@ -12,7 +12,7 @@
 - [x] Define Codex evaluation lens
 - [x] Draft and revise `superpowers-formula` spec
 - [x] Add `mol-review-implementation` review worker formula
-- [x] Extend `single-session-tracking-workflow` with final review stages
+- [x] Extend `delivery-workflow` with final review stages
 - [x] Shift review artifacts to shared rig-root `.runtime/reviews/...`
 - [x] Validate Codex review sidecar end-to-end
 - [x] Validate Claude review sidecar end-to-end
@@ -57,7 +57,7 @@
 - `docs/plans/superpowers-formula/spec.md`
 - `gastown/beads/formulas/README.md`
 - `gastown/beads/formulas/mol-review-implementation.formula.toml`
-- `gastown/beads/formulas/single-session-tracking-workflow.formula.toml`
+- `gastown/beads/formulas/delivery-workflow.formula.toml`
 - `gastown/docs/codex-evaluation-lens.md`
 
 ## Open Risks / Follow-ups
