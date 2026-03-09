@@ -28,9 +28,10 @@ Skills and formulas for the [Gas Town](https://github.com/steveyegge/gastown) mu
 | [review-implementation](gastown/skills/review-implementation/) | Review code changes against a spec to verify implementation completeness and correctness. |
 | [epic-delivery](gastown/skills/epic-delivery/) | Dispatch beads to polecats for swarm-style execution with dependency-aware task waves. |
 
-### Spec-to-Beads Pipeline
+### Formula Portfolio
 
-A composable pipeline that takes a feature from brief to execution-ready beads. Three expansion formulas, each independently runnable.
+The current formula stack has two user-facing workflows plus reusable building
+blocks underneath them.
 
 ```
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
@@ -46,11 +47,24 @@ A composable pipeline that takes a feature from brief to execution-ready beads. 
 
 **Enrich** — Finds gaps across 6 analytical dimensions (completeness, ambiguity, feasibility, scope, risks, consistency). Auto-fixes what's obvious, asks about what needs judgment. Repeatable.
 
-**Beadify** — Explores the codebase (3 parallel agents), decomposes the spec into tasks, runs 3 review passes, creates beads with validated dependencies.
+**Beadify** — Explores the codebase (3 parallel agents), decomposes the spec into feature/workstream beads, runs 3 review passes, creates beads with validated dependencies.
 
 Any entry point works. Already have a spec? Skip to beadify. Want more rigor? Run enrich multiple times.
 
 See [gastown/beads/formulas/README.md](gastown/beads/formulas/README.md) for full formula documentation.
+
+#### Workflow roles
+
+**delivery-workflow** — The default feature workflow. One main Codex-owned
+session goes from spec to implementation to review.
+
+**epic-delivery-workflow** — The umbrella workflow. It breaks a larger
+initiative into feature/workstream beads that are then expected to kick off
+`delivery-workflow`.
+
+**epic-delivery** (skill) — Still useful. This is the dispatch/convoy skill for
+launching an epic once the bead graph already exists. It complements
+`epic-delivery-workflow`; it does not replace it.
 
 #### Design principles
 
@@ -101,7 +115,7 @@ Or copy to a specific rig's `.beads/formulas/` directory for project-scoped use.
 |-----------|----------|
 | `general/skills/` | Language-specific development, review, and evaluation skills. No Gas Town dependency. |
 | `gastown/skills/` | Gas Town skills — brainstorming, implementation review, epic delivery. |
-| `gastown/beads/formulas/` | Gas Town `.formula.toml` files — 3 expansion formulas + 1 workflow orchestrator. |
+| `gastown/beads/formulas/` | Gas Town `.formula.toml` files — expansion formulas, top-level workflows, and the review worker formula. |
 | `gastown/docs/templates/` | The [spec template](gastown/docs/templates/spec.md) — standard format for all specs. |
 | `gastown/docs/plans/` | Specs for features built in this repo. |
 
