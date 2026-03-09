@@ -1,0 +1,64 @@
+## Current Repo Fit
+
+- Formula orchestration already lives in `gastown/beads/formulas/README.md`.
+- Existing production formulas already use `pour = true`, including:
+  - `gastown/beads/formulas/draft-spec-expansion.formula.toml`
+  - `gastown/beads/formulas/enrich-expansion.formula.toml`
+  - `gastown/beads/formulas/beadify-expansion.formula.toml`
+  - `gastown/beads/formulas/spec-to-beads-workflow.formula.toml`
+  - `gastown/beads/formulas/single-session-tracking-workflow.formula.toml`
+- Specs are already the canonical artifact via `gastown/docs/templates/spec.md`.
+- Session continuity already exists through:
+  - multi-session checkpoints in `gastown/beads/formulas/spec-to-beads-workflow.formula.toml`
+  - single-session artifacts in `gastown/beads/formulas/single-session-tracking-workflow.formula.toml`
+- The local `gastown/skills/brainstorming/SKILL.md` is explicitly adapted from `obra/superpowers`.
+
+## Existing Entry Points and Patterns
+
+- Expansion formulas use `type = "expansion"` with `[[template]]`.
+- Workflow formulas use `type = "workflow"` with `[[steps]]` and compose/expand behavior.
+- Current commands already cover a large part of the intended flow:
+  - `gt sling draft-spec-expansion`
+  - `gt sling enrich-expansion`
+  - `gt sling beadify-expansion`
+  - `gt sling spec-to-beads-workflow`
+  - `gt sling single-session-tracking-workflow`
+- Execution is molecule-based, using `bd mol current` and `bd close` to progress steps.
+
+## Superpowers Concepts Worth Mapping
+
+- `hooks/session-start` and `.opencode/plugins/superpowers.js` implement strong session priming by injecting `using-superpowers`.
+- `skills/using-superpowers/SKILL.md` enforces an early skill-selection gate before normal interaction.
+- The main upstream workflow chain is effectively:
+  - brainstorming
+  - using-git-worktrees
+  - writing-plans
+  - either subagent-driven-development or executing-plans
+  - requesting-code-review
+  - finishing-a-development-branch
+- `skills/subagent-driven-development/SKILL.md` defines an explicit reviewer loop:
+  - implementer
+  - spec reviewer
+  - code-quality reviewer
+  - repeat if needed
+  - final implementation review
+- `skills/test-driven-development/SKILL.md` provides the clearest gap versus Gastown:
+  - red test first
+  - prove failure
+  - minimal green implementation
+  - refactor while green
+
+## Best Formula Opportunity
+
+- A new formula appears most valuable if it collapses superpowers-style orchestration into a single Gastown workflow rather than replacing the current spec pipeline wholesale.
+- The best candidate is a workflow with:
+  - a session-priming or workflow-selection gate
+  - phase routing across brainstorm/spec/implementation
+  - an explicit execution mode branch
+  - review-order constraints
+  - stronger test-first verification
+
+## Key Gap vs Today
+
+- Gastown already has `pour=true`, spec generation, session tracking, and workflow composition.
+- The biggest missing capability is a first-class test-driven loop with enforced sequencing and proof artifacts, rather than only post-hoc verification commands and spec-derived testing notes.

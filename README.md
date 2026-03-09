@@ -79,10 +79,10 @@ gt sling beadify-expansion <crew> \
   --var feature="ipv6-support"
 ```
 
-Or run the full pipeline as a single workflow:
+Or run the umbrella decomposition pipeline as a single workflow:
 
 ```bash
-gt sling spec-to-beads-workflow <crew> \
+gt sling epic-delivery-workflow <crew> \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```

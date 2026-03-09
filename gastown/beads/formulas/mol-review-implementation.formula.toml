@@ -1,0 +1,377 @@
+# Implementation Review Worker
+#
+# Single-reviewer implementation-vs-spec audit.
+# Intended to be slung once per runtime, for example:
+#   gt sling mol-review-implementation <target> --agent codex \
+#     --var feature="ipv6-support" \
+#     --var reviewer_label="codex" \
+#     --var spec_scope="/Users/chall/gt/toolkit/.runtime/reviews/ipv6-support/run-001/spec.md" \
+#     --var impl_scope="origin/integration/ipv6-support" \
+#     --var categories="all" \
+#     --var review_profile="general" \
+#     --var output_path="/Users/chall/gt/toolkit/.runtime/reviews/ipv6-support/run-001/codex-review.md"
+#
+# The parent workflow owns multi-model synthesis. This formula writes exactly
+# one structured review report.
+
+description = """
+Single-reviewer implementation audit for spec alignment and delivery quality.
+
+Use this as the autonomous review worker in larger workflows such as
+`delivery-workflow`. One run = one reviewer = one report.
+
+## Review Contract
+
+- Read the requested spec and implementation scope
+- Review across the core categories:
+  - completeness
+  - quality
+  - scope
+  - standards
+- Apply the selected `review_profile` lens if present
+- Write one structured report to `output_path`
+- Treat this as report-only work: do not commit the report as feature code
+- Finish with `gt done --cleanup-status clean`
+
+## Category Model
+
+`categories` defaults to `all` and should usually remain that way.
+Domain expertise belongs in `review_profile`, not new categories.
+
+## Output Contract
+
+Write exactly one markdown report containing:
+- Scope
+- Verdict
+- Blocking Findings
+- Important Findings
+- Minor Findings
+- Completion Matrix
+- Scope Drift Notes
+- Verification Notes
+
+This formula does not create follow-up issues, implement fixes, or synthesize
+multiple model outputs. It also should not land review artifacts as code
+changes on the polecat branch.
+
+This worker is intended to run autonomously as a sidecar. Prefer concise
+status output and do not block waiting for human interaction between steps.
+"""
+formula = "mol-review-implementation"
+type = "workflow"
+pour = true
+version = 1
+
+[vars]
+[vars.feature]
+description = "Feature name (used for context and review artifact organization)"
+required = true
+
+[vars.reviewer_label]
+description = "Reviewer label for this run, e.g. codex, claude, go-specialist"
+required = true
+
+[vars.spec_scope]
+description = "Spec or planning scope to review, ideally a shared path visible to fresh workers"
+required = true
+
+[vars.impl_scope]
+description = "Implementation scope to review, ideally a pushed branch/ref or shared path visible to fresh workers"
+required = true
+
+[vars.categories]
+description = "Review categories. Use all (default) unless a caller has a strong reason to narrow scope."
+required = false
+default = "all"
+
+[vars.review_profile]
+description = "Domain review lens, e.g. general, go-development, neovim-plugin-development"
+required = false
+default = "general"
+
+[vars.output_path]
+description = "Absolute shared path for the markdown review report, typically under rig-root .runtime/reviews/"
+required = true
+
+
+# ============================================================================
+# KICKOFF
+# ============================================================================
+
+[[steps]]
+id = "kickoff"
+title = "Implementation Review Kickoff"
+description = """
+═══════════════════════════════════════════════════════════════
+ IMPLEMENTATION REVIEW WORKER
+
+ Feature:         {{feature}}
+ Reviewer:        {{reviewer_label}}
+ Spec Scope:      {{spec_scope}}
+ Impl Scope:      {{impl_scope}}
+ Categories:      {{categories}}
+ Review Profile:  {{review_profile}}
+ Output:          {{output_path}}
+
+ Contract:
+   - one reviewer run
+   - one structured report
+   - no fixes, no issue filing, no synthesis
+   - report-only task: do not commit the report
+═══════════════════════════════════════════════════════════════
+
+Output a brief start note if useful, then close this step immediately.
+"""
+
+
+# ============================================================================
+# STEP 1: LOAD CONTEXT
+# ============================================================================
+
+[[steps]]
+id = "load-context"
+title = "Load review context"
+needs = ["kickoff"]
+description = """
+Understand the requested review inputs before judging the implementation.
+
+## 1. Confirm branch and workspace state
+
+```bash
+git branch --show-current
+git status --short --branch
+```
+
+## 2. Read the requested spec scope
+
+If `spec_scope` is a path, read it directly.
+If it is a natural-language scope, resolve the relevant files first.
+
+The spec input must be visible from this fresh worker. Do not assume access to
+the parent session's untracked workspace files.
+
+Typical supporting artifacts to check if they exist:
+
+```bash
+sed -n '1,260p' {{spec_scope}}
+```
+
+## 3. Restate the review contract to yourself
+
+- `categories` says what dimensions must be reviewed
+- `review_profile` says what domain lens to apply
+- The task is to audit implementation, not to repair it
+
+## Exit criteria
+
+You understand the intended behavior, constraints, and requested review lens.
+"""
+
+
+# ============================================================================
+# STEP 2: GATHER EVIDENCE
+# ============================================================================
+
+[[steps]]
+id = "gather-evidence"
+title = "Gather implementation evidence"
+needs = ["load-context"]
+description = """
+Collect enough evidence to review the requested implementation scope.
+
+## 1. Resolve the implementation scope
+
+If `impl_scope` names concrete files or directories, inspect those directly.
+If it is branch-oriented or natural language (for example `changes on current branch`),
+start with git evidence:
+
+```bash
+git diff --stat
+git diff --name-only
+git status --short
+```
+
+If `impl_scope` refers to a pushed branch or ref, inspect it directly.
+If a base branch is obvious in context, inspect the diff against it:
+
+```bash
+git diff --stat main...HEAD 2>/dev/null || true
+git diff --name-only main...HEAD 2>/dev/null || true
+```
+
+Do not assume visibility into parent-session dirty state that has not been
+committed or otherwise materialized for this worker.
+
+## 2. Read the changed code and relevant tests
+
+Use targeted reads rather than guessing from filenames alone.
+Check:
+- implementation files
+- tests
+- config or docs touched by the change
+
+## 3. Gather verification evidence
+
+Review any available proof of correctness:
+- test output or referenced commands
+- session ledger entries
+- verification notes
+- build/lint/typecheck evidence if relevant
+
+Do not claim something was verified unless you can point to evidence.
+
+## Exit criteria
+
+You have enough concrete code, diff, and verification context to perform a
+serious implementation review.
+"""
+
+
+# ============================================================================
+# STEP 3: REVIEW
+# ============================================================================
+
+[[steps]]
+id = "perform-review"
+title = "Review implementation against the contract"
+needs = ["gather-evidence"]
+description = """
+Review the implementation using the requested categories and the selected
+domain profile.
+
+## Core categories
+
+When `categories=all`, always evaluate:
+
+- **completeness**: Does the implementation actually cover the promised work?
+- **quality**: Is the code maintainable, idiomatic, and technically solid?
+- **scope**: Did the work stay within the intended boundaries?
+- **standards**: Does it follow project and domain conventions?
+
+## Domain profile
+
+Apply `review_profile` as a lens, not a replacement for the category model.
+
+- `general`: use normal engineering judgment
+- `go-development`: apply Go-specific API, error-handling, concurrency, and testing expectations
+- `neovim-plugin-development`: apply Neovim plugin architecture, runtimepath, keymap/autocmd, startup, and docs expectations
+
+Domain profiles usually matter most for:
+- quality
+- standards
+
+They may also refine:
+- completeness
+- scope
+
+## Proof policy
+
+Inspect whether the implementation followed the claimed proof model:
+
+- For normal behavior changes and bug fixes, prefer red/green evidence
+- For awkward cases, accept an explicit alternative proof model only if it is
+  concrete and actually evidenced
+- Reject vague “test later” or unsupported completion claims
+
+## Finding severity
+
+Use these buckets consistently:
+
+- **Blocking**: should stop finalization or require loopback into fixes
+- **Important**: should likely be fixed before ship, but not a hard blocker in every case
+- **Minor**: useful observations, polish, or follow-up opportunities
+
+## Exit criteria
+
+You have a clear verdict and a structured set of findings backed by concrete
+references or evidence.
+"""
+
+
+# ============================================================================
+# STEP 4: WRITE REPORT
+# ============================================================================
+
+[[steps]]
+id = "write-report"
+title = "Write structured review report"
+needs = ["perform-review"]
+description = """
+Write the final review report to `{{output_path}}`.
+
+## 1. Create the output directory
+
+```bash
+mkdir -p "$(dirname "{{output_path}}")"
+```
+
+## 2. Write the report in this exact structure
+
+```markdown
+# Implementation Review: {{feature}}
+
+## Reviewer
+- Label: {{reviewer_label}}
+- Categories: {{categories}}
+- Review Profile: {{review_profile}}
+
+## Scope
+- Spec reviewed: {{spec_scope}}
+- Implementation reviewed: {{impl_scope}}
+
+## Verdict
+PASS / PASS WITH NOTES / FAIL
+
+<One short paragraph explaining the verdict.>
+
+## Blocking Findings
+- Finding title — file/reference
+  Why it matters
+  Suggested action
+
+## Important Findings
+- ...
+
+## Minor Findings
+- ...
+
+## Completion Matrix
+| Area | Status | Notes |
+|------|--------|-------|
+| Completeness | Pass / Mixed / Fail | ... |
+| Quality | Pass / Mixed / Fail | ... |
+| Scope | Pass / Mixed / Fail | ... |
+| Standards | Pass / Mixed / Fail | ... |
+
+## Scope Drift Notes
+- Note any clear drift, missing work, or unnecessary expansion.
+
+## Verification Notes
+- What evidence of correctness was inspected
+- What proof model appears to have been used
+- What was not verified or remains uncertain
+```
+
+If a section has no findings, write `- None.`
+
+## 3. Final check
+
+Before finishing, verify:
+- the file exists at `{{output_path}}`
+- the structure is complete
+- findings are actionable and scoped
+
+## Exit criteria
+
+The review report is written, complete, and ready for parent-side synthesis.
+
+## 4. Report-only completion
+
+This is a report-only task. Do not commit the report as feature code.
+
+After verifying the report exists, complete the polecat lifecycle with:
+
+```bash
+gt done --cleanup-status clean
+```
+"""

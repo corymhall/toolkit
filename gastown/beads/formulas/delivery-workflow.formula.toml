@@ -1,13 +1,14 @@
-# Single-Session Tracking Workflow
+# Delivery Workflow
 #
 # End-to-end delivery in ONE Codex session:
-#   bootstrap -> draft-spec -> enrich -> lightweight tracking -> implement -> verify
+#   bootstrap -> draft-spec -> enrich -> lightweight tracking -> implement
+#   -> launch final review -> monitor+synthesize -> verify/finalize
 #
 # No polecat delegation, no handoff checkpoints. Keeps ownership in one session,
 # while still recording status in beads.
 #
 # Usage:
-#   gt sling single-session-tracking-workflow <crew> \
+#   gt sling delivery-workflow <crew> \
 #     --var feature="ipv6-support" \
 #     --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
 #     [--var epic_id="abc123"] \
@@ -15,15 +16,17 @@
 
 
 description = """
-Single-session plan-and-execute workflow with lightweight Gastown tracking.
+Default Codex-native delivery workflow with lightweight Gastown tracking.
 
-Composes six stages sequentially:
+Composes eight stages sequentially:
 1. **Bootstrap** - ensure root epic + integration branch exist
 2. **Draft Spec** - produce `spec.md` with serialized constraints
 3. **Enrich** - tighten spec gaps while preserving decisions/traceability
 4. **Tracking Setup** - keep status in beads (epic-only or lightweight milestones)
 5. **Implement** - execute all work in THIS session (subagents optional)
-6. **Verify + Finalize** - validate, update tracking, and summarize
+6. **Launch Final Review** - create a review checkpoint and sling sidecar reviewers
+7. **Monitor + Synthesize** - keep monitoring until reviewers reach terminal state, then synthesize findings
+8. **Verify + Finalize** - validate, update tracking, and summarize
 
 Use this when you want Codex continuity benefits from a single uninterrupted
 thread, but still want visibility in Gastown.
@@ -51,7 +54,7 @@ bd mol current <molecule-id>
 
 Do NOT batch-close all steps at the end - close each one as you finish it.
 """
-formula = "single-session-tracking-workflow"
+formula = "delivery-workflow"
 type = "workflow"
 pour = true
 version = 1
@@ -82,10 +85,10 @@ default = "milestones"
 
 [[steps]]
 id = "kickoff"
-title = "Single-Session Tracking Kickoff"
+title = "Delivery Workflow Kickoff"
 description = """
 ═══════════════════════════════════════════════════════════════
- SINGLE-SESSION TRACKING WORKFLOW
+ DELIVERY WORKFLOW
  Plan and implement end-to-end in one Codex session.
 
  Feature:  {{feature}}
@@ -98,7 +101,9 @@ description = """
    3. Enrich (gap analysis)
    4. Tracking Setup (epic-only or milestone tasks)
    5. Implement (same session, optional subagents)
-   6. Verify + Finalize
+   6. Launch Final Review (Codex + Claude sidecars, optional specialist)
+   7. Monitor + Synthesize
+   8. Verify + Finalize
 
  Artifacts:
    - docs/plans/{{feature}}/spec.md
@@ -167,6 +172,8 @@ feature: {{feature}}
 brief: {{brief}}
 epic_id: $EPIC_ID
 tracking_mode: $TRACKING_MODE
+review_categories: all
+review_profiles_selected: general
 CTX
 ```
 
@@ -287,34 +294,306 @@ Implement the feature end-to-end in THIS session. No polecat delegation.
 Create/update `docs/plans/{{feature}}/session-ledger.md` with:
 - Current status
 - Implementation checklist derived from spec Design
+- Milestone self-check entries
 - Commands run + outcomes
 - Files changed
 - Open risks/blockers
 
 Update this ledger after each major implementation slice.
 
+## Select Domain Profiles
+
+Before implementation gets deep, choose the review/implementation domain lens.
+
+Selection order:
+1. explicit choice in spec or session context
+2. obvious repo/file heuristics
+3. default to `general`
+
+Examples:
+- Go-heavy work -> `go-development`
+- Neovim plugin work -> `neovim-plugin-development`
+
+Record the selected profiles in `session-context.md` and mirror them in the
+session ledger. Keep this conservative - choose specialist profiles only when
+the signal is strong.
+
 ## Execution Loop
 
 1. Read `docs/plans/{{feature}}/spec.md`
-2. Execute one implementation slice
-3. Run relevant checks for that slice
-4. Update `session-ledger.md`
-5. Update beads tracking:
+2. Before each implementation slice, declare the proof model in `session-ledger.md`
+   - default for behavior changes / bug fixes: red-green evidence
+   - otherwise: explicit alternate proof model with rationale
+3. Execute one implementation slice
+4. Run relevant checks for that slice
+5. Write a milestone self-check covering:
+   - what changed
+   - what spec section or decision it satisfied
+   - what proof model was declared
+   - what evidence actually exists
+   - what remains risky or unclear
+   - whether the next milestone still makes sense
+6. If the slice feels risky, run one bounded drift-review subagent before continuing
+7. Update `session-ledger.md`
+8. Update beads tracking:
    - milestone mode: set `implementation complete` to in_progress early,
      close when done
    - epic-only mode: append progress note to root epic
+
+Do not treat a milestone as complete if the proof model is missing, vague, or
+unsupported by actual evidence.
 
 Prefer small, verified increments over one large final diff.
 """
 
 # ============================================================================
-# STAGE 6: VERIFY + FINALIZE
+# STAGE 6: FINAL REVIEW LAUNCH
+# ============================================================================
+
+[[steps]]
+id = "stage-final-review-launch"
+title = "Stage 6: Launch Final Review Workers"
+needs = ["stage-implement"]
+description = """
+Create the review checkpoint and launch the explicit end-of-session review workers.
+
+## Visibility Constraint
+
+Fresh slung review workers do not automatically share this session's dirty
+workspace state. Before launching sidecar reviewers, ensure the review inputs
+are materialized into state they can actually read.
+
+At minimum, that means:
+- the spec and supporting review artifacts exist in shared/committed form
+- the code to review is visible from the branch/workspace the sidecars will inspect
+
+Do not sling fresh review workers against parent-only untracked artifacts or
+local-only dirty changes and assume they can see them.
+
+## Review Checkpoint
+
+Before slinging any final review workers:
+
+1. create a reviewable checkpoint commit
+2. push the integration branch
+3. materialize shared review inputs under the rig root `.runtime` directory
+
+Suggested shared directory:
+
+```bash
+TOP=$(git rev-parse --show-toplevel)
+RIG_ROOT=$(printf '%s\n' "$TOP" | sed -E 's#/crew/[^/]+$##; s#/polecats/[^/]+/[^/]+$##')
+REVIEW_RUN_ID=$(date +%Y%m%d-%H%M%S)
+REVIEW_DIR="$RIG_ROOT/.runtime/reviews/{{feature}}/$REVIEW_RUN_ID"
+mkdir -p "$REVIEW_DIR"
+cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
+test -f docs/plans/{{feature}}/session-context.md && cp docs/plans/{{feature}}/session-context.md "$REVIEW_DIR/session-context.md"
+test -f docs/plans/{{feature}}/session-ledger.md && cp docs/plans/{{feature}}/session-ledger.md "$REVIEW_DIR/session-ledger.md"
+git add -A
+git commit -m "checkpoint: prepare {{feature}} for external review"
+git push
+```
+
+The review checkpoint is not final completion. It is the stable state fresh
+review workers should inspect.
+
+## Review Inputs
+
+- pushed integration-branch state
+- shared review input files under `$REVIEW_DIR`
+
+## Required Review Runs
+
+Always run:
+- one general review with `--agent codex`
+- one general review with `--agent claude`
+
+Optionally run:
+- one specialist review if `review_profiles_selected` contains a strong
+  domain-specific profile such as `go-development` or
+  `neovim-plugin-development`
+
+## Review Commands
+
+Write reports under:
+- `$REVIEW_DIR/codex-review.md`
+- `$REVIEW_DIR/claude-review.md`
+- optional specialist review report if used
+
+Use the review worker formula:
+
+```bash
+gt sling mol-review-implementation <target> --agent codex \
+  --var feature="{{feature}}" \
+  --var reviewer_label="codex" \
+  --var spec_scope="$REVIEW_DIR/spec.md" \
+  --var impl_scope="origin/$(git branch --show-current)" \
+  --var categories="all" \
+  --var review_profile="general" \
+  --var output_path="$REVIEW_DIR/codex-review.md"
+
+gt sling mol-review-implementation <target> --agent claude \
+  --var feature="{{feature}}" \
+  --var reviewer_label="claude" \
+  --var spec_scope="$REVIEW_DIR/spec.md" \
+  --var impl_scope="origin/$(git branch --show-current)" \
+  --var categories="all" \
+  --var review_profile="general" \
+  --var output_path="$REVIEW_DIR/claude-review.md"
+```
+
+If a specialist profile is selected, add one more review run with that profile.
+For example:
+
+```bash
+REVIEW_PROFILE=$(awk -F': ' '/^review_profiles_selected:/{print $2}' docs/plans/{{feature}}/session-context.md | cut -d',' -f1)
+if [ -n "$REVIEW_PROFILE" ] && [ "$REVIEW_PROFILE" != "general" ]; then
+  gt sling mol-review-implementation <target> --agent codex \
+    --var feature="{{feature}}" \
+    --var reviewer_label="$REVIEW_PROFILE" \
+    --var spec_scope="$REVIEW_DIR/spec.md" \
+    --var impl_scope="origin/$(git branch --show-current)" \
+    --var categories="all" \
+    --var review_profile="$REVIEW_PROFILE" \
+    --var output_path="$REVIEW_DIR/$REVIEW_PROFILE-review.md"
+fi
+```
+
+## Launch Discipline
+
+Do not blindly fire multiple slings at the same rig target in parallel when an
+idle polecat may be reused. Two concurrent slings can race and attach different
+review wisps to the same worker.
+
+Preferred approaches:
+- use explicit distinct polecat targets, or
+- launch the first reviewer, confirm it is working, then launch the second
+
+## Monitoring
+
+Use multiple signals, but treat them differently:
+
+- `gt peek <rig>/<polecat>` is the primary monitoring tool
+  - best for seeing whether the worker is actually progressing or just sitting
+    at the initial assigned prompt
+- `gt polecat status <rig>/<polecat>` is secondary
+  - good for lifecycle state, last activity, and clone path
+- `gt hook show <rig>/<polecat>` is secondary
+  - good for confirming which wisp is currently attached
+- `find "$REVIEW_DIR" -type f` is the completion signal
+  - use it to detect when review artifacts actually exist
+
+If `gt peek` shows the worker still sitting at the initial assigned prompt,
+nudge it explicitly:
+
+```bash
+gt nudge <rig>/<polecat> "Run gt hook and execute the hooked mol-review-implementation now. This is a report-only task writing to the shared .runtime review directory; do not commit the report."
+```
+
+Do not synthesize review results until the expected shared report files exist
+under `$REVIEW_DIR`.
+
+Do not synthesize review results in this step. Launch the workers, record the
+worker identities and expected report paths in `session-ledger.md`, then move to
+the monitoring step.
+"""
+
+# ============================================================================
+# STAGE 7: MONITOR + SYNTHESIZE
+# ============================================================================
+
+[[steps]]
+id = "stage-final-review-monitor"
+title = "Stage 7: Monitor Review Workers and Synthesize"
+needs = ["stage-final-review-launch"]
+description = """
+Monitor the launched review workers until each required reviewer reaches a
+terminal state, then synthesize the results.
+
+## Primary Monitoring Signal
+
+Treat `gt peek <rig>/<polecat>` as the primary truth source for live progress.
+Use it to answer: is the worker actually executing the review, or just sitting
+at the initial assigned prompt?
+
+Secondary signals:
+- `gt polecat status <rig>/<polecat>` for lifecycle state and last activity
+- `gt hook show <rig>/<polecat>` for current hooked wisp
+- `find "$REVIEW_DIR" -type f` for actual review artifact existence
+
+## Terminal Conditions
+
+Do not stop monitoring until every required reviewer reaches one of these
+terminal conditions:
+
+- the expected report file exists in `$REVIEW_DIR`
+- the reviewer wisp is closed
+- the reviewer polecat is idle with no hook
+- or the reviewer is explicitly classified as stalled/failed after retry policy
+  is exhausted
+
+## Monitoring Loop
+
+Keep polling until terminal conditions are met. A typical pass should:
+
+```bash
+gt peek <rig>/<polecat>
+gt polecat status <rig>/<polecat>
+gt hook show <rig>/<polecat>
+find "$REVIEW_DIR" -type f | sort
+```
+
+Then decide whether to continue waiting, retry, or classify failure.
+
+## Retry Policy
+
+- If `gt peek` shows the worker still at the initial assigned prompt after the
+  first wait window, send one explicit nudge
+- If it still has not started after the second wait window, classify startup as
+  failed and record that in `session-ledger.md`
+- If the hook clears but the expected report is missing, inspect the worker
+  notes and clone before deciding whether the run failed
+- If the worker is clearly making progress, keep monitoring and do not
+  summarize yet
+
+Example startup nudge:
+
+```bash
+gt nudge <rig>/<polecat> "Run gt hook and execute the hooked mol-review-implementation now. This is a report-only task writing to the shared .runtime review directory; do not commit the report."
+```
+
+## Anti-Patterns
+
+Do NOT:
+- stop monitoring just because no report exists yet
+- summarize intermediate state as final state
+- synthesize before reports exist or failures are explicitly classified
+- ask the human whether to keep monitoring unless retry policy is exhausted
+
+## Synthesis
+
+After the required reports exist:
+- read reports from `$REVIEW_DIR`
+- compare findings across reviewers
+- deduplicate overlaps
+- classify blocking vs non-blocking issues
+- inspect `session-ledger.md` to verify the declared proof models were actually
+  followed and evidenced
+- if a milestone or final state still relies on vague “test later” reasoning,
+  treat that as a workflow failure and return to implementation/fix work
+- if blocking issues exist, return to implementation/fix work before proceeding
+- if reviewers materially disagree, summarize the disagreement clearly
+- append the synthesis outcome to `session-ledger.md`
+"""
+
+# ============================================================================
+# STAGE 8: VERIFY + FINALIZE
 # ============================================================================
 
 [[steps]]
 id = "stage-verify-finalize"
-title = "Stage 6: Verify, Finalize, and Report"
-needs = ["stage-implement"]
+title = "Stage 8: Verify, Finalize, and Report"
+needs = ["stage-final-review-monitor"]
 description = """
 Run final verification, then finalize tracking state and summary.
 
@@ -343,6 +622,7 @@ TRACKING_MODE=$(awk -F': ' '/^tracking_mode:/{print $2}' docs/plans/{{feature}}/
 Append to root epic:
 - spec path
 - ledger path
+- review artifact paths
 - verification commands run
 - unresolved risks (if any)
 - completion status
@@ -370,6 +650,7 @@ Single-session tracking workflow complete.
 - docs/plans/{{feature}}/spec.md
 - docs/plans/{{feature}}/session-context.md
 - docs/plans/{{feature}}/session-ledger.md
+- <rig-root>/.runtime/reviews/{{feature}}/<run-id>/*.md
 
 **Tracking:**
 - Root epic updated with progress and final summary

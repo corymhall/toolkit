@@ -2,7 +2,7 @@
 
 Spec-centric design and execution formulas for the `gt sling` pipeline. Three composable expansion formulas and two workflow orchestrators for different execution styles:
 - delegation-safe (spec -> enrich -> beadify -> dispatch)
-- single-session tracked delivery (spec -> enrich -> implement in one session)
+- default Codex-native delivery (spec -> enrich -> implement, review, and finalize in one session)
 
 ## Architecture
 
@@ -166,17 +166,24 @@ See [docs/templates/spec.md](../docs/templates/spec.md) for the full template.
 
 ## Workflow Formula
 
-### Spec-to-Beads
+### Epic Delivery
 
-**Formula:** `spec-to-beads-workflow`
+**Formula:** `epic-delivery-workflow`
 
-Composes all three expansion formulas into the full pipeline with checkpoints between stages. For maximum rigor from a raw idea to execution-ready beads.
+Composes all three expansion formulas into the full pipeline with checkpoints between stages. Use this for umbrella initiatives that need to be broken into feature/workstream beads, not for normal single-feature delivery.
 
 ```
 Kickoff → Draft Spec → [checkpoint] → Enrich → [checkpoint] → Beadify → Complete
 ```
 
 Checkpoints support crash recovery and session handoffs — if a session ends mid-workflow, the next session picks up at the last checkpoint.
+
+The intended output granularity is:
+- one bead per coherent feature or workstream
+- one integration/final-validation bead where needed
+- not implementation-ready microtasks
+
+Those resulting beads are expected to kick off `delivery-workflow` rather than be coded directly from the umbrella workflow.
 
 **Vars:**
 
@@ -186,24 +193,25 @@ Checkpoints support crash recovery and session handoffs — if a session ends mi
 | `brief` | yes | 1-3 sentence description |
 **Usage:**
 ```bash
-gt sling spec-to-beads-workflow <crew> \
+gt sling epic-delivery-workflow <crew> \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```
 
 ---
 
-### Single-Session Tracking
+### Delivery Workflow
 
-**Formula:** `single-session-tracking-workflow`
+**Formula:** `delivery-workflow`
 
-Single uninterrupted Codex session from plan through implementation and verification.
+Single uninterrupted Codex session from plan through implementation, explicit
+final review, and verification.
 No polecat delegation. Keeps Gastown visibility with either:
 - `milestones` mode: a few milestone child tasks
 - `epic-only` mode: one root epic with progress notes
 
 ```
-Kickoff -> Bootstrap -> Draft Spec -> Enrich -> Tracking Setup -> Implement -> Verify + Finalize
+ Kickoff -> Bootstrap -> Draft Spec -> Enrich -> Tracking Setup -> Implement -> Launch Final Review -> Monitor + Synthesize -> Verify + Finalize
 ```
 
 Use this when context continuity matters more than parallel delegation.
@@ -219,11 +227,65 @@ Use this when context continuity matters more than parallel delegation.
 
 **Usage:**
 ```bash
-gt sling single-session-tracking-workflow <crew> \
+gt sling delivery-workflow <crew> \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
   --var tracking="milestones"
 ```
+
+---
+
+## Review Worker Formula
+
+### Implementation Review Worker
+
+**Formula:** `mol-review-implementation`
+
+Single-reviewer implementation-vs-spec audit. Intended to be slung once per
+runtime and once per review lens, with parent-side synthesis handled by the
+calling workflow.
+
+Use this as the autonomous review worker for the final stage of
+`delivery-workflow` or other Codex-native workflows that want a
+structured review artifact without a human-interactive skill session.
+
+**Review model:**
+- Core categories stay fixed: completeness, quality, scope, standards
+- `categories` should usually stay `all`
+- Domain expertise is applied through `review_profile`, not new categories
+- One run writes one shared report artifact
+- Report artifacts belong under rig-root `.runtime/reviews/...`, not in the
+  polecat's repo clone
+- Review workers are report-only tasks and should not commit review artifacts
+
+**Typical usage:**
+```bash
+gt sling mol-review-implementation <target> --agent codex \
+  --var feature="ipv6-support" \
+  --var reviewer_label="codex" \
+  --var spec_scope="/Users/chall/gt/toolkit/.runtime/reviews/ipv6-support/run-001/spec.md" \
+  --var impl_scope="integration/ipv6-support" \
+  --var categories="all" \
+  --var review_profile="general" \
+  --var output_path="/Users/chall/gt/toolkit/.runtime/reviews/ipv6-support/run-001/codex-review.md"
+```
+
+**Vars:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `feature` | yes | Feature name |
+| `reviewer_label` | yes | Label for this reviewer run |
+| `spec_scope` | yes | Spec or planning scope to review |
+| `impl_scope` | yes | Implementation scope to review |
+| `categories` | no | Review dimensions; defaults to `all` |
+| `review_profile` | no | Domain lens; defaults to `general` |
+| `output_path` | yes | Shared absolute output path for the review report |
+
+The intended default final-review stack is:
+- general Codex review
+- general Claude review
+- optional specialist review when domain fit is strong
 
 ---
 

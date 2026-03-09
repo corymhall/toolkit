@@ -1,30 +1,33 @@
-# Spec-to-Beads Workflow
+# Epic Delivery Workflow
 #
 # Composes all expansion formulas into an end-to-end pipeline:
 #   bootstrap → draft-spec → enrich → beadify
 #
-# For maximum rigor from brief to execution-ready beads.
+# For decomposing an umbrella initiative into feature/workstream beads that
+# can each be executed with `delivery-workflow`.
 #
 # Usage:
-#   gt sling spec-to-beads-workflow <crew> \
+#   gt sling epic-delivery-workflow <crew> \
 #     --var feature="ipv6-support" \
 #     --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
 #     [--var epic_id="abc123"]
 
 description = """
-Full pipeline from brief to execution-ready beads.
+Umbrella initiative pipeline from brief to feature/workstream beads.
 
 Composes four stages sequentially:
 1. **Bootstrap** — ensure feature epic + integration branch exist
 2. **Draft Spec** — brief → spec.md with required serialized sections
 3. **Enrich** — preserve/fill serialized context (gap analysis + decisions)
-4. **Beadify** — spec → beads with validated dependency + traceability coverage
+4. **Beadify** — umbrella spec → feature/workstream beads with validated dependency and traceability coverage
 
-Use this when you want the maximum-rigor path from a raw idea to
-execution. For lighter workflows, run individual expansions directly.
+Use this when you are decomposing an initiative composed of multiple coherent
+features or workstreams. The goal is not implementation-ready microtasks. The
+goal is a graph of feature-sized beads that are ready to kick off
+`delivery-workflow` independently.
 
 **Input:** Feature name + brief description
-**Output:** Reviewed spec + beads epic with tasks and dependency graph
+**Output:** Reviewed umbrella spec + beads epic with feature/workstream beads and dependency graph
 
 ## Step Lifecycle (Molecule Work Loop)
 
@@ -41,7 +44,7 @@ bd mol current <molecule-id>
 
 Do NOT batch-close all steps at the end — close each one as you finish it.
 """
-formula = "spec-to-beads-workflow"
+formula = "epic-delivery-workflow"
 type = "workflow"
 pour = true
 version = 1
@@ -66,11 +69,11 @@ required = false
 
 [[steps]]
 id = "kickoff"
-title = "Spec-to-Beads Kickoff"
+title = "Epic Delivery Kickoff"
 description = """
 ═══════════════════════════════════════════════════════════════
- SPEC-TO-BEADS WORKFLOW
- Full pipeline: bootstrap → brief → spec → enriched spec → beads
+ EPIC DELIVERY WORKFLOW
+ Full pipeline: bootstrap → brief → umbrella spec → enriched spec → feature/workstream beads
 
  Feature: {{feature}}
  Brief:   {{brief}}
@@ -79,7 +82,7 @@ Stages:
    1. Bootstrap — epic + integration branch setup
    2. Draft Spec — codebase exploration + interactive dialogue
    3. Enrich — 6-dimension gap analysis + auto-fix + decisions
-   4. Beadify — task decomposition + 3 review passes + bead creation
+   4. Beadify — feature/workstream decomposition + 3 review passes + bead creation
 
  Serialized fidelity requirements across stages:
    - Non-Negotiables
@@ -88,8 +91,8 @@ Stages:
    - Traceability
 
  Output:
-   - docs/plans/{{feature}}/spec.md (reviewed spec)
-   - Beads epic with tasks and dependency graph
+   - docs/plans/{{feature}}/spec.md (reviewed umbrella spec)
+   - Beads epic with feature/workstream beads and dependency graph
 ═══════════════════════════════════════════════════════════════
 
 Output this banner to the user, then close this step to begin.
@@ -138,7 +141,7 @@ bd list --title-contains "{{feature}}" --type epic
 If no suitable root epic exists, create a placeholder:
 
 ```bash
-bd create "{{feature}}" -t epic -p P1 -d "Placeholder feature epic created during spec-to-beads bootstrap. Details refined during spec + beadify stages."
+bd create "{{feature}}" -t epic -p P1 -d "Placeholder feature epic created during epic-delivery bootstrap. Details refined during spec + beadify stages."
 ```
 
 Set `EPIC_ID` to the resolved or newly created root epic ID.
@@ -188,7 +191,7 @@ and interactive dialogue.
 
 [[steps]]
 id = "checkpoint-after-draft"
-title = "Checkpoint: Spec Drafted"
+title = "Checkpoint: Umbrella Spec Drafted"
 needs = ["stage-draft-spec"]
 description = """
 ## Checkpoint
@@ -209,7 +212,7 @@ If any are missing, return to Stage 2 and fill them before handoff.
 
 **Otherwise**, cycle your context:
 1. Close this step: `bd close <step-id>`
-2. Handoff: `gt handoff -s "Spec-to-beads: draft complete" -m "Draft spec written at docs/plans/{{feature}}/spec.md. Next: enrich pass for gap analysis."`
+2. Handoff: `gt handoff -s "Epic-delivery: draft complete" -m "Draft umbrella spec written at docs/plans/{{feature}}/spec.md. Next: enrich pass for gap analysis."`
 """
 
 # ============================================================================
@@ -236,7 +239,7 @@ ask about what needs judgment, fold everything back in.
 
 [[steps]]
 id = "checkpoint-after-enrich"
-title = "Checkpoint: Spec Enriched"
+title = "Checkpoint: Umbrella Spec Enriched"
 needs = ["stage-enrich"]
 description = """
 ## Checkpoint
@@ -255,7 +258,7 @@ Before handoff, verify enrich preserved:
 
 **Otherwise**, cycle your context:
 1. Close this step: `bd close <step-id>`
-2. Handoff: `gt handoff -s "Spec-to-beads: enrich complete" -m "Spec enriched at docs/plans/{{feature}}/spec.md. Next: beadify to create execution beads."`
+2. Handoff: `gt handoff -s "Epic-delivery: enrich complete" -m "Umbrella spec enriched at docs/plans/{{feature}}/spec.md. Next: beadify to create feature/workstream beads."`
 """
 
 # ============================================================================
@@ -270,10 +273,10 @@ description = """
 Placeholder expanded by `beadify-expansion`.
 
 Read the spec, explore the codebase, decompose into tasks, run 3 review
-passes, create beads with validated dependencies.
+passes, create feature/workstream beads with validated dependencies.
 
 **Input:** docs/plans/{{feature}}/spec.md
-**Output:** Beads epic with tasks and dependency graph
+**Output:** Beads epic with feature/workstream beads and dependency graph
 """
 
 # ============================================================================
@@ -285,23 +288,23 @@ id = "complete"
 title = "Workflow Complete"
 needs = ["stage-beadify"]
 description = """
-Spec-to-beads workflow is complete.
+Epic-delivery workflow is complete.
 
 **Summary:**
 - Stage 1: Epic + integration branch bootstrapped
-- Stage 2: Spec drafted from brief (interactive)
-- Stage 3: Spec enriched (6-dimension analysis, auto-fixes, decisions)
-- Stage 4: Beads created (task decomposition, 3 review passes)
+- Stage 2: Umbrella spec drafted from brief (interactive)
+- Stage 3: Umbrella spec enriched (6-dimension analysis, auto-fixes, decisions)
+- Stage 4: Feature/workstream beads created (decomposition, 3 review passes)
 - Fresh-session fidelity: Non-Negotiables + Forbidden Approaches + Decision Log +
   Traceability carried from spec through bead generation
 
 **Artifacts:**
-- docs/plans/{{feature}}/spec.md (reviewed spec)
-- Beads epic with tasks and dependency graph
+- docs/plans/{{feature}}/spec.md (reviewed umbrella spec)
+- Beads epic with feature/workstream beads and dependency graph
 
 **Next steps:**
-- Use epic-delivery to dispatch beads to polecats for implementation
-- Or start working on ready tasks: `bd ready`
+- For each coherent feature bead, run `delivery-workflow`
+- Use epic-delivery to dispatch implementation once feature beads are ready
 """
 
 # ============================================================================

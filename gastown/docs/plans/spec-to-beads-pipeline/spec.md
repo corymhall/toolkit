@@ -66,9 +66,10 @@ stages into one formula.
 
 ### One Workflow Orchestrator
 
-**spec-to-beads-workflow**: Composes draft-spec → enrich → beadify with
-checkpoints between stages for crash recovery and session handoffs. For
-the maximum-rigor path from brief to beads.
+**epic-delivery-workflow**: Composes draft-spec → enrich → beadify with
+checkpoints between stages for crash recovery and session handoffs. Its role
+is to decompose an umbrella initiative into feature/workstream beads that are
+then expected to kick off `delivery-workflow`.
 
 ### Transient Process Files
 
