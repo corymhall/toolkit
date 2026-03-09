@@ -166,17 +166,24 @@ See [docs/templates/spec.md](../docs/templates/spec.md) for the full template.
 
 ## Workflow Formula
 
-### Spec-to-Beads
+### Epic Delivery
 
-**Formula:** `spec-to-beads-workflow`
+**Formula:** `epic-delivery-workflow`
 
-Composes all three expansion formulas into the full pipeline with checkpoints between stages. For maximum rigor from a raw idea to execution-ready beads.
+Composes all three expansion formulas into the full pipeline with checkpoints between stages. Use this for umbrella initiatives that need to be broken into feature/workstream beads, not for normal single-feature delivery.
 
 ```
 Kickoff → Draft Spec → [checkpoint] → Enrich → [checkpoint] → Beadify → Complete
 ```
 
 Checkpoints support crash recovery and session handoffs — if a session ends mid-workflow, the next session picks up at the last checkpoint.
+
+The intended output granularity is:
+- one bead per coherent feature or workstream
+- one integration/final-validation bead where needed
+- not implementation-ready microtasks
+
+Those resulting beads are expected to kick off `delivery-workflow` rather than be coded directly from the umbrella workflow.
 
 **Vars:**
 
@@ -186,7 +193,7 @@ Checkpoints support crash recovery and session handoffs — if a session ends mi
 | `brief` | yes | 1-3 sentence description |
 **Usage:**
 ```bash
-gt sling spec-to-beads-workflow <crew> \
+gt sling epic-delivery-workflow <crew> \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```
