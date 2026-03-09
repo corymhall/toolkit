@@ -204,7 +204,7 @@ No polecat delegation. Keeps Gastown visibility with either:
 - `epic-only` mode: one root epic with progress notes
 
 ```
- Kickoff -> Bootstrap -> Draft Spec -> Enrich -> Tracking Setup -> Implement -> Final Review -> Verify + Finalize
+ Kickoff -> Bootstrap -> Draft Spec -> Enrich -> Tracking Setup -> Implement -> Launch Final Review -> Monitor + Synthesize -> Verify + Finalize
 ```
 
 Use this when context continuity matters more than parallel delegation.

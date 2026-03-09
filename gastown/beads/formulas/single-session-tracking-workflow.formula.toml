@@ -1,7 +1,8 @@
 # Single-Session Tracking Workflow
 #
 # End-to-end delivery in ONE Codex session:
-#   bootstrap -> draft-spec -> enrich -> lightweight tracking -> implement -> verify
+#   bootstrap -> draft-spec -> enrich -> lightweight tracking -> implement
+#   -> launch final review -> monitor+synthesize -> verify/finalize
 #
 # No polecat delegation, no handoff checkpoints. Keeps ownership in one session,
 # while still recording status in beads.
@@ -320,20 +321,27 @@ the signal is strong.
 ## Execution Loop
 
 1. Read `docs/plans/{{feature}}/spec.md`
-2. Execute one implementation slice
-3. Run relevant checks for that slice
-4. Write a milestone self-check covering:
+2. Before each implementation slice, declare the proof model in `session-ledger.md`
+   - default for behavior changes / bug fixes: red-green evidence
+   - otherwise: explicit alternate proof model with rationale
+3. Execute one implementation slice
+4. Run relevant checks for that slice
+5. Write a milestone self-check covering:
    - what changed
    - what spec section or decision it satisfied
-   - what proof model was used
+   - what proof model was declared
+   - what evidence actually exists
    - what remains risky or unclear
    - whether the next milestone still makes sense
-5. If the slice feels risky, run one bounded drift-review subagent before continuing
-6. Update `session-ledger.md`
-7. Update beads tracking:
+6. If the slice feels risky, run one bounded drift-review subagent before continuing
+7. Update `session-ledger.md`
+8. Update beads tracking:
    - milestone mode: set `implementation complete` to in_progress early,
      close when done
    - epic-only mode: append progress note to root epic
+
+Do not treat a milestone as complete if the proof model is missing, vague, or
+unsupported by actual evidence.
 
 Prefer small, verified increments over one large final diff.
 """
@@ -419,7 +427,7 @@ gt sling mol-review-implementation <target> --agent codex \
   --var feature="{{feature}}" \
   --var reviewer_label="codex" \
   --var spec_scope="$REVIEW_DIR/spec.md" \
-  --var impl_scope="$(git branch --show-current)" \
+  --var impl_scope="origin/$(git branch --show-current)" \
   --var categories="all" \
   --var review_profile="general" \
   --var output_path="$REVIEW_DIR/codex-review.md"
@@ -428,13 +436,28 @@ gt sling mol-review-implementation <target> --agent claude \
   --var feature="{{feature}}" \
   --var reviewer_label="claude" \
   --var spec_scope="$REVIEW_DIR/spec.md" \
-  --var impl_scope="$(git branch --show-current)" \
+  --var impl_scope="origin/$(git branch --show-current)" \
   --var categories="all" \
   --var review_profile="general" \
   --var output_path="$REVIEW_DIR/claude-review.md"
 ```
 
 If a specialist profile is selected, add one more review run with that profile.
+For example:
+
+```bash
+REVIEW_PROFILE=$(awk -F': ' '/^review_profiles_selected:/{print $2}' docs/plans/{{feature}}/session-context.md | cut -d',' -f1)
+if [ -n "$REVIEW_PROFILE" ] && [ "$REVIEW_PROFILE" != "general" ]; then
+  gt sling mol-review-implementation <target> --agent codex \
+    --var feature="{{feature}}" \
+    --var reviewer_label="$REVIEW_PROFILE" \
+    --var spec_scope="$REVIEW_DIR/spec.md" \
+    --var impl_scope="origin/$(git branch --show-current)" \
+    --var categories="all" \
+    --var review_profile="$REVIEW_PROFILE" \
+    --var output_path="$REVIEW_DIR/$REVIEW_PROFILE-review.md"
+fi
+```
 
 ## Launch Discipline
 
@@ -554,6 +577,10 @@ After the required reports exist:
 - compare findings across reviewers
 - deduplicate overlaps
 - classify blocking vs non-blocking issues
+- inspect `session-ledger.md` to verify the declared proof models were actually
+  followed and evidenced
+- if a milestone or final state still relies on vague “test later” reasoning,
+  treat that as a workflow failure and return to implementation/fix work
 - if blocking issues exist, return to implementation/fix work before proceeding
 - if reviewers materially disagree, summarize the disagreement clearly
 - append the synthesis outcome to `session-ledger.md`
