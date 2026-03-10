@@ -52,7 +52,19 @@ bd mol current <molecule-id>
 # repeat until complete
 ```
 
-Do NOT batch-close all steps at the end - close each one as you finish it.
+`bd mol current <molecule-id>` is the sole source of truth for what to do next.
+Execute exactly that current wisp and nothing beyond it.
+
+After closing a wisp, stop and re-run `bd mol current <molecule-id>` before
+starting anything else. Do not begin the next stage from memory, expected
+sequence, prior banner text, or "workflow intent" alone.
+
+Status updates are not pause points. If a wisp tells you to report findings,
+state, or completion, do so and then continue the molecule loop immediately
+unless the wisp explicitly requires `request_user_input` or says `STOP`.
+
+If a stage expands into more granular wisps, obey those expanded wisps
+strictly and individually. Do NOT batch-close steps or work ahead.
 """
 formula = "delivery-workflow"
 type = "workflow"

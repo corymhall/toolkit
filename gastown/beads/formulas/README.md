@@ -216,6 +216,11 @@ No polecat delegation. Keeps Gastown visibility with either:
 
 Use this when context continuity matters more than parallel delegation.
 
+This workflow is a molecule. Treat `bd mol current <molecule-id>` as the only
+authority for the next action: execute exactly the current wisp, close it, then
+re-run `bd mol current` before doing anything else. Do not work ahead based on
+the expected stage order.
+
 **Vars:**
 
 | Variable | Required | Description |

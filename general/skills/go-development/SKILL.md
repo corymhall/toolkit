@@ -21,6 +21,15 @@ Use this skill in one of two execution profiles.
 2. Review all manual and mixed-enforcement rules relevant to changed files.
 3. Report policy gaps with severity and evidence.
 
+## Architecture Defaults
+
+- For stateful, lifecycle-heavy, or multi-step behavior, start with a concrete struct (`App`, `Runner`, `Service`, `Client`) that owns its dependencies through fields and methods.
+- Keep dependency ownership explicit with constructors or small config/dependency structs. Prefer `runner := Runner{clock: realClock{}, fs: osFS{}}` over package-global mutable function vars.
+- Start with concrete types first. Introduce interfaces only at the consuming boundary and only when a real alternate implementation or test seam is needed.
+- Keep `main` packages thin: parse flags/config, build concrete dependencies, instantiate an `app`/`runner`/`service`, and delegate execution to a method.
+- Do not default to package-global mutable function vars such as `var nowFn = time.Now`, `var readFileFn = os.ReadFile`, or `var killFn = syscall.Kill`. Treat them as a last-resort legacy seam that requires explicit justification and careful test restoration.
+- In tests, prefer constructing a subject with fake/stub dependencies over mutating package globals. This keeps dependencies visible and tests safe for parallel execution.
+
 ## Tooling Gate First
 
 When `golangci-lint` v2 config is present:
@@ -69,6 +78,13 @@ Use `references/lint-coverage-matrix.md` to decide depth:
 - `mixed`: check linter output plus rule intent
 - `review-only`: always evaluate manually
 
+When implementation touches package design, dependency wiring, `main`, lifecycle code, or tests with fakes/stubs, read these rules before editing:
+
+- `rules/api-global-state.md`
+- `rules/api-consumer-interfaces.md`
+- `rules/api-cli-command-context.md`
+- `rules/testing-failures-helpers.md`
+
 ## Local Autofix Policy
 
 Allowed for implementers:
@@ -89,6 +105,8 @@ For each finding, report:
 - required action
 - verification evidence
 
+Always flag package-global mutable function vars as a design smell unless the change includes a narrow, explicit justification for keeping a legacy seam.
+
 ## References
 
 - `references/lint-coverage-matrix.md` - rule-to-enforcement routing
@@ -100,6 +118,7 @@ For each finding, report:
 ## Source Alignment
 
 - Effective Go: `https://go.dev/doc/effective_go`
+- Go Code Review Comments: `https://go.dev/wiki/CodeReviewComments`
 - Google Go guide: `https://google.github.io/styleguide/go/guide`
 - Google Go decisions: `https://google.github.io/styleguide/go/decisions`
 - Google Go best practices: `https://google.github.io/styleguide/go/best-practices`

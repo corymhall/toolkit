@@ -16,6 +16,9 @@ Use this as a pre-commit review checklist.
 - Use value receivers unless mutation/shared state or large-copy costs require pointer receivers.
 - Keep structs cohesive; avoid "god" structs.
 - Prefer composition over embedding that obscures ownership/behavior.
+- For non-trivial behavior, prefer a concrete struct that owns dependencies and methods over package-global mutable state.
+- Treat package-global function vars as a legacy escape hatch, not a default testing seam.
+- Start concrete; add interfaces at the consuming boundary only when substitution is actually needed.
 
 ## Errors
 - Return `error` as the final return value.
@@ -26,8 +29,10 @@ Use this as a pre-commit review checklist.
 - Define goroutine ownership and shutdown path before launching.
 - Avoid unbounded goroutine creation.
 - Prefer `context.Context` for cancellation/timeouts.
+- Keep lifecycle and cancellation behavior on the owning struct rather than in process-wide mutable globals.
 
 ## Formatting/Docs
 - Keep code gofmt-clean at all times.
 - Add/update doc comments for exported identifiers.
 - Keep examples/tests runnable and deterministic.
+- In `main`, keep wiring thin and delegate work to a concrete runner/service/app type.

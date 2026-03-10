@@ -8,7 +8,7 @@ enforcement: review-only
 
 ## Define interfaces at call sites, not providers
 
-Create small interfaces in the package that consumes behavior. Avoid exporting broad provider-defined interfaces “just in case”.
+Per Go Code Review Comments, interfaces generally belong in the consumer package. Start with concrete types and explicit constructors, then create small interfaces only in the package that consumes behavior. Avoid exporting broad provider-defined interfaces "just in case", and do not reach for package-global function vars as a shortcut around dependency ownership.
 
 **Bad (provider-owned interface forces broad contract):**
 
@@ -38,4 +38,4 @@ type Service struct {
 }
 ```
 
-Keep contracts narrow and local to usage.
+Keep contracts narrow and local to usage. Prefer a concrete dependency field until a real consumer needs substitution.
