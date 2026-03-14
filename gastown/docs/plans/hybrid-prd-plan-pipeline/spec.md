@@ -19,7 +19,8 @@ most useful:
 - `spec.md` stays the durable requirements and design record
 - `plan-draft.md` becomes a decomposition and sequencing artifact for
   `epic-delivery-workflow` / `beadify`
-- `plans.md` becomes a lightweight milestone plan for `delivery-workflow v2`
+- `plans.md` becomes a lightweight milestone plan for session 2 of
+  `delivery-workflow v2`
 
 The goal is to borrow the useful separation from PRD-plus-plan systems without
 reintroducing the old over-ceremonial pipeline.
@@ -114,7 +115,7 @@ Add `docs/plans/<feature>/plans.md` for `delivery-workflow v2`.
 
 This is intentionally smaller than the umbrella `plan-draft.md`. It is not
 trying to decompose an initiative into multiple feature beads. It is trying to
-force one implementation session to think ahead before code starts.
+force a fresh build session to think ahead before code starts.
 
 This document should answer:
 
@@ -208,30 +209,58 @@ Do not require the umbrella `plan-draft.md`.
 For single-feature implementation, adopt a lighter second artifact:
 
 - `spec.md` remains the source artifact
-- `plans.md` becomes a required milestone plan for implementation
+- `plans.md` becomes a required milestone plan in session 2
 - `session-context.md` and `session-ledger.md` capture execution state and proof
 - heavyweight review still happens at the implementation boundary
 - one earlier review stop happens after the first shape-validation milestone
 
-Recommended future shape:
+Recommended 2-session shape:
+
+Session 1: Discovery / convergence
 
 1. Bootstrap
 2. Draft spec
 3. Enrich spec
-4. Tracking setup
-5. Generate `plans.md`
-6. Plan review pass 1: completeness + scope/constraints
-7. Plan review pass 2: sequencing + testability/risk
-8. Implement milestone 1
-9. Review checkpoint: shape validation
-10. Continue milestones 2..N
-11. Launch final review
-12. Monitor + synthesize
-13. Verify + finalize
+4. Stop after `spec.md` is clean enough to act as the handoff contract
+
+Session 2: Planning / build
+
+1. Tracking setup
+2. Generate `plans.md`
+3. Plan review pass 1: completeness + scope/constraints
+4. Plan review pass 2: sequencing + testability/risk
+5. Implement milestone 1
+6. Review checkpoint: shape validation
+7. Continue milestones 2..N
+8. Launch final review
+9. Monitor + synthesize
+10. Verify + finalize
 
 The purpose of `plans.md` is not to restate the spec. It is to reduce the odds
 that the first meaningful human feedback arrives only after the full feature is
 built.
+
+### `delivery-workflow v2` session boundary
+
+The default split should happen after `enrich`, not before it.
+
+Reasoning:
+
+- Session 1 can be noisy: web research, alternative designs, scratch
+  prototypes, parallel discussions, false starts.
+- `enrich` is the stage that turns that noise into a stable artifact.
+- Session 2 should start fresh from files, not from exploratory chat history.
+
+Required handoff contract from session 1 into session 2:
+
+- `spec.md` is committed
+- `Decision Log` captures material trade-offs
+- `Non-Negotiables` and `Forbidden Approaches` are explicit
+- `Open Questions` contains only items that truly remain unresolved
+- `Traceability` is current enough that session 2 can trust the artifact
+
+If those conditions are not met, session 1 should keep iterating. Do not start
+session 2 from a partially converged spec.
 
 ### `delivery-workflow v2` review boundary
 
@@ -281,7 +310,8 @@ Instead:
   - pass 2: sequencing + testability/risk
 - `delivery-workflow v2` gets one early milestone review stop plus final review
 - `beadify` retains its current task-readiness review passes
-- `delivery-workflow` retains final implementation review after code exists
+- `delivery-workflow` uses a 2-session split by default: converge through
+  `enrich`, then start a fresh planning/build session
 
 Escalate beyond 2 passes only when the work is unusually large, ambiguous, or
 expensive to rework late. That heavier mode can borrow more from the 6-round
@@ -330,14 +360,14 @@ In:
 - richer `spec.md` requirements sections
 - new `plan-draft.md` artifact for `epic-delivery-workflow`
 - new `plans.md` artifact for `delivery-workflow v2`
-- preserving Codex-native single-session delivery as the default implementation path
+- a default 2-session split for feature delivery: convergence, then planning/build
 
 Out:
 
 - replacing `spec.md` with a pure product-only PRD
 - requiring the umbrella `plan-draft.md` for every feature
 - mandatory 6-round review loops
-- moving implementation ownership out of the main Codex session
+- fragmenting implementation across many build sessions by default
 
 ## Decisions
 
@@ -346,9 +376,9 @@ Out:
 | One universal artifact vs selective split | Selective split | Umbrella decomposition and feature implementation benefit from different kinds of plans. |
 | Persisted source of truth | Keep `spec.md` | Our current serialized constraints and decision history are valuable and should stay central. |
 | Where to add the extra artifact | `epic-delivery-workflow` / `beadify` first | That is where decomposition quality matters most. |
-| Delivery planning artifact | Add `plans.md` | A compact milestone plan is the cheapest way to shrink late-stage churn in a single-session build. |
+| Delivery planning artifact | Add `plans.md` | A compact milestone plan is the cheapest way to shrink late-stage churn in a fresh build session. |
 | Default review intensity | 2 plan review passes, not 6 | Two passes add real planning pressure without turning normal feature work into ceremony. |
-| `delivery-workflow` default | Require lightweight planning, not heavyweight orchestration | Better fit for Codex continuity while still forcing enough upfront thinking. |
+| `delivery-workflow` default | Use a 2-session split with lightweight planning | Keeps noisy exploration out of the build session while still forcing enough upfront thinking. |
 
 ## Risks
 
@@ -358,7 +388,7 @@ Out:
 | Multi-artifact model confuses users | Medium | Give each artifact one job, document the split clearly, and keep the implementation plan short. |
 | `beadify` complexity increases | Medium | Add fallback support for spec-only input while the new path matures. |
 | `plans.md` becomes a redundant mini-spec | Medium | Enforce milestone-only content and keep requirements/design truth in `spec.md`. |
-| We recreate the old over-ceremonial pipeline | High | Keep the split selective, keep review loops short, and preserve single-session implementation for delivery. |
+| We recreate the old over-ceremonial pipeline | High | Keep the split to 2 sessions, keep review loops short, and avoid reintroducing many persistent intermediate docs. |
 
 ## Open Questions
 
@@ -368,5 +398,7 @@ Out:
   like today's `beads-draft.md`?
 - Should `plans.md` always persist for delivery runs, or be allowed to stay
   transient for very small features?
+- Should the session-1/session-2 handoff be a dedicated artifact, or is a clean
+  `spec.md` plus commit enough?
 - Should plan review live in a dedicated `plan-expansion`, or be folded into
   `beadify` as an early stage?
