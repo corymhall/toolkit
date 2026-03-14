@@ -13,15 +13,16 @@ blur two different jobs:
 2. defining how the work should be decomposed and sequenced
 
 This proposal keeps a single persisted `spec.md` as the source of truth for
-requirements and decisions, but adds an optional planning artifact for umbrella
-decomposition:
+requirements and decisions, but adds explicit planning artifacts where they are
+most useful:
 
 - `spec.md` stays the durable requirements and design record
-- `plan-draft.md` becomes a decomposition and sequencing artifact used only in
+- `plan-draft.md` becomes a decomposition and sequencing artifact for
   `epic-delivery-workflow` / `beadify`
+- `plans.md` becomes a lightweight milestone plan for `delivery-workflow v2`
 
 The goal is to borrow the useful separation from PRD-plus-plan systems without
-making `delivery-workflow` pay the cost of an extra document on every feature.
+reintroducing the old over-ceremonial pipeline.
 
 ## Design
 
@@ -107,6 +108,67 @@ Suggested structure:
 Unlike `spec.md`, this artifact is execution-structure-first. It is the place
 to review sequencing, risk concentration, parallelism, and bead boundaries.
 
+#### 3. `plans.md` as the implementation milestone artifact
+
+Add `docs/plans/<feature>/plans.md` for `delivery-workflow v2`.
+
+This is intentionally smaller than the umbrella `plan-draft.md`. It is not
+trying to decompose an initiative into multiple feature beads. It is trying to
+force one implementation session to think ahead before code starts.
+
+This document should answer:
+
+- what milestones will prove the feature is on the right track
+- what acceptance signal exists for each milestone
+- what validation commands or proof are expected before moving on
+- where an early human review should happen before the feature is fully built
+
+Suggested structure:
+
+```markdown
+# <Feature Name> Milestone Plan
+
+## Planning Intent
+- What this plan is optimizing for
+- Why the milestone breakdown is sufficient
+
+## Milestones
+### M1. Shape Validation
+- Goal
+- Planned changes
+- Acceptance criteria
+- Validation commands / proof
+- Review stop: yes
+
+### M2. Core Behavior
+- Goal
+- Planned changes
+- Acceptance criteria
+- Validation commands / proof
+- Review stop: no
+
+### M3. Integration + Hardening
+- Goal
+- Planned changes
+- Acceptance criteria
+- Validation commands / proof
+- Review stop: optional
+
+## Drift Risks
+- What could still force architectural rework if discovered late
+
+## Stop Conditions
+- Conditions that require updating the plan before continuing
+```
+
+Practical rules:
+
+- default to 3-7 milestones
+- each milestone must have explicit acceptance criteria
+- each milestone must have explicit validation evidence or commands
+- at least one early milestone must be a shape-validation checkpoint
+- if the milestone plan changes materially, update it before continuing
+
 ### Workflow Placement
 
 #### `epic-delivery-workflow`
@@ -141,17 +203,67 @@ The existing review passes should shift slightly:
 
 #### `delivery-workflow`
 
-Do not require `plan-draft.md`.
+Do not require the umbrella `plan-draft.md`.
 
-For single-feature implementation, keep the current shape:
+For single-feature implementation, adopt a lighter second artifact:
 
 - `spec.md` remains the source artifact
+- `plans.md` becomes a required milestone plan for implementation
 - `session-context.md` and `session-ledger.md` capture execution state and proof
-- heavyweight review stays at the implementation boundary
+- heavyweight review still happens at the implementation boundary
+- one earlier review stop happens after the first shape-validation milestone
 
-If a feature is unusually large, `delivery-workflow` may optionally create a
-local `plan-draft.md`, but that should be an opt-in rigor mode rather than the
-default path.
+Recommended future shape:
+
+1. Bootstrap
+2. Draft spec
+3. Enrich spec
+4. Tracking setup
+5. Generate `plans.md`
+6. Implement milestone 1
+7. Review checkpoint: shape validation
+8. Continue milestones 2..N
+9. Launch final review
+10. Monitor + synthesize
+11. Verify + finalize
+
+The purpose of `plans.md` is not to restate the spec. It is to reduce the odds
+that the first meaningful human feedback arrives only after the full feature is
+built.
+
+### `delivery-workflow v2` review boundary
+
+The workflow should add one explicit mid-run review boundary for medium and
+large work.
+
+Target placement:
+
+- after milestone 1
+- after the feature's shape is visible
+- before the whole feature is built
+
+That checkpoint should ask:
+
+- does the implementation shape still match the spec intent?
+- did we discover any architectural drift or hidden scope?
+- does the remaining milestone plan still make sense?
+- are there changes needed now that would be expensive later?
+
+If the answer is "yes, big changes are needed," the workflow should revise
+`plans.md` and `spec.md` before continuing. This is the mechanism intended to
+make end-of-run review findings smaller.
+
+### `delivery-workflow v2` artifact contract
+
+For the implementation workflow, the artifact split becomes:
+
+- `spec.md`: requirements, constraints, design intent, decision history
+- `plans.md`: milestone sequence, acceptance criteria, validation commands,
+  early review stop
+- `session-ledger.md`: actual execution, evidence, surprises, and remaining risk
+
+This gives the workflow a place to encode planning rigor without turning the
+ledger into a plan or forcing the spec to carry all execution structure.
 
 ### Review Model
 
@@ -161,6 +273,7 @@ Instead:
 
 - `enrich` continues reviewing the spec as a requirements artifact
 - new plan generation gets 1-2 explicit review rounds, not 6
+- `delivery-workflow v2` gets one early milestone review stop plus final review
 - `beadify` retains its current task-readiness review passes
 - `delivery-workflow` retains final implementation review after code exists
 
@@ -191,8 +304,13 @@ Phase 3:
 
 Phase 4:
 
-- optionally add a "high-rigor" mode to `delivery-workflow`
-- do not make it the default
+- add `plans.md` generation to `delivery-workflow`
+- require a milestone-1 review stop for medium/large work
+
+Phase 5:
+
+- optionally add a stronger rigor mode for unusually large feature delivery
+- do not make the heavyweight mode the default
 
 ## Scope
 
@@ -201,12 +319,13 @@ In:
 - selective PRD/plan separation for umbrella decomposition
 - richer `spec.md` requirements sections
 - new `plan-draft.md` artifact for `epic-delivery-workflow`
+- new `plans.md` artifact for `delivery-workflow v2`
 - preserving Codex-native single-session delivery as the default implementation path
 
 Out:
 
 - replacing `spec.md` with a pure product-only PRD
-- requiring `plan-draft.md` for every feature
+- requiring the umbrella `plan-draft.md` for every feature
 - mandatory 6-round review loops
 - moving implementation ownership out of the main Codex session
 
@@ -214,19 +333,21 @@ Out:
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| One universal artifact vs selective split | Selective split | Umbrella decomposition benefits from a separate plan; single-feature delivery usually does not. |
+| One universal artifact vs selective split | Selective split | Umbrella decomposition and feature implementation benefit from different kinds of plans. |
 | Persisted source of truth | Keep `spec.md` | Our current serialized constraints and decision history are valuable and should stay central. |
 | Where to add the extra artifact | `epic-delivery-workflow` / `beadify` first | That is where decomposition quality matters most. |
+| Delivery planning artifact | Add `plans.md` | A compact milestone plan is the cheapest way to shrink late-stage churn in a single-session build. |
 | Default review intensity | 1-2 plan rounds, not 6 | Keeps the borrowed structure without importing too much orchestration overhead. |
-| `delivery-workflow` default | Remain single-spec | Better fit for Codex continuity and implementation ownership. |
+| `delivery-workflow` default | Require lightweight planning, not heavyweight orchestration | Better fit for Codex continuity while still forcing enough upfront thinking. |
 
 ## Risks
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | `spec.md` becomes too large or repetitive | Medium | Keep `plan-draft.md` focused on decomposition only; do not duplicate design prose there. |
-| Two-artifact model confuses users | Medium | Use it only in `epic-delivery-workflow` at first; document when each artifact is expected. |
+| Multi-artifact model confuses users | Medium | Give each artifact one job, document the split clearly, and keep the implementation plan short. |
 | `beadify` complexity increases | Medium | Add fallback support for spec-only input while the new path matures. |
+| `plans.md` becomes a redundant mini-spec | Medium | Enforce milestone-only content and keep requirements/design truth in `spec.md`. |
 | We recreate the old over-ceremonial pipeline | High | Keep the split selective, keep review loops short, and preserve single-session implementation for delivery. |
 
 ## Open Questions
@@ -235,5 +356,7 @@ Out:
   specs, or only required in `epic-delivery-workflow`?
 - Should `plan-draft.md` persist after bead creation, or remain a transient file
   like today's `beads-draft.md`?
+- Should `plans.md` always persist for delivery runs, or be allowed to stay
+  transient for very small features?
 - Should plan review live in a dedicated `plan-expansion`, or be folded into
   `beadify` as an early stage?
