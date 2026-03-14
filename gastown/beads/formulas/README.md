@@ -164,6 +164,9 @@ The format scales naturally:
 
 See [docs/templates/spec.md](../docs/templates/spec.md) for the full template.
 
+Related design exploration:
+- [Hybrid PRD/Plan Pipeline](../../docs/plans/hybrid-prd-plan-pipeline/spec.md) — selective two-artifact model for umbrella decomposition while keeping single-spec delivery lean
+
 ## Workflow Formula
 
 ### Epic Delivery
