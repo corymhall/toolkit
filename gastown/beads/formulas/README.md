@@ -166,6 +166,7 @@ See [docs/templates/spec.md](../docs/templates/spec.md) for the full template.
 
 Related design exploration:
 - [Hybrid PRD/Plan Pipeline](../../docs/plans/hybrid-prd-plan-pipeline/spec.md) — selective two-artifact model for umbrella decomposition while keeping single-spec delivery lean
+- [Hybrid Formula Sketch](../../docs/plans/hybrid-prd-plan-pipeline/formula-sketch.md) — concrete stage sketch for `plan-expansion` and `delivery-workflow v2`
 
 ## Workflow Formula
 
