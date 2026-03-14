@@ -262,6 +262,59 @@ Required handoff contract from session 1 into session 2:
 If those conditions are not met, session 1 should keep iterating. Do not start
 session 2 from a partially converged spec.
 
+### Prototype handling
+
+Prototypes are optional and should be treated as learning tools, not as part of
+the build handoff contract.
+
+When a prototype exists in session 1:
+
+- use it to answer questions quickly
+- preserve what was learned
+- do not make the messy prototype code the default reference for session 2
+
+What should survive the prototype:
+
+- what question the prototype tested
+- what worked
+- what failed
+- what constraints or edge cases were discovered
+- what design choice changed because of the prototype
+- what should explicitly not be copied into the final implementation
+
+What should usually not survive the prototype:
+
+- direct references like "follow the prototype"
+- messy temporary structure becoming architectural precedent
+- low-quality scratch code in the main build path
+
+Recommended distillation format when needed:
+
+```markdown
+## Prototype Finding P-1
+Question tested:
+What we tried:
+Observed result:
+Implication for final design:
+Carry forward:
+Do not copy:
+```
+
+Then fold the results into the durable artifacts:
+
+- design choice -> `Decision Log`
+- hard lesson -> `Constraints`
+- anti-pattern discovered -> `Forbidden Approaches`
+- residual uncertainty -> `Open Questions`
+- concrete implementation guidance -> `Design`
+
+Default rule:
+
+- prototype code may inform session 1
+- prototype findings may survive into session 2
+- prototype code itself should not be part of the normal handoff unless a small
+  isolated piece is intentionally promoted
+
 ### `delivery-workflow v2` review boundary
 
 The workflow should add one explicit mid-run review boundary for medium and
@@ -361,6 +414,7 @@ In:
 - new `plan-draft.md` artifact for `epic-delivery-workflow`
 - new `plans.md` artifact for `delivery-workflow v2`
 - a default 2-session split for feature delivery: convergence, then planning/build
+- optional prototype distillation during session 1 when exploratory code exists
 
 Out:
 
@@ -388,6 +442,7 @@ Out:
 | Multi-artifact model confuses users | Medium | Give each artifact one job, document the split clearly, and keep the implementation plan short. |
 | `beadify` complexity increases | Medium | Add fallback support for spec-only input while the new path matures. |
 | `plans.md` becomes a redundant mini-spec | Medium | Enforce milestone-only content and keep requirements/design truth in `spec.md`. |
+| Prototype code leaks into the final build path as accidental precedent | Medium | Distill prototype findings into the spec and avoid using the prototype itself as the session-2 reference. |
 | We recreate the old over-ceremonial pipeline | High | Keep the split to 2 sessions, keep review loops short, and avoid reintroducing many persistent intermediate docs. |
 
 ## Open Questions
@@ -400,5 +455,7 @@ Out:
   transient for very small features?
 - Should the session-1/session-2 handoff be a dedicated artifact, or is a clean
   `spec.md` plus commit enough?
+- Should prototype findings live only in the spec, or should there be a small
+  dedicated `prototype-findings.md` when exploration is substantial?
 - Should plan review live in a dedicated `plan-expansion`, or be folded into
   `beadify` as an early stage?
