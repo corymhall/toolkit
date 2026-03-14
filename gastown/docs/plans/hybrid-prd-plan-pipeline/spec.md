@@ -220,12 +220,14 @@ Recommended future shape:
 3. Enrich spec
 4. Tracking setup
 5. Generate `plans.md`
-6. Implement milestone 1
-7. Review checkpoint: shape validation
-8. Continue milestones 2..N
-9. Launch final review
-10. Monitor + synthesize
-11. Verify + finalize
+6. Plan review pass 1: completeness + scope/constraints
+7. Plan review pass 2: sequencing + testability/risk
+8. Implement milestone 1
+9. Review checkpoint: shape validation
+10. Continue milestones 2..N
+11. Launch final review
+12. Monitor + synthesize
+13. Verify + finalize
 
 The purpose of `plans.md` is not to restate the spec. It is to reduce the odds
 that the first meaningful human feedback arrives only after the full feature is
@@ -269,13 +271,21 @@ ledger into a plan or forcing the spec to carry all execution structure.
 
 Do not adopt a mandatory 6-round review loop as the default.
 
+Adopt 2 plan review passes as the default.
+
 Instead:
 
 - `enrich` continues reviewing the spec as a requirements artifact
-- new plan generation gets 1-2 explicit review rounds, not 6
+- new plan generation gets 2 explicit review passes by default:
+  - pass 1: completeness + scope/constraints
+  - pass 2: sequencing + testability/risk
 - `delivery-workflow v2` gets one early milestone review stop plus final review
 - `beadify` retains its current task-readiness review passes
 - `delivery-workflow` retains final implementation review after code exists
+
+Escalate beyond 2 passes only when the work is unusually large, ambiguous, or
+expensive to rework late. That heavier mode can borrow more from the 6-round
+structure without making it the baseline for normal feature work.
 
 This keeps the useful separation from PRD/plan systems while staying aligned
 with the Codex evaluation lens:
@@ -309,7 +319,7 @@ Phase 4:
 
 Phase 5:
 
-- optionally add a stronger rigor mode for unusually large feature delivery
+- optionally add a stronger 6-pass rigor mode for unusually large feature delivery
 - do not make the heavyweight mode the default
 
 ## Scope
@@ -337,7 +347,7 @@ Out:
 | Persisted source of truth | Keep `spec.md` | Our current serialized constraints and decision history are valuable and should stay central. |
 | Where to add the extra artifact | `epic-delivery-workflow` / `beadify` first | That is where decomposition quality matters most. |
 | Delivery planning artifact | Add `plans.md` | A compact milestone plan is the cheapest way to shrink late-stage churn in a single-session build. |
-| Default review intensity | 1-2 plan rounds, not 6 | Keeps the borrowed structure without importing too much orchestration overhead. |
+| Default review intensity | 2 plan review passes, not 6 | Two passes add real planning pressure without turning normal feature work into ceremony. |
 | `delivery-workflow` default | Require lightweight planning, not heavyweight orchestration | Better fit for Codex continuity while still forcing enough upfront thinking. |
 
 ## Risks
