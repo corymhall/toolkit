@@ -189,6 +189,7 @@ mkdir -p docs/plans/{{feature}}
 
 Read the codebase context, then ask 3-7 focused questions to clarify:
 - Purpose and constraints
+- Success criteria / goals
 - Scope boundaries (what's in, what's explicitly out)
 - Key design decisions where multiple valid approaches exist
 
@@ -204,6 +205,9 @@ Favor exhaustive serialization over brevity in this stage:
 - If unsure whether detail matters, include it in Decision Log or Traceability
 
 Before drafting, capture these required artifacts from the conversation:
+- Goals (what success looks like)
+- Constraints (technical / business / rollout boundaries)
+- Acceptance criteria (what proves the work succeeded)
 - Non-negotiables (hard requirements with no exceptions)
 - Forbidden approaches (explicit do-not-do list + rationale)
 - Decision log candidates (topic, options considered, chosen option, rationale)
@@ -249,15 +253,34 @@ Write to `docs/plans/{{feature}}/spec.md` using the standard template:
 
 <What we're building, why, and for whom.>
 
-## Design
+## Goals
 
-<How it works. Be specific — name files, functions, patterns.
-Use sub-sections as needed for larger features.>
+- G-1: <primary outcome>
+- G-2: <secondary outcome>
 
 ## Scope
 
 In: <what this covers>
 Out: <what we're NOT doing, with rationale>
+
+## Constraints
+
+- C-1: <technical / business / rollout constraint>
+- C-2: <constraint>
+
+## Acceptance Criteria
+
+- A-1: <observable success condition>
+- A-2: <observable success condition>
+
+## User Stories / Scenarios
+
+<Include when user-facing behavior matters. Remove if redundant.>
+
+## Design
+
+<How it works. Be specific — name files, functions, patterns.
+Use sub-sections as needed for larger features.>
 
 ## Non-Negotiables
 
@@ -284,6 +307,8 @@ If no trade-offs exist, include one explicit row:
 
 | Spec Element | Source | Notes |
 |--------------|--------|-------|
+| Goals | user answers + dialogue | [how captured] |
+| Constraints | user answers + codebase-context.tmp | [why included] |
 | Non-Negotiables | user answers | [how captured] |
 | Design subsection X | codebase-context.tmp + dialogue | [why included] |
 | Decision D-1 | trade-off discussion | [downstream impact] |
@@ -304,8 +329,8 @@ If no trade-offs exist, include one explicit row:
 <Include only if unresolved items remain>
 ```
 
-**Required sections:** Overview, Design, Scope, Non-Negotiables,
-Forbidden Approaches, Decision Log, Traceability.
+**Required sections:** Overview, Goals, Scope, Constraints, Acceptance Criteria,
+Design, Non-Negotiables, Forbidden Approaches, Decision Log, Traceability.
 **Optional sections:** Include only when they carry real content.
 
 ### 5. Confirm

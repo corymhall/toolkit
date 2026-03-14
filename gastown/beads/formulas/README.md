@@ -1,8 +1,11 @@
 # Formulas
 
-Spec-centric design and execution formulas for the `gt sling` pipeline. Three composable expansion formulas and two workflow orchestrators for different execution styles:
-- delegation-safe (spec -> enrich -> beadify -> dispatch)
-- default Codex-native delivery (spec -> enrich -> implement, review, and finalize in one session)
+Spec-centric design and execution formulas for the `gt sling` pipeline. Four
+composable expansion formulas and three workflow orchestrators support
+different delivery modes:
+- delegation-safe umbrella decomposition (`spec -> enrich -> beadify`)
+- lean single-session delivery (`spec -> enrich -> implement`)
+- two-session planned delivery (`spec -> enrich || plans -> build`)
 
 ## Architecture
 
@@ -12,26 +15,29 @@ The formulas follow an **expansion/workflow pattern**:
 
 - **Workflow formulas** (`*-workflow.formula.toml`) are orchestrators that compose expansion formulas into end-to-end pipelines with either handoff checkpoints or single-session continuity.
 
-**One document, adaptable execution systems:**
-- `spec.md` — the design record (only persisted document)
-- Beads — either full execution decomposition (beadify) or lightweight tracking (single-session workflow)
-- Everything else is transient (created during a formula run, deleted after)
+**Spec-first, adaptable execution systems:**
+- `spec.md` — the durable requirements and design record
+- `plans.md` — milestone plan for `delivery-workflow-v2`
+- Beads — either execution decomposition (`beadify`) or lightweight tracking
+- `session-ledger.md` — execution evidence for delivery workflows
 
 ## The Pipeline
 
-Three expansion formulas, each independently runnable:
+Four expansion formulas, each independently runnable:
 
 ```
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│ Draft Spec  │ ───▶ │   Enrich    │ ───▶ │  Beadify    │
-│             │      │ (optional,  │      │             │
-│ brief →     │      │  repeatable)│      │ spec →      │
-│ spec.md     │      │ spec →      │      │ beads       │
-│             │      │ better spec │      │             │
-└─────────────┘      └─────────────┘      └─────────────┘
+┌─────────────┐      ┌─────────────┐      ┌──────────────┐
+│ Draft Spec  │ ───▶ │   Enrich    │ ───▶ │ Plan / Beads │
+│             │      │ (optional,  │      │              │
+│ brief →     │      │  repeatable)│      │ spec ->      │
+│ spec.md     │      │ spec →      │      │ plans.md or  │
+│             │      │ better spec │      │ beads        │
+└─────────────┘      └─────────────┘      └──────────────┘
 ```
 
-Any entry point works. Already have a spec? Skip to beadify. Want more rigor? Run enrich multiple times. Wrote the spec yourself? Go straight to beadify.
+Any entry point works. Already have a spec? Skip to `plan-expansion` or
+`beadify`. Want more rigor? Run `enrich` multiple times. Wrote the spec
+yourself? Go straight to the downstream expansion you need.
 
 ---
 
@@ -82,7 +88,7 @@ Reads an existing spec, finds gaps across 6 analytical dimensions, auto-fixes wh
 6. **Consistency** — Does the spec contradict itself or the codebase?
 
 **Steps:**
-1. Validate spec exists with required sections (Overview, Design, Scope)
+1. Validate spec exists with the core serialized sections and identify any missing planning sections to strengthen
 2. Explore codebase — ground analysis in real code, not assumptions
 3. Analyze spec across 6 dimensions — classify each finding as auto-fix or decision
 4. Apply auto-fixes silently
@@ -105,6 +111,45 @@ Reads an existing spec, finds gaps across 6 analytical dimensions, auto-fixes wh
 **Usage:**
 ```bash
 gt sling enrich-expansion <crew> \
+  --var feature="ipv6-support"
+```
+
+---
+
+### Plan
+
+**Formula:** `plan-expansion`
+
+Reads a cleaned spec, generates `plans.md`, runs the default two plan review
+passes, and leaves behind a build-ready milestone plan for
+`delivery-workflow-v2`.
+
+**Steps:**
+1. Validate spec for planning
+2. Draft `plans.md`
+3. Review pass 1: completeness + scope/constraints
+4. Review pass 2: sequencing + testability/risk
+5. Finalize plan
+
+**Planning principles:**
+- `plans.md` is a milestone plan, not a second spec
+- default to 3-7 milestones
+- each milestone needs acceptance criteria and validation evidence
+- milestone 1 should validate implementation shape for medium/large work
+- add stop conditions for drift that should force re-planning
+
+**Input:** `docs/plans/{feature}/spec.md`
+**Output:** `docs/plans/{feature}/plans.md`
+
+**Vars:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `feature` | yes | Feature name |
+
+**Usage:**
+```bash
+gt sling plan-expansion <crew> \
   --var feature="ipv6-support"
 ```
 
@@ -154,15 +199,16 @@ gt sling beadify-expansion <crew> \
 
 All formulas produce and consume specs using the [standard template](../docs/templates/spec.md):
 
-**Required sections:** Overview, Design, Scope, Non-Negotiables, Forbidden Approaches, Decision Log, Traceability
-**Optional sections:** Risks, Testing, Open Questions
+**Required sections:** Overview, Goals, Scope, Constraints, Acceptance Criteria, Design, Non-Negotiables, Forbidden Approaches, Decision Log, Traceability
+**Optional sections:** User Stories / Scenarios, Risks, Testing, Open Questions
 
 The format scales naturally:
 - **Small work** (1-3 tasks): 10-20 lines — bullet points in Design, one-line Scope
-- **Medium work** (4-10 tasks): 30-100 lines — Design sub-sections + Decision Log entries
+- **Medium work** (4-10 tasks): 30-100 lines — goals, constraints, acceptance criteria, Design sub-sections, Decision Log entries
 - **Large work** (10+ tasks): 100+ lines — full Design sub-sections, Decision Log, Risks, Testing, Traceability
 
 See [docs/templates/spec.md](../docs/templates/spec.md) for the full template.
+See [docs/templates/plans.md](../docs/templates/plans.md) for the milestone plan template used by `plan-expansion`.
 
 Related design exploration:
 - [Hybrid PRD/Plan Pipeline](../../docs/plans/hybrid-prd-plan-pipeline/spec.md) — selective two-artifact model for umbrella decomposition while keeping single-spec delivery lean
@@ -244,6 +290,56 @@ gt sling delivery-workflow <crew> \
 
 ---
 
+### Delivery Workflow V2
+
+**Formula:** `delivery-workflow-v2`
+
+Recommended default delivery workflow when discovery is noisy and you want the
+build session to start fresh from committed artifacts.
+
+Session 1:
+- Bootstrap
+- Draft Spec
+- Enrich
+- Handoff boundary
+
+Session 2:
+- Tracking Setup
+- Plan (`plans.md`)
+- Implement milestone 1
+- Shape review checkpoint
+- Implement remaining milestones
+- Final review / verify / finalize
+
+```
+ Kickoff -> Bootstrap -> Draft Spec -> Enrich -> [handoff] -> Tracking Setup -> Plan -> Implement M1 -> Shape Review -> Implement Rest -> Launch Final Review -> Monitor + Synthesize -> Verify + Finalize
+```
+
+Use this when:
+- session 1 includes a lot of brainstorming, web research, prototypes, or
+  exploration noise
+- you want `enrich` to distill that into a clean `spec.md`
+- you want 2 default plan review passes before code starts
+
+**Vars:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `feature` | yes | Feature name |
+| `brief` | yes | 1-3 sentence description |
+| `epic_id` | no | Existing root epic to reuse |
+| `tracking` | no | `milestones` (default) or `epic-only` |
+
+**Usage:**
+```bash
+gt sling delivery-workflow-v2 <crew> \
+  --var feature="ipv6-support" \
+  --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
+  --var tracking="milestones"
+```
+
+---
+
 ## Review Worker Formula
 
 ### Implementation Review Worker
@@ -300,12 +396,25 @@ The intended default final-review stack is:
 
 ## Design Principles
 
-**One document:** The spec is the single design record. No separate PRD, no separate plan. The spec scales from 10 lines to 200 by adding depth, not documents.
+**Spec-first:** `spec.md` remains the source of truth for requirements,
+constraints, and decision history. Additional planning artifacts should stay
+focused on execution structure, not duplicate the spec.
 
-**Composable capabilities:** Each formula is a standalone building block. Run one, run all three, or compose into the workflow that fits the delivery mode (delegation-safe or single-session).
+**Composable capabilities:** Each formula is a standalone building block. Run
+one, run several, or compose into the workflow that fits the delivery mode
+(umbrella decomposition, single-session delivery, or two-session delivery).
 
-**Transient process:** Codebase context, review findings, beads drafts — all created and deleted within a single formula run. Durable artifacts are the spec plus selected tracking/execution beads.
+**Selective planning artifacts:** Use `plans.md` when it buys cleaner build
+execution. Do not force a heavyweight planning document on every workflow.
 
-**Signal over noise:** Enrich uses 6 analytical dimensions that surface real gaps, not exhaustive question generation. Auto-fix what's obvious, ask only about genuine decisions.
+**Signal over noise:** `enrich` uses 6 analytical dimensions that surface real
+gaps, not exhaustive question generation. Auto-fix what's obvious, ask only
+about genuine decisions.
 
-**Flexible entry points:** Have a brief? Run draft-spec. Already have a spec? Skip to beadify. Want more rigor? Run enrich (once or multiple times). Any entry, any exit.
+**Clean session boundaries:** When discovery is noisy, split after `enrich` so
+the build session starts from committed artifacts rather than exploratory chat
+history or prototype code.
+
+**Flexible entry points:** Have a brief? Run `draft-spec`. Already have a spec?
+Skip to `plan-expansion` or `beadify`. Want more rigor? Run `enrich` again.
+Any entry, any exit.

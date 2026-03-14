@@ -1,7 +1,12 @@
 # Formula Sketch
 
 This document translates the hybrid pipeline proposal into concrete formula
-shapes without changing the production formulas yet.
+shapes.
+
+The corresponding formula files now exist under `gastown/beads/formulas/`:
+
+- `plan-expansion.formula.toml`
+- `delivery-workflow-v2.formula.toml`
 
 The intent is to answer:
 
@@ -371,16 +376,12 @@ Required durable artifacts:
 - `session-ledger.md`
 - review reports under `.runtime`
 
-## Suggested README / Formula Changes Later
+## Follow-On Decisions
 
-If this sketch graduates into implementation work:
+The concrete formula files and README updates now exist. Remaining design
+decisions include:
 
-1. add `plan-expansion.formula.toml`
-2. add `delivery-workflow-v2.formula.toml`
-3. update `README.md` to document:
-   - 2-session delivery as the default recommendation
-   - `plan-expansion` as the source of `plans.md`
-4. decide whether old `delivery-workflow` is:
-   - kept as a lean single-session option
-   - replaced by v2
-   - or retained only for very small work
+1. whether old `delivery-workflow` remains as the lean single-session option
+2. whether `delivery-workflow-v2` becomes the documented default
+3. whether `plan-expansion` should eventually grow a heavier rigor mode
+4. whether `plans.md` should always persist or be optional for very small work

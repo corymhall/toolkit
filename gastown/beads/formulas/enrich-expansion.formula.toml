@@ -143,16 +143,27 @@ Validate that the spec exists and is substantive enough to analyze.
 
    If any required sections are missing, STOP and report which ones.
 
-3. Validate Decision Log integrity:
+3. Check whether the stronger planning sections are present:
+   - Goals
+   - Constraints
+   - Acceptance Criteria
+
+   If any of these are missing, do NOT stop. Instead, mark them as
+   high-priority enrich targets and add them during this run.
+
+4. Validate Decision Log integrity:
    - Each row has Decision ID, topic, chosen option, rejected alternatives,
      rationale, and status.
    - IDs are stable and meaningful (`D-1`, `D-2`, ...).
    - Do not allow blank or placeholder-only decision rows.
 
-4. Assess current depth and note which optional sections exist:
+5. Assess current depth and note which optional sections exist:
    - Risks table: [present / absent]
    - Testing section: [present / absent]
    - Open Questions: [present / absent]
+   - Goals section: [present / absent]
+   - Constraints section: [present / absent]
+   - Acceptance Criteria: [present / absent]
    - Design sub-sections (Architecture, Components, Data Model, etc.): [which ones]
 
 ## Output
@@ -163,6 +174,8 @@ Depth: [thin / medium / deep]
 Required sections verified: [list]
 Optional sections present: [list]
 Optional sections absent: [list]
+Planning sections present: [list]
+Planning sections to add or strengthen: [list]
 
 Proceeding to codebase exploration...
 ```

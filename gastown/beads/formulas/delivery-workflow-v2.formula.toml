@@ -1,0 +1,574 @@
+# Delivery Workflow V2
+#
+# Two-session delivery:
+#   session 1: bootstrap -> draft-spec -> enrich -> handoff
+#   session 2: tracking -> plan -> implement milestone 1 -> shape review
+#            -> implement rest -> final review -> verify/finalize
+#
+# This workflow keeps noisy exploration out of the build session while still
+# using Codex-native single-owner implementation once planning is locked.
+#
+# Usage:
+#   gt sling delivery-workflow-v2 <crew> \
+#     --var feature="ipv6-support" \
+#     --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
+#     [--var epic_id="abc123"] \
+#     [--var tracking="milestones"]
+
+description = """
+Two-session Codex-native delivery workflow.
+
+Session 1 is for discovery and convergence:
+1. **Bootstrap**
+2. **Draft Spec**
+3. **Enrich**
+4. **Handoff Boundary**
+
+Session 2 is for planning and build execution:
+5. **Tracking Setup**
+6. **Plan**
+7. **Implement Milestone 1**
+8. **Shape Review Checkpoint**
+9. **Implement Remaining Milestones**
+10. **Launch Final Review**
+11. **Monitor + Synthesize**
+12. **Verify + Finalize**
+
+Use this when exploratory design work is noisy and you want the build session
+to start from committed artifacts instead of chat history.
+
+**Input:** Feature name + brief description
+**Output:** Implemented feature + updated tracking + `spec.md` + `plans.md` +
+verification summary
+
+## Artifacts
+
+- `docs/plans/{{feature}}/spec.md`
+- `docs/plans/{{feature}}/plans.md`
+- `docs/plans/{{feature}}/session-context.md`
+- `docs/plans/{{feature}}/session-ledger.md`
+
+## Tracking Modes
+
+- `milestones` (default): create a few child tasks under the epic
+- `epic-only`: keep only the root epic and append progress notes
+
+## Step Lifecycle (Molecule Work Loop)
+
+This formula runs as a molecule — each step is a wisp bead. Use the
+standard molecule work loop to advance through steps:
+
+```bash
+bd mol current <molecule-id>
+# execute the step
+bd close <step-id>
+bd mol current <molecule-id>
+# repeat until complete
+```
+
+`bd mol current <molecule-id>` is the sole source of truth for what to do next.
+Execute exactly that current wisp and nothing beyond it.
+"""
+formula = "delivery-workflow-v2"
+type = "workflow"
+pour = true
+version = 1
+
+[vars]
+[vars.feature]
+description = "Feature name (becomes directory name under docs/plans/)"
+required = true
+
+[vars.brief]
+description = "Feature brief - 1-3 sentences describing what to build"
+required = true
+
+[vars.epic_id]
+description = "Optional existing root epic ID to reuse"
+required = false
+default = ""
+
+[vars.tracking]
+description = "Tracking mode: milestones (default) or epic-only"
+required = false
+default = "milestones"
+
+# ============================================================================
+# KICKOFF
+# ============================================================================
+
+[[steps]]
+id = "kickoff"
+title = "Delivery Workflow V2 Kickoff"
+description = """
+═══════════════════════════════════════════════════════════════
+ DELIVERY WORKFLOW V2
+ Two-session delivery:
+   session 1 = discovery / convergence
+   session 2 = planning / build
+
+ Feature:  {{feature}}
+ Brief:    {{brief}}
+ Tracking: {{tracking}} (empty => milestones)
+
+ Session 1:
+   1. Bootstrap
+   2. Draft Spec
+   3. Enrich
+   4. Handoff Boundary
+
+ Session 2:
+   5. Tracking Setup
+   6. Plan (`plans.md`)
+   7. Implement Milestone 1
+   8. Shape Review Checkpoint
+   9. Implement Remaining Milestones
+  10. Launch Final Review
+  11. Monitor + Synthesize
+  12. Verify + Finalize
+
+ Artifacts:
+   - docs/plans/{{feature}}/spec.md
+   - docs/plans/{{feature}}/plans.md
+   - docs/plans/{{feature}}/session-context.md
+   - docs/plans/{{feature}}/session-ledger.md
+═══════════════════════════════════════════════════════════════
+
+Output this banner to the user, then close this step to begin.
+"""
+
+# ============================================================================
+# STAGE 1: BOOTSTRAP
+# ============================================================================
+
+[[steps]]
+id = "stage-bootstrap"
+title = "Stage 1: Bootstrap Epic + Integration Branch"
+needs = ["kickoff"]
+description = """
+Ensure this feature has a root epic and integration branch before writing artifacts.
+
+## Resolve/Create Root Epic
+
+If `epic_id` provided:
+
+```bash
+bd show {{epic_id}}
+EPIC_ID={{epic_id}}
+```
+
+Otherwise:
+
+```bash
+bd list --title-contains "{{feature}}" --type epic
+```
+
+If none is suitable, create one:
+
+```bash
+EPIC_ID=$(bd create "{{feature}}" -t epic -p P1 -d "Two-session tracked delivery epic for {{feature}}."
+  --json | jq -r '.[0].id // .id')
+```
+
+## Create/Verify Integration Branch
+
+```bash
+gt mq integration create "$EPIC_ID"
+gt mq integration status "$EPIC_ID"
+git switch <integration-branch-from-status-output>
+```
+
+## Persist Session Context
+
+```bash
+mkdir -p docs/plans/{{feature}}
+TRACKING_MODE="{{tracking}}"
+if [ -z "$TRACKING_MODE" ]; then TRACKING_MODE="milestones"; fi
+cat > docs/plans/{{feature}}/session-context.md <<CTX
+feature: {{feature}}
+brief: {{brief}}
+epic_id: $EPIC_ID
+tracking_mode: $TRACKING_MODE
+review_categories: all
+review_profiles_selected: general
+delivery_mode: two-session
+CTX
+```
+
+## Output
+
+Report epic ID, integration branch, and tracking mode.
+"""
+
+# ============================================================================
+# STAGE 2: DRAFT SPEC (expansion)
+# ============================================================================
+
+[[steps]]
+id = "stage-draft-spec"
+title = "Stage 2: Draft Spec"
+needs = ["stage-bootstrap"]
+description = """
+Placeholder expanded by `draft-spec-expansion`.
+
+Create `docs/plans/{{feature}}/spec.md`.
+"""
+
+# ============================================================================
+# STAGE 3: ENRICH (expansion)
+# ============================================================================
+
+[[steps]]
+id = "stage-enrich"
+title = "Stage 3: Enrich"
+needs = ["stage-draft-spec"]
+description = """
+Placeholder expanded by `enrich-expansion`.
+
+Strengthen `docs/plans/{{feature}}/spec.md` while preserving serialized design
+constraints and decision history.
+"""
+
+# ============================================================================
+# CHECKPOINT: HANDOFF BOUNDARY
+# ============================================================================
+
+[[steps]]
+id = "checkpoint-handoff-ready"
+title = "Checkpoint: Session 1 handoff ready"
+needs = ["stage-enrich"]
+description = """
+This is the intended session boundary.
+
+Session 1 ends only when `spec.md` is clean enough to act as the handoff
+contract for the build session.
+
+Before proceeding, verify:
+- `spec.md` is committed
+- `Goals`, `Constraints`, and `Acceptance Criteria` are explicit
+- `Decision Log` captures material trade-offs
+- `Non-Negotiables` and `Forbidden Approaches` are explicit
+- `Open Questions` contains only real unresolved issues
+- any prototype learnings have been distilled into the spec rather than left as
+  "see prototype"
+
+Default action:
+1. Close this step
+2. Handoff / cycle context
+3. Resume in a fresh session at `stage-tracking-setup`
+
+Only continue in the same session if you are intentionally bypassing the
+recommended boundary for testing or expedience. If you do, state that clearly
+in your status update.
+"""
+
+# ============================================================================
+# STAGE 4: TRACKING SETUP
+# ============================================================================
+
+[[steps]]
+id = "stage-tracking-setup"
+title = "Stage 4: Tracking Setup"
+needs = ["checkpoint-handoff-ready"]
+description = """
+Set up lightweight tracking for the build session.
+
+## Inputs
+
+- `docs/plans/{{feature}}/session-context.md`
+- `docs/plans/{{feature}}/spec.md`
+
+## Resolve Context
+
+```bash
+EPIC_ID=$(awk -F': ' '/^epic_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
+TRACKING_MODE=$(awk -F': ' '/^tracking_mode:/{print $2}' docs/plans/{{feature}}/session-context.md)
+if [ -z "$TRACKING_MODE" ]; then TRACKING_MODE="milestones"; fi
+```
+
+## Always Update Root Epic
+
+Append a planning/build-start note:
+
+```bash
+bd update "$EPIC_ID" --append-notes "Session 2 start:\n- spec: docs/plans/{{feature}}/spec.md\n- status: planning/build session starting"
+```
+
+## If Tracking Mode = milestones
+
+Create only these milestone tasks if missing:
+
+1. `{{feature}}: plan locked`
+2. `{{feature}}: milestone 1 validated`
+3. `{{feature}}: implementation complete`
+4. `{{feature}}: verification complete`
+5. `{{feature}}: final cleanup and ship`
+
+Close `plan locked` only after `plans.md` is finalized.
+"""
+
+# ============================================================================
+# STAGE 5: PLAN (expansion)
+# ============================================================================
+
+[[steps]]
+id = "stage-plan"
+title = "Stage 5: Plan"
+needs = ["stage-tracking-setup"]
+description = """
+Placeholder expanded by `plan-expansion`.
+
+Generate and finalize `docs/plans/{{feature}}/plans.md`.
+"""
+
+# ============================================================================
+# STAGE 6: IMPLEMENT MILESTONE 1
+# ============================================================================
+
+[[steps]]
+id = "stage-implement-m1"
+title = "Stage 6: Implement Milestone 1"
+needs = ["stage-plan"]
+description = """
+Implement milestone 1 only.
+
+## Inputs
+
+- `docs/plans/{{feature}}/spec.md`
+- `docs/plans/{{feature}}/plans.md`
+
+## Build a Session Ledger
+
+Create/update `docs/plans/{{feature}}/session-ledger.md` with:
+- current status
+- milestone checklist derived from `plans.md`
+- commands run + outcomes
+- files changed
+- open risks/blockers
+
+## Rules
+
+- milestone 1 must validate the implementation shape, not finish the whole feature
+- declare the proof model before coding
+- execute only milestone 1 scope
+- run milestone 1 validation before marking it complete
+- if milestone 1 expands dramatically, stop and revise `plans.md`
+
+If tracking mode is `milestones`, set `{{feature}}: milestone 1 validated` to
+`in_progress` early and close it only when milestone 1 evidence exists.
+"""
+
+# ============================================================================
+# CHECKPOINT: SHAPE REVIEW
+# ============================================================================
+
+[[steps]]
+id = "checkpoint-shape-review"
+title = "Checkpoint: Shape Review"
+needs = ["stage-implement-m1"]
+description = """
+This is the early review stop intended to make final review churn smaller.
+
+Review milestone 1 against:
+- `spec.md`
+- `plans.md`
+- `session-ledger.md`
+
+Answer:
+- does milestone 1 prove the right implementation shape?
+- do `spec.md` and `plans.md` still match reality?
+- are there architectural surprises or hidden scope?
+- should milestones 2..N be revised before continuing?
+
+Allowed outcomes:
+- continue unchanged
+- revise `plans.md`
+- revise both `spec.md` and `plans.md`
+- stop and re-plan before continuing
+
+Do not proceed to the remaining milestones if this checkpoint reveals the shape
+is wrong.
+"""
+
+# ============================================================================
+# STAGE 7: IMPLEMENT REMAINING MILESTONES
+# ============================================================================
+
+[[steps]]
+id = "stage-implement-rest"
+title = "Stage 7: Implement Remaining Milestones"
+needs = ["checkpoint-shape-review"]
+description = """
+Implement the remaining milestones in `plans.md`.
+
+## Rules
+
+- follow `plans.md`, not memory
+- update `session-ledger.md` after each milestone
+- record proof and commands for each milestone
+- if a stop condition fires, revise `plans.md` before continuing
+- if tracking mode is `milestones`, set `implementation complete` to
+  `in_progress` early and close it only when all planned milestones are done
+
+Prefer small, verified increments over one large final diff.
+"""
+
+# ============================================================================
+# STAGE 8: FINAL REVIEW LAUNCH
+# ============================================================================
+
+[[steps]]
+id = "stage-final-review-launch"
+title = "Stage 8: Launch Final Review Workers"
+needs = ["stage-implement-rest"]
+description = """
+Create the review checkpoint and launch the final review workers.
+
+Before slinging reviewers:
+1. create a reviewable checkpoint commit
+2. push the integration branch
+3. materialize shared review inputs under the rig root `.runtime` directory
+
+Suggested shared directory:
+
+```bash
+TOP=$(git rev-parse --show-toplevel)
+RIG_ROOT=$(printf '%s\n' "$TOP" | sed -E 's#/crew/[^/]+$##; s#/polecats/[^/]+/[^/]+$##')
+REVIEW_RUN_ID=$(date +%Y%m%d-%H%M%S)
+REVIEW_DIR="$RIG_ROOT/.runtime/reviews/{{feature}}/$REVIEW_RUN_ID"
+mkdir -p "$REVIEW_DIR"
+cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
+cp docs/plans/{{feature}}/plans.md "$REVIEW_DIR/plans.md"
+test -f docs/plans/{{feature}}/session-context.md && cp docs/plans/{{feature}}/session-context.md "$REVIEW_DIR/session-context.md"
+test -f docs/plans/{{feature}}/session-ledger.md && cp docs/plans/{{feature}}/session-ledger.md "$REVIEW_DIR/session-ledger.md"
+git add -A
+git commit -m "checkpoint: prepare {{feature}} for external review"
+git push
+```
+
+Always run:
+- one general review with `--agent codex`
+- one general review with `--agent claude`
+
+Optionally run:
+- one specialist review if the domain strongly suggests it
+
+Use `mol-review-implementation` as the worker formula and include `spec.md`,
+`plans.md`, and the pushed branch state as the review inputs.
+"""
+
+# ============================================================================
+# STAGE 9: MONITOR + SYNTHESIZE
+# ============================================================================
+
+[[steps]]
+id = "stage-final-review-monitor"
+title = "Stage 9: Monitor Review Workers and Synthesize"
+needs = ["stage-final-review-launch"]
+description = """
+Monitor the launched review workers until required reports exist, then
+synthesize the results.
+
+Primary signal:
+- `gt peek <rig>/<polecat>`
+
+Secondary signals:
+- `gt polecat status <rig>/<polecat>`
+- `gt hook show <rig>/<polecat>`
+- `find "$REVIEW_DIR" -type f`
+
+Do not synthesize until the expected report files exist or failures are
+explicitly classified.
+
+During synthesis, inspect:
+- whether the implementation matches `spec.md`
+- whether the implementation drifted from `plans.md`
+- whether milestone proof in `session-ledger.md` is actually evidenced
+
+If blocking issues exist, return to implementation work before proceeding.
+"""
+
+# ============================================================================
+# STAGE 10: VERIFY + FINALIZE
+# ============================================================================
+
+[[steps]]
+id = "stage-verify-finalize"
+title = "Stage 10: Verify, Finalize, and Report"
+needs = ["stage-final-review-monitor"]
+description = """
+Run final verification, finalize tracking, and summarize completion.
+
+## Verification
+
+- execute relevant test/lint/build commands
+- if the full suite is too expensive, run targeted commands and state the limits
+- record all verification commands + outcomes in `session-ledger.md`
+
+## Tracking Finalization
+
+If `tracking` is `milestones`:
+- close `{{feature}}: implementation complete` when code is done
+- close `{{feature}}: verification complete` when validation passes
+- close `{{feature}}: final cleanup and ship` after final summary + push
+
+If `tracking` is `epic-only`:
+- append final status note to the root epic
+
+## Final Epic Note
+
+Append:
+- spec path
+- plans path
+- ledger path
+- review artifact paths
+- verification commands run
+- unresolved risks (if any)
+- completion status
+"""
+
+# ============================================================================
+# COMPLETE
+# ============================================================================
+
+[[steps]]
+id = "complete"
+title = "Workflow Complete"
+needs = ["stage-verify-finalize"]
+description = """
+Two-session delivery workflow complete.
+
+**Artifacts:**
+- docs/plans/{{feature}}/spec.md
+- docs/plans/{{feature}}/plans.md
+- docs/plans/{{feature}}/session-context.md
+- docs/plans/{{feature}}/session-ledger.md
+- <rig-root>/.runtime/reviews/{{feature}}/<run-id>/*.md
+
+**Tracking:**
+- root epic updated with progress and final summary
+- optional milestone tasks updated/closed
+
+**Modeling note:**
+This workflow treats convergence and build execution as different phases on
+purpose. Session 1 distills noisy exploration into `spec.md`; session 2 plans
+and builds from committed artifacts.
+"""
+
+# ============================================================================
+# COMPOSITION
+# ============================================================================
+
+[compose]
+
+[[compose.expand]]
+target = "stage-draft-spec"
+with = "draft-spec-expansion"
+
+[[compose.expand]]
+target = "stage-enrich"
+with = "enrich-expansion"
+
+[[compose.expand]]
+target = "stage-plan"
+with = "plan-expansion"
