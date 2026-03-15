@@ -572,6 +572,52 @@ Use the selected domain profile from `session-context.md` when it is strong
 enough to justify a specialist review, following the same conservative pattern
 as the original `delivery-workflow`.
 
+## Review Commands
+
+Write reports under:
+- `$REVIEW_DIR/codex-review.md`
+- `$REVIEW_DIR/claude-review.md`
+- optional specialist review report if used
+
+Use the review worker formula:
+
+```bash
+gt sling mol-review-implementation <target> --agent codex \
+  --var feature="{{feature}}" \
+  --var reviewer_label="codex" \
+  --var spec_scope="$REVIEW_DIR/spec.md" \
+  --var impl_scope="origin/$(git branch --show-current)" \
+  --var categories="all" \
+  --var review_profile="general" \
+  --var output_path="$REVIEW_DIR/codex-review.md"
+
+gt sling mol-review-implementation <target> --agent claude \
+  --var feature="{{feature}}" \
+  --var reviewer_label="claude" \
+  --var spec_scope="$REVIEW_DIR/spec.md" \
+  --var impl_scope="origin/$(git branch --show-current)" \
+  --var categories="all" \
+  --var review_profile="general" \
+  --var output_path="$REVIEW_DIR/claude-review.md"
+```
+
+If a specialist profile is selected, add one more review run with that profile.
+For example:
+
+```bash
+REVIEW_PROFILE=$(awk -F': ' '/^review_profiles_selected:/{print $2}' docs/plans/{{feature}}/session-context.md | cut -d',' -f1)
+if [ -n "$REVIEW_PROFILE" ] && [ "$REVIEW_PROFILE" != "general" ]; then
+  gt sling mol-review-implementation <target> --agent codex \
+    --var feature="{{feature}}" \
+    --var reviewer_label="$REVIEW_PROFILE" \
+    --var spec_scope="$REVIEW_DIR/spec.md" \
+    --var impl_scope="origin/$(git branch --show-current)" \
+    --var categories="all" \
+    --var review_profile="$REVIEW_PROFILE" \
+    --var output_path="$REVIEW_DIR/$REVIEW_PROFILE-review.md"
+fi
+```
+
 ## Launch Discipline
 
 Do not blindly fire multiple slings at the same rig target in parallel when an
