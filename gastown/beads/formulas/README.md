@@ -1,6 +1,6 @@
 # Formulas
 
-Spec-centric design and execution formulas for the `gt sling` pipeline. Five
+Spec-centric design and execution formulas for the `gt sling` pipeline. Eight
 composable expansion formulas and four workflow orchestrators support
 different delivery modes:
 - agent-driven routing into the right delivery mode
@@ -25,7 +25,8 @@ The formulas follow an **expansion/workflow pattern**:
 
 ## The Pipeline
 
-Five expansion formulas, each independently runnable:
+Five primary entry expansions, plus three shared lower-stage expansions used by
+the delivery workflows:
 
 ```
 ┌─────────────┐      ┌─────────────┐      ┌──────────────────────┐
