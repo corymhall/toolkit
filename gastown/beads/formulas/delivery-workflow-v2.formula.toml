@@ -68,6 +68,17 @@ bd mol current <molecule-id>
 
 `bd mol current <molecule-id>` is the sole source of truth for what to do next.
 Execute exactly that current wisp and nothing beyond it.
+
+After closing a wisp, stop and re-run `bd mol current <molecule-id>` before
+starting anything else. Do not begin the next stage from memory, expected
+sequence, prior banner text, or "workflow intent" alone.
+
+Status updates are not pause points. If a wisp tells you to report findings,
+state, or completion, do so and then continue the molecule loop immediately
+unless the wisp explicitly requires `request_user_input` or says `STOP`.
+
+If a stage expands into more granular wisps, obey those expanded wisps
+strictly and individually. Do NOT batch-close steps or work ahead.
 """
 formula = "delivery-workflow-v2"
 type = "workflow"
@@ -148,6 +159,11 @@ needs = ["kickoff"]
 description = """
 Ensure this feature has a root epic and integration branch before writing artifacts.
 
+## Branch Safety
+
+Starting on `main`/`master` is allowed only for this bootstrap step.
+After bootstrap, switch to the integration branch before writing files.
+
 ## Resolve/Create Root Epic
 
 If `epic_id` provided:
@@ -157,7 +173,7 @@ bd show {{epic_id}}
 EPIC_ID={{epic_id}}
 ```
 
-Otherwise:
+Otherwise, try to reuse one:
 
 ```bash
 bd list --title-contains "{{feature}}" --type epic
@@ -175,6 +191,7 @@ EPIC_ID=$(bd create "{{feature}}" -t epic -p P1 -d "Two-session tracked delivery
 ```bash
 gt mq integration create "$EPIC_ID"
 gt mq integration status "$EPIC_ID"
+# switch to integration branch shown by status output
 git switch <integration-branch-from-status-output>
 ```
 
@@ -211,7 +228,7 @@ needs = ["stage-bootstrap"]
 description = """
 Placeholder expanded by `draft-spec-expansion`.
 
-Create `docs/plans/{{feature}}/spec.md`.
+Create `docs/plans/{{feature}}/spec.md` using the shared spec template.
 """
 
 # ============================================================================
@@ -225,8 +242,14 @@ needs = ["stage-draft-spec"]
 description = """
 Placeholder expanded by `enrich-expansion`.
 
-Strengthen `docs/plans/{{feature}}/spec.md` while preserving serialized design
-constraints and decision history.
+Strengthen `docs/plans/{{feature}}/spec.md` while preserving:
+- Goals
+- Constraints
+- Acceptance Criteria
+- Non-Negotiables
+- Forbidden Approaches
+- Decision Log
+- Traceability
 """
 
 # ============================================================================
@@ -488,7 +511,22 @@ id = "stage-final-review-launch"
 title = "Stage 8: Launch Final Review Workers"
 needs = ["stage-implement-rest"]
 description = """
-Create the review checkpoint and launch the final review workers.
+Create the review checkpoint and launch the explicit end-of-session review workers.
+
+## Visibility Constraint
+
+Fresh slung review workers do not automatically share this session's dirty
+workspace state. Before launching sidecar reviewers, ensure the review inputs
+are materialized into state they can actually read.
+
+At minimum, that means:
+- the spec and supporting review artifacts exist in shared/committed form
+- the code to review is visible from the branch/workspace the sidecars will inspect
+
+Do not sling fresh review workers against parent-only untracked artifacts or
+local-only dirty changes and assume they can see them.
+
+## Review Checkpoint
 
 Before slinging reviewers:
 1. create a reviewable checkpoint commit
@@ -512,6 +550,14 @@ git commit -m "checkpoint: prepare {{feature}} for external review"
 git push
 ```
 
+The review checkpoint is not final completion. It is the stable state fresh
+review workers should inspect.
+
+## Review Inputs
+
+- pushed integration-branch state
+- shared review input files under `$REVIEW_DIR`
+
 Always run:
 - one general review with `--agent codex`
 - one general review with `--agent claude`
@@ -525,6 +571,44 @@ Use `mol-review-implementation` as the worker formula and include `spec.md`,
 Use the selected domain profile from `session-context.md` when it is strong
 enough to justify a specialist review, following the same conservative pattern
 as the original `delivery-workflow`.
+
+## Launch Discipline
+
+Do not blindly fire multiple slings at the same rig target in parallel when an
+idle polecat may be reused. Two concurrent slings can race and attach different
+review wisps to the same worker.
+
+Preferred approaches:
+- use explicit distinct polecat targets, or
+- launch the first reviewer, confirm it is working, then launch the second
+
+## Monitoring
+
+Use multiple signals, but treat them differently:
+
+- `gt peek <rig>/<polecat>` is the primary monitoring tool
+  - best for seeing whether the worker is actually progressing or just sitting
+    at the initial assigned prompt
+- `gt polecat status <rig>/<polecat>` is secondary
+  - good for lifecycle state, last activity, and clone path
+- `gt hook show <rig>/<polecat>` is secondary
+  - good for confirming which wisp is currently attached
+- `find "$REVIEW_DIR" -type f` is the completion signal
+  - use it to detect when review artifacts actually exist
+
+If `gt peek` shows the worker still sitting at the initial assigned prompt,
+nudge it explicitly:
+
+```bash
+gt nudge <rig>/<polecat> "Run gt hook and execute the hooked mol-review-implementation now. This is a report-only task writing to the shared .runtime review directory; do not commit the report."
+```
+
+Do not synthesize review results until the expected shared report files exist
+under `$REVIEW_DIR`.
+
+Do not synthesize review results in this step. Launch the workers, record the
+worker identities and expected report paths in `session-ledger.md`, then move to
+the monitoring step.
 """
 
 # ============================================================================
@@ -536,24 +620,79 @@ id = "stage-final-review-monitor"
 title = "Stage 9: Monitor Review Workers and Synthesize"
 needs = ["stage-final-review-launch"]
 description = """
-Monitor the launched review workers until required reports exist, then
-synthesize the results.
+Monitor the launched review workers until each required reviewer reaches a
+terminal state, then synthesize the results.
 
-Primary signal:
-- `gt peek <rig>/<polecat>`
+## Primary Monitoring Signal
+
+Treat `gt peek <rig>/<polecat>` as the primary truth source for live progress.
+Use it to answer: is the worker actually executing the review, or just sitting
+at the initial assigned prompt?
 
 Secondary signals:
-- `gt polecat status <rig>/<polecat>`
-- `gt hook show <rig>/<polecat>`
-- `find "$REVIEW_DIR" -type f`
+- `gt polecat status <rig>/<polecat>` for lifecycle state and last activity
+- `gt hook show <rig>/<polecat>` for current hooked wisp
+- `find "$REVIEW_DIR" -type f` for actual review artifact existence
 
-Do not synthesize until the expected report files exist or failures are
-explicitly classified.
+## Terminal Conditions
+
+Do not stop monitoring until every required reviewer reaches one of these
+terminal conditions:
+
+- the expected report file exists in `$REVIEW_DIR`
+- the reviewer wisp is closed
+- the reviewer polecat is idle with no hook
+- or the reviewer is explicitly classified as stalled/failed after retry policy
+  is exhausted
+
+## Monitoring Loop
+
+Keep polling until terminal conditions are met. A typical pass should:
+
+```bash
+gt peek <rig>/<polecat>
+gt polecat status <rig>/<polecat>
+gt hook show <rig>/<polecat>
+find "$REVIEW_DIR" -type f | sort
+```
+
+Then decide whether to continue waiting, retry, or classify failure.
+
+## Retry Policy
+
+- If `gt peek` shows the worker still at the initial assigned prompt after the
+  first wait window, send one explicit nudge
+- If it still has not started after the second wait window, classify startup as
+  failed and record that in `session-ledger.md`
+- If the hook clears but the expected report is missing, inspect the worker
+  notes and clone before deciding whether the run failed
+- If the worker is clearly making progress, keep monitoring and do not
+  summarize yet
+
+Example startup nudge:
+
+```bash
+gt nudge <rig>/<polecat> "Run gt hook and execute the hooked mol-review-implementation now. This is a report-only task writing to the shared .runtime review directory; do not commit the report."
+```
+
+## Anti-Patterns
+
+Do NOT:
+- stop monitoring just because no report exists yet
+- summarize intermediate state as final state
+- synthesize before reports exist or failures are explicitly classified
+- ask the human whether to keep monitoring unless retry policy is exhausted
+
+## Synthesis
 
 During synthesis, inspect:
 - whether the implementation matches `spec.md`
 - whether the implementation drifted from `plans.md`
 - whether milestone proof in `session-ledger.md` is actually evidenced
+- if a milestone or final state still relies on vague “test later” reasoning,
+  treat that as a workflow failure and return to implementation/fix work
+- if reviewers materially disagree, summarize the disagreement clearly
+- append the synthesis outcome to `session-ledger.md`
 
 If blocking issues exist, return to implementation work before proceeding.
 """
@@ -567,15 +706,20 @@ id = "stage-verify-finalize"
 title = "Stage 10: Verify, Finalize, and Report"
 needs = ["stage-final-review-monitor"]
 description = """
-Run final verification, finalize tracking, and summarize completion.
+Run final verification, then finalize tracking state and summary.
 
 ## Verification
 
-- execute relevant test/lint/build commands
-- if the full suite is too expensive, run targeted commands and state the limits
-- record all verification commands + outcomes in `session-ledger.md`
+- Execute relevant test/lint/build commands for changed areas.
+- If full suite is too expensive, run targeted commands and state limitations.
+- Record all verification commands + outcomes in `session-ledger.md`.
 
 ## Tracking Finalization
+
+```bash
+EPIC_ID=$(awk -F': ' '/^epic_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
+TRACKING_MODE=$(awk -F': ' '/^tracking_mode:/{print $2}' docs/plans/{{feature}}/session-context.md)
+```
 
 If `tracking` is `milestones`:
 - close `{{feature}}: implementation complete` when code is done
@@ -583,7 +727,7 @@ If `tracking` is `milestones`:
 - close `{{feature}}: final cleanup and ship` after final summary + push
 
 If `tracking` is `epic-only`:
-- append final status note to the root epic
+- append final status note to root epic (implementation + verification complete)
 
 ## Final Epic Note
 
@@ -595,6 +739,13 @@ Append:
 - verification commands run
 - unresolved risks (if any)
 - completion status
+
+## Output
+
+Provide a concise completion report including:
+- what was implemented
+- what was verified
+- what remains (if anything)
 """
 
 # ============================================================================
