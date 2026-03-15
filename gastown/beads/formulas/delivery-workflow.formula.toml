@@ -20,8 +20,8 @@ Default Codex-native delivery workflow with lightweight Gastown tracking.
 
 Composes eight stages sequentially:
 1. **Bootstrap** - ensure root epic + integration branch exist
-2. **Draft Spec** - produce `spec.md` with serialized constraints
-3. **Enrich** - tighten spec gaps while preserving decisions/traceability
+2. **Draft Spec** - produce the standard `spec.md` design record
+3. **Enrich** - tighten spec gaps while preserving serialized intent and traceability
 4. **Tracking Setup** - keep status in beads (epic-only or lightweight milestones)
 5. **Implement** - execute all work in THIS session (subagents optional)
 6. **Launch Final Review** - create a review checkpoint and sling sidecar reviewers
@@ -33,6 +33,20 @@ thread, but still want visibility in Gastown.
 
 **Input:** Feature name + brief description
 **Output:** Implemented feature + updated tracking epic/tasks + verification summary
+
+## Spec Contract
+
+This workflow relies on the shared `spec.md` contract produced by
+`draft-spec-expansion` and strengthened by `enrich-expansion`.
+
+The source of truth for the exact spec shape is:
+- `gastown/docs/templates/spec.md`
+- `draft-spec-expansion.formula.toml`
+- `enrich-expansion.formula.toml`
+
+In practice, the spec now carries richer planning context such as goals,
+constraints, and acceptance criteria in addition to design intent, decision
+history, and traceability.
 
 ## Tracking Modes
 
@@ -205,7 +219,7 @@ needs = ["stage-bootstrap"]
 description = """
 Placeholder expanded by `draft-spec-expansion`.
 
-Create `docs/plans/{{feature}}/spec.md` with serialized constraints.
+Create `docs/plans/{{feature}}/spec.md` using the shared spec template.
 """
 
 # ============================================================================
@@ -220,6 +234,9 @@ description = """
 Placeholder expanded by `enrich-expansion`.
 
 Strengthen `docs/plans/{{feature}}/spec.md` while preserving:
+- Goals
+- Constraints
+- Acceptance Criteria
 - Non-Negotiables
 - Forbidden Approaches
 - Decision Log
