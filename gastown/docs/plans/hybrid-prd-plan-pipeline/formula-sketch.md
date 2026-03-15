@@ -6,7 +6,7 @@ shapes.
 The corresponding formula files now exist under `gastown/beads/formulas/`:
 
 - `plan-expansion.formula.toml`
-- `delivery-workflow-v2.formula.toml`
+- `delivery-workflow-planned.formula.toml`
 
 The intent is to answer:
 
@@ -40,7 +40,7 @@ Non-goals:
 - does not replace `beadify`
 - does not own final review
 
-### Revised orchestrator: `delivery-workflow v2`
+### Revised orchestrator: `delivery-workflow-planned`
 
 Purpose:
 
@@ -193,11 +193,11 @@ Artifacts:
 - reads `spec.md`, `plans.md`
 - writes no new durable artifact
 
-## `delivery-workflow v2` Shape
+## `delivery-workflow-planned` Shape
 
 Suggested file:
 
-- `gastown/beads/formulas/delivery-workflow-v2.formula.toml`
+- `gastown/beads/formulas/delivery-workflow-planned.formula.toml`
 
 Suggested stages:
 
@@ -382,6 +382,6 @@ The concrete formula files and README updates now exist. Remaining design
 decisions include:
 
 1. whether old `delivery-workflow` remains as the lean single-session option
-2. whether `delivery-workflow-v2` becomes the documented default
+2. whether `delivery-workflow-planned` becomes the documented default
 3. whether `plan-expansion` should eventually grow a heavier rigor mode
 4. whether `plans.md` should always persist or be optional for very small work

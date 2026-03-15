@@ -27,8 +27,8 @@ Good candidates for shared expansions:
 - verify-finalize
 
 Do not force extraction when lifecycle behavior is meaningfully different.
-Example: `tracking-setup` currently differs between `delivery-workflow` and
-`delivery-workflow-v2`, so it should not be merged just for symmetry.
+Example: `tracking-setup` currently differs between `delivery-workflow-quick`
+and `delivery-workflow-planned`, so it should not be merged just for symmetry.
 
 ## Artifact Boundary Rule
 
@@ -58,8 +58,8 @@ For the delivery workflows, prefer:
 - same shell where meaning is shared
 - inserted phases where behavior differs
 
-`delivery-workflow-v2` should be understood as:
-- `delivery-workflow`
+`delivery-workflow-planned` should be understood as:
+- `delivery-workflow-quick`
 - plus inserted planning/session-boundary phases
 - plus genuinely different execution stages where needed
 
@@ -84,7 +84,7 @@ After changing formulas:
 
 ## Router Rule
 
-The current `delivery-router-workflow` is a selector, not a self-branching
+The current `delivery-workflow` is a selector, not a self-branching
 workflow engine. It should inspect, decide, record, and output the next
 workflow to run. Do not pretend the current molecule model supports elegant
 in-place branching if it does not.

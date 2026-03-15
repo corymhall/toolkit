@@ -1,7 +1,7 @@
 # Plan Expansion
 #
 # Read a cleaned spec, generate a milestone implementation plan, review it
-# twice, and leave behind `plans.md` as the build contract for delivery-workflow-v2.
+# twice, and leave behind `plans.md` as the build contract for delivery-workflow-planned.
 #
 # Steps:
 #   1. Validate spec
@@ -21,7 +21,7 @@ passes, and leave behind a build-ready milestone plan.
 **Output:** `docs/plans/{{feature}}/plans.md`
 
 This formula is intended for the planning/build handoff in
-`delivery-workflow-v2`. It is not a replacement for `beadify` and it does not
+`delivery-workflow-planned`. It is not a replacement for `beadify` and it does not
 implement code.
 
 ## Review Model

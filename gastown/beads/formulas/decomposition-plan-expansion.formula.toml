@@ -14,7 +14,7 @@ decomposition artifact.
 **Input:** `docs/plans/{{feature}}/spec.md`
 **Output:** `docs/plans/{{feature}}/plan-draft.md`
 
-This formula is intended for `epic-delivery-workflow`. It separates
+This formula is intended for `delivery-workflow-epic`. It separates
 requirements/design intent from workstream decomposition and sequencing.
 
 ## Review Model

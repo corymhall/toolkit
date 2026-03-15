@@ -5,8 +5,8 @@
 Introduce a selective two-artifact planning model for umbrella work without
 giving up the simpler single-spec model that fits Codex-native implementation.
 
-Today Gastown uses one `spec.md` format across both `epic-delivery-workflow`
-and `delivery-workflow`. That uniformity is convenient, but it also means we
+Today Gastown uses one `spec.md` format across both `delivery-workflow-epic`
+and the feature-delivery workflows. That uniformity is convenient, but it also means we
 blur two different jobs:
 
 1. defining what the work is, why it matters, and what constraints apply
@@ -18,9 +18,9 @@ most useful:
 
 - `spec.md` stays the durable requirements and design record
 - `plan-draft.md` becomes a decomposition and sequencing artifact for
-  `epic-delivery-workflow` / `beadify`
+  `delivery-workflow-epic` / `beadify`
 - `plans.md` becomes a lightweight milestone plan for session 2 of
-  `delivery-workflow v2`
+  `delivery-workflow-planned`
 
 The goal is to borrow the useful separation from PRD-plus-plan systems without
 reintroducing the old over-ceremonial pipeline.
@@ -111,7 +111,7 @@ to review sequencing, risk concentration, parallelism, and bead boundaries.
 
 #### 3. `plans.md` as the implementation milestone artifact
 
-Add `docs/plans/<feature>/plans.md` for `delivery-workflow v2`.
+Add `docs/plans/<feature>/plans.md` for `delivery-workflow-planned`.
 
 This is intentionally smaller than the umbrella `plan-draft.md`. It is not
 trying to decompose an initiative into multiple feature beads. It is trying to
@@ -172,7 +172,7 @@ Practical rules:
 
 ### Workflow Placement
 
-#### `epic-delivery-workflow`
+#### `delivery-workflow-epic`
 
 Recommended future shape:
 
@@ -202,7 +202,7 @@ The existing review passes should shift slightly:
 - dependencies: does the plan's sequencing survive contact with bead edges?
 - clarity: can a fresh agent act on each resulting bead?
 
-#### `delivery-workflow`
+#### `delivery-workflow-planned`
 
 Do not require the umbrella `plan-draft.md`.
 
@@ -240,7 +240,7 @@ The purpose of `plans.md` is not to restate the spec. It is to reduce the odds
 that the first meaningful human feedback arrives only after the full feature is
 built.
 
-### `delivery-workflow v2` session boundary
+### `delivery-workflow-planned` session boundary
 
 The default split should happen after `enrich`, not before it.
 
@@ -315,7 +315,7 @@ Default rule:
 - prototype code itself should not be part of the normal handoff unless a small
   isolated piece is intentionally promoted
 
-### `delivery-workflow v2` review boundary
+### `delivery-workflow-planned` review boundary
 
 The workflow should add one explicit mid-run review boundary for medium and
 large work.
@@ -337,7 +337,7 @@ If the answer is "yes, big changes are needed," the workflow should revise
 `plans.md` and `spec.md` before continuing. This is the mechanism intended to
 make end-of-run review findings smaller.
 
-### `delivery-workflow v2` artifact contract
+### `delivery-workflow-planned` artifact contract
 
 For the implementation workflow, the artifact split becomes:
 
@@ -361,9 +361,9 @@ Instead:
 - new plan generation gets 2 explicit review passes by default:
   - pass 1: completeness + scope/constraints
   - pass 2: sequencing + testability/risk
-- `delivery-workflow v2` gets one early milestone review stop plus final review
+- `delivery-workflow-planned` gets one early milestone review stop plus final review
 - `beadify` retains its current task-readiness review passes
-- `delivery-workflow` uses a 2-session split by default: converge through
+- `delivery-workflow-planned` uses a 2-session split by default: converge through
   `enrich`, then start a fresh planning/build session
 
 Escalate beyond 2 passes only when the work is unusually large, ambiguous, or
@@ -388,7 +388,7 @@ Phase 1:
 Phase 2:
 
 - add a new expansion such as `plan-expansion`
-- compose it into `epic-delivery-workflow` before `beadify`
+- compose it into `delivery-workflow-epic` before `beadify`
 
 Phase 3:
 
@@ -397,7 +397,7 @@ Phase 3:
 
 Phase 4:
 
-- add `plans.md` generation to `delivery-workflow`
+- add `plans.md` generation to `delivery-workflow-planned`
 - require a milestone-1 review stop for medium/large work
 
 Phase 5:
@@ -411,8 +411,8 @@ In:
 
 - selective PRD/plan separation for umbrella decomposition
 - richer `spec.md` requirements sections
-- new `plan-draft.md` artifact for `epic-delivery-workflow`
-- new `plans.md` artifact for `delivery-workflow v2`
+- new `plan-draft.md` artifact for `delivery-workflow-epic`
+- new `plans.md` artifact for `delivery-workflow-planned`
 - a default 2-session split for feature delivery: convergence, then planning/build
 - optional prototype distillation during session 1 when exploratory code exists
 
@@ -429,10 +429,10 @@ Out:
 |----------|--------|-----------|
 | One universal artifact vs selective split | Selective split | Umbrella decomposition and feature implementation benefit from different kinds of plans. |
 | Persisted source of truth | Keep `spec.md` | Our current serialized constraints and decision history are valuable and should stay central. |
-| Where to add the extra artifact | `epic-delivery-workflow` / `beadify` first | That is where decomposition quality matters most. |
+| Where to add the extra artifact | `delivery-workflow-epic` / `beadify` first | That is where decomposition quality matters most. |
 | Delivery planning artifact | Add `plans.md` | A compact milestone plan is the cheapest way to shrink late-stage churn in a fresh build session. |
 | Default review intensity | 2 plan review passes, not 6 | Two passes add real planning pressure without turning normal feature work into ceremony. |
-| `delivery-workflow` default | Use a 2-session split with lightweight planning | Keeps noisy exploration out of the build session while still forcing enough upfront thinking. |
+| `delivery-workflow-planned` default | Use a 2-session split with lightweight planning | Keeps noisy exploration out of the build session while still forcing enough upfront thinking. |
 
 ## Risks
 
@@ -448,7 +448,7 @@ Out:
 ## Open Questions
 
 - Should `Goals`, `Constraints`, and `Acceptance Criteria` be required for all
-  specs, or only required in `epic-delivery-workflow`?
+  specs, or only required in `delivery-workflow-epic`?
 - Should `plan-draft.md` persist after bead creation, or remain a transient file
   like today's `beads-draft.md`?
 - Should `plans.md` always persist for delivery runs, or be allowed to stay

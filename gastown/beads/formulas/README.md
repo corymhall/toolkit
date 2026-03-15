@@ -18,8 +18,8 @@ The formulas follow an **expansion/workflow pattern**:
 
 **Spec-first, adaptable execution systems:**
 - `spec.md` — the durable requirements and design record
-- `plan-draft.md` — decomposition plan for `epic-delivery-workflow`
-- `plans.md` — milestone plan for `delivery-workflow-v2`
+- `plan-draft.md` — decomposition plan for `delivery-workflow-epic`
+- `plans.md` — milestone plan for `delivery-workflow-planned`
 - Beads — either execution decomposition (`beadify`) or lightweight tracking
 - `session-ledger.md` — execution evidence for delivery workflows
 
@@ -64,7 +64,7 @@ flowchart TD
         LEDGER["session-ledger.md"]
     end
 
-    subgraph EPIC["epic-delivery-workflow"]
+    subgraph EPIC["delivery-workflow-epic"]
         EDW_START["start"]
         EDW_BOOT["bootstrap"]
         EDW_C1["checkpoint-after-draft"]
@@ -73,7 +73,7 @@ flowchart TD
         EDW_DONE["complete"]
     end
 
-    subgraph DELIV1["delivery-workflow"]
+    subgraph DELIV1["delivery-workflow-quick"]
         DW_START["start"]
         DW_BOOT["bootstrap"]
         DW_TRACK["tracking-setup"]
@@ -81,7 +81,7 @@ flowchart TD
         DW_DONE["complete"]
     end
 
-    subgraph DELIV2["delivery-workflow-v2"]
+    subgraph DELIV2["delivery-workflow-planned"]
         DW2_START["start"]
         DW2_BOOT["bootstrap"]
         DW2_HANDOFF["checkpoint-handoff-ready"]
@@ -92,7 +92,7 @@ flowchart TD
         DW2_DONE["complete"]
     end
 
-    subgraph ROUTER["delivery-router-workflow"]
+    subgraph ROUTER["delivery-workflow"]
         DR_START["start"]
         DR_INSPECT["inspect"]
         DR_SELECT["select-mode"]
@@ -240,7 +240,7 @@ gt sling enrich-expansion <crew> \
 
 Reads a cleaned umbrella spec, generates `plan-draft.md`, runs the default two
 decomposition-plan review passes, and leaves behind a beadify-ready
-workstream/sequencing artifact for `epic-delivery-workflow`.
+workstream/sequencing artifact for `delivery-workflow-epic`.
 
 **Steps:**
 1. Validate spec for decomposition planning
@@ -278,7 +278,7 @@ gt sling decomposition-plan-expansion <crew> \
 
 Reads a cleaned spec, generates `plans.md`, runs the default two plan review
 passes, and leaves behind a build-ready milestone plan for
-`delivery-workflow-v2`.
+`delivery-workflow-planned`.
 
 **Steps:**
 1. Validate spec for planning
@@ -377,7 +377,7 @@ Related design exploration:
 
 ### Delivery Router
 
-**Formula:** `delivery-router-workflow`
+**Formula:** `delivery-workflow`
 
 Agent-driven selector for the appropriate downstream delivery workflow.
 
@@ -392,13 +392,13 @@ active router molecule; instead it finishes cleanly and tells you which
 workflow to run next.
 
 **Modes it can select:**
-- `delivery-workflow`
-- `delivery-workflow-v2`
-- `epic-delivery-workflow`
+- `delivery-workflow-quick`
+- `delivery-workflow-planned`
+- `delivery-workflow-epic`
 
 **Usage:**
 ```bash
-gt sling delivery-router-workflow <crew> \
+gt sling delivery-workflow <crew> \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
   --var tracking="milestones"
@@ -408,7 +408,7 @@ gt sling delivery-router-workflow <crew> \
 
 ### Epic Delivery
 
-**Formula:** `epic-delivery-workflow`
+**Formula:** `delivery-workflow-epic`
 
 Composes the umbrella-side expansion formulas into the full pipeline with
 checkpoints between stages. Use this for initiatives that need to be broken
@@ -430,7 +430,9 @@ Artifacts produced:
 - `docs/plans/{feature}/plan-draft.md`
 - beads epic with feature/workstream beads and dependency graph
 
-Those resulting beads are expected to kick off `delivery-workflow` rather than be coded directly from the umbrella workflow.
+Those resulting beads are expected to kick off `delivery-workflow` (the router)
+or one of the concrete delivery workflows rather than be coded directly from the
+umbrella workflow.
 
 **Vars:**
 
@@ -440,7 +442,7 @@ Those resulting beads are expected to kick off `delivery-workflow` rather than b
 | `brief` | yes | 1-3 sentence description |
 **Usage:**
 ```bash
-gt sling epic-delivery-workflow <crew> \
+gt sling delivery-workflow-epic <crew> \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```
@@ -449,7 +451,7 @@ gt sling epic-delivery-workflow <crew> \
 
 ### Delivery Workflow
 
-**Formula:** `delivery-workflow`
+**Formula:** `delivery-workflow-quick`
 
 Single uninterrupted Codex session from plan through implementation, explicit
 final review, and verification.
@@ -479,7 +481,7 @@ the expected stage order.
 
 **Usage:**
 ```bash
-gt sling delivery-workflow <crew> \
+gt sling delivery-workflow-quick <crew> \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
   --var tracking="milestones"
@@ -489,7 +491,7 @@ gt sling delivery-workflow <crew> \
 
 ### Delivery Workflow V2
 
-**Formula:** `delivery-workflow-v2`
+**Formula:** `delivery-workflow-planned`
 
 Recommended default delivery workflow when discovery is noisy and you want the
 build session to start fresh from committed artifacts.
@@ -529,7 +531,7 @@ Use this when:
 
 **Usage:**
 ```bash
-gt sling delivery-workflow-v2 <crew> \
+gt sling delivery-workflow-planned <crew> \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
   --var tracking="milestones"
@@ -570,7 +572,8 @@ runtime and once per review lens, with parent-side synthesis handled by the
 calling workflow.
 
 Use this as the autonomous review worker for the final stage of
-`delivery-workflow` or other Codex-native workflows that want a
+`delivery-workflow-quick`, `delivery-workflow-planned`, or other Codex-native
+workflows that want a
 structured review artifact without a human-interactive skill session.
 
 **Review model:**

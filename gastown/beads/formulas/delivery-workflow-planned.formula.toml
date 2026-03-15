@@ -1,4 +1,4 @@
-# Delivery Workflow V2
+# Delivery Workflow Planned
 #
 # Two-session delivery:
 #   session 1: bootstrap -> draft-spec -> enrich -> handoff
@@ -9,14 +9,14 @@
 # using Codex-native single-owner implementation once planning is locked.
 #
 # Usage:
-#   gt sling delivery-workflow-v2 <crew> \
+#   gt sling delivery-workflow-planned <crew> \
 #     --var feature="ipv6-support" \
 #     --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
 #     [--var epic_id="abc123"] \
 #     [--var tracking="milestones"]
 
 description = """
-Two-session Codex-native delivery workflow.
+Planned two-session Codex-native delivery workflow.
 
 Session 1 is for discovery and convergence:
 1. **Bootstrap**
@@ -80,7 +80,7 @@ unless the wisp explicitly requires `request_user_input` or says `STOP`.
 If a stage expands into more granular wisps, obey those expanded wisps
 strictly and individually. Do NOT batch-close steps or work ahead.
 """
-formula = "delivery-workflow-v2"
+formula = "delivery-workflow-planned"
 type = "workflow"
 pour = true
 version = 1
@@ -120,10 +120,10 @@ default = "two-session"
 
 [[steps]]
 id = "kickoff"
-title = "Delivery Workflow V2 Kickoff"
+title = "Delivery Workflow Planned Kickoff"
 description = """
 ═══════════════════════════════════════════════════════════════
- DELIVERY WORKFLOW V2
+ DELIVERY WORKFLOW PLANNED
  Two-session delivery:
    session 1 = discovery / convergence
    session 2 = planning / build
