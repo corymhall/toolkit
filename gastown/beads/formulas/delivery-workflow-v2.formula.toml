@@ -104,6 +104,16 @@ description = "Tracking mode: milestones (default) or epic-only"
 required = false
 default = "milestones"
 
+[vars.bootstrap_epic_description]
+description = "Internal bootstrap epic description"
+required = false
+default = "Two-session tracked delivery epic for {{feature}}."
+
+[vars.delivery_mode_context]
+description = "Internal delivery mode marker"
+required = false
+default = "two-session"
+
 # ============================================================================
 # KICKOFF
 # ============================================================================
@@ -157,64 +167,7 @@ id = "stage-bootstrap"
 title = "Stage 1: Bootstrap Epic + Integration Branch"
 needs = ["kickoff"]
 description = """
-Ensure this feature has a root epic and integration branch before writing artifacts.
-
-## Branch Safety
-
-Starting on `main`/`master` is allowed only for this bootstrap step.
-After bootstrap, switch to the integration branch before writing files.
-
-## Resolve/Create Root Epic
-
-If `epic_id` provided:
-
-```bash
-bd show {{epic_id}}
-EPIC_ID={{epic_id}}
-```
-
-Otherwise, try to reuse one:
-
-```bash
-bd list --title-contains "{{feature}}" --type epic
-```
-
-If none is suitable, create one:
-
-```bash
-EPIC_ID=$(bd create "{{feature}}" -t epic -p P1 -d "Two-session tracked delivery epic for {{feature}}."
-  --json | jq -r '.[0].id // .id')
-```
-
-## Create/Verify Integration Branch
-
-```bash
-gt mq integration create "$EPIC_ID"
-gt mq integration status "$EPIC_ID"
-# switch to integration branch shown by status output
-git switch <integration-branch-from-status-output>
-```
-
-## Persist Session Context
-
-```bash
-mkdir -p docs/plans/{{feature}}
-TRACKING_MODE="{{tracking}}"
-if [ -z "$TRACKING_MODE" ]; then TRACKING_MODE="milestones"; fi
-cat > docs/plans/{{feature}}/session-context.md <<CTX
-feature: {{feature}}
-brief: {{brief}}
-epic_id: $EPIC_ID
-tracking_mode: $TRACKING_MODE
-review_categories: all
-review_profiles_selected: general
-delivery_mode: two-session
-CTX
-```
-
-## Output
-
-Report epic ID, integration branch, and tracking mode.
+Placeholder expanded by `bootstrap-expansion`.
 """
 
 # ============================================================================
@@ -571,6 +524,10 @@ and builds from committed artifacts.
 # ============================================================================
 
 [compose]
+
+[[compose.expand]]
+target = "stage-bootstrap"
+with = "bootstrap-expansion"
 
 [[compose.expand]]
 target = "stage-draft-spec"
