@@ -40,6 +40,104 @@ Any entry point works. Already have a spec? Skip to `plan-expansion` or
 `decomposition-plan-expansion` or `beadify`. Want more rigor? Run `enrich` multiple times. Wrote the spec
 yourself? Go straight to the downstream expansion you need.
 
+## Workflow Map
+
+```mermaid
+flowchart TD
+    subgraph SHARED["Shared"]
+        DS["draft-spec-expansion"]
+        EN["enrich-expansion"]
+        DP["decomposition-plan-expansion"]
+        PL["plan-expansion"]
+        BD["beadify-expansion"]
+
+        FR["final-review-launch"]
+        MS["monitor-synthesize"]
+        VF["verify-finalize"]
+
+        SPEC["spec.md"]
+        PLAN_DRAFT["plan-draft.md"]
+        PLANS["plans.md"]
+        BEADS["beads graph"]
+        LEDGER["session-ledger.md"]
+    end
+
+    subgraph EPIC["epic-delivery-workflow"]
+        EDW_START["start"]
+        EDW_BOOT["bootstrap"]
+        EDW_C1["checkpoint-after-draft"]
+        EDW_C2["checkpoint-after-enrich"]
+        EDW_C3["checkpoint-after-plan"]
+        EDW_DONE["complete"]
+    end
+
+    subgraph DELIV1["delivery-workflow"]
+        DW_START["start"]
+        DW_BOOT["bootstrap"]
+        DW_TRACK["tracking-setup"]
+        DW_IMPL["stage-implement"]
+        DW_DONE["complete"]
+    end
+
+    subgraph DELIV2["delivery-workflow-v2"]
+        DW2_START["start"]
+        DW2_BOOT["bootstrap"]
+        DW2_HANDOFF["checkpoint-handoff-ready"]
+        DW2_TRACK["tracking-setup"]
+        DW2_M1["implement-m1"]
+        DW2_SHAPE["shape-review"]
+        DW2_REST["implement-rest"]
+        DW2_DONE["complete"]
+    end
+
+    EDW_START --> EDW_BOOT
+    EDW_BOOT --> DS
+    DS --> EDW_C1
+    EDW_C1 --> EN
+    EN --> EDW_C2
+    EDW_C2 --> DP
+    DP --> EDW_C3
+    EDW_C3 --> BD
+    BD --> EDW_DONE
+
+    DW_START --> DW_BOOT
+    DW_BOOT --> DS
+    DS --> EN
+    EN --> DW_TRACK
+    DW_TRACK --> DW_IMPL
+    DW_IMPL --> FR
+    VF --> DW_DONE
+
+    DW2_START --> DW2_BOOT
+    DW2_BOOT --> DS
+    DS --> EN
+    EN --> DW2_HANDOFF
+    DW2_HANDOFF --> DW2_TRACK
+    DW2_TRACK --> PL
+    PL --> DW2_M1
+    DW2_M1 --> DW2_SHAPE
+    DW2_SHAPE --> DW2_REST
+    DW2_REST --> FR
+    VF --> DW2_DONE
+
+    FR --> MS
+    MS --> VF
+
+    DS -. writes .-> SPEC
+    DP -. writes .-> PLAN_DRAFT
+    PL -. writes .-> PLANS
+    BD -. creates .-> BEADS
+    DW_IMPL -. updates .-> LEDGER
+    DW2_M1 -. updates .-> LEDGER
+    DW2_REST -. updates .-> LEDGER
+
+    classDef shared fill:#355c3a,color:#fff,stroke:#1f3a24,stroke-width:1px;
+    classDef artifact fill:#f4f1e8,color:#333,stroke:#c9bfa8,stroke-width:1px;
+
+    class DS,EN,DP,PL,BD,FR,MS,VF shared;
+    class SPEC,PLAN_DRAFT,PLANS,BEADS,LEDGER artifact;
+```
+
 ---
 
 ### Draft Spec
