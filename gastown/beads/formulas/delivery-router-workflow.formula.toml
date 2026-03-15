@@ -1,0 +1,289 @@
+# Delivery Router Workflow
+#
+# Agent-driven workflow selection:
+#   inspect brief + repo + existing artifacts -> choose mode -> record decision
+#   -> output exact downstream workflow to run
+#
+# This is intentionally a router, not an implementation workflow. It chooses
+# the appropriate downstream workflow based on complexity, ambiguity, and scope.
+#
+# Usage:
+#   gt sling delivery-router-workflow <crew> \
+#     --var feature="ipv6-support" \
+#     --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
+#     [--var epic_id="abc123"] \
+#     [--var tracking="milestones"]
+
+description = """
+Agent-driven workflow selector for delivery.
+
+This workflow inspects the brief, repo context, and any existing artifacts,
+chooses the appropriate delivery mode, records the rationale, and outputs the
+exact downstream workflow to run next.
+
+It does **not** try to self-branch into another active molecule automatically.
+That is intentional: with the current formula/molecule model, self-launching a
+second workflow from inside an active router molecule is operationally awkward.
+
+Instead, this workflow gives you:
+- a visible, durable mode decision
+- a short rationale
+- the exact `gt sling ...` command for the next workflow
+
+## Modes
+
+- `delivery-workflow`:
+  use for small / clear / low-ambiguity feature work
+
+- `delivery-workflow-v2`:
+  use for medium or noisy feature work where discovery and build should be split
+
+- `epic-delivery-workflow`:
+  use for umbrella initiatives that need decomposition into feature/workstream beads
+
+## Decision Principle
+
+The agent should make the first determination after inspecting the problem and
+context, not force the human to pre-classify the work before any evaluation.
+
+## Step Lifecycle (Molecule Work Loop)
+
+This formula runs as a molecule — each step is a wisp bead. Use the
+standard molecule work loop to advance through steps:
+
+```bash
+bd mol current <molecule-id>
+# execute the step
+bd close <step-id>
+bd mol current <molecule-id>
+# repeat until complete
+```
+
+After closing a wisp, stop and re-run `bd mol current <molecule-id>` before
+starting anything else. Do not begin the next stage from memory, expected
+sequence, prior banner text, or "workflow intent" alone.
+"""
+formula = "delivery-router-workflow"
+type = "workflow"
+pour = true
+version = 1
+
+[vars]
+[vars.feature]
+description = "Feature name (becomes directory name under docs/plans/)"
+required = true
+
+[vars.brief]
+description = "Feature brief - 1-3 sentences describing what to build"
+required = true
+
+[vars.epic_id]
+description = "Optional existing root epic ID to reuse downstream"
+required = false
+default = ""
+
+[vars.tracking]
+description = "Tracking mode for downstream delivery workflows"
+required = false
+default = "milestones"
+
+# ============================================================================
+# KICKOFF
+# ============================================================================
+
+[[steps]]
+id = "kickoff"
+title = "Delivery Router Kickoff"
+description = """
+═══════════════════════════════════════════════════════════════
+ DELIVERY ROUTER
+ Inspect the work, choose the right delivery mode, and output the next
+ workflow to run.
+
+ Feature:  {{feature}}
+ Brief:    {{brief}}
+ Tracking: {{tracking}} (empty => milestones)
+
+ Candidate downstream workflows:
+   - delivery-workflow
+   - delivery-workflow-v2
+   - epic-delivery-workflow
+═══════════════════════════════════════════════════════════════
+
+Output this banner to the user, then close this step to begin.
+"""
+
+# ============================================================================
+# STAGE 1: INSPECT CONTEXT
+# ============================================================================
+
+[[steps]]
+id = "stage-inspect"
+title = "Stage 1: Inspect brief, repo, and artifacts"
+needs = ["kickoff"]
+description = """
+Inspect the problem before choosing a workflow.
+
+## Inputs
+
+- feature brief: {{brief}}
+- existing files under `docs/plans/{{feature}}/` if present
+- repo layout, adjacent features, and apparent integration surface
+
+## What to assess
+
+1. **Scope shape**
+   - Is this one coherent feature?
+   - Or is it obviously multiple workstreams/features?
+
+2. **Ambiguity / noise**
+   - Does this look clear enough to build directly?
+   - Or does it smell like medium/noisy work where planning and build should be split?
+
+3. **Existing artifacts**
+   - Is there already a strong `spec.md`?
+   - Is there already a `plans.md` or `plan-draft.md`?
+
+4. **Complexity / risk**
+   - low: small, clear, bounded
+   - medium: feature-sized, some ambiguity, likely wants milestone planning
+   - high: umbrella or multi-workstream, expensive to rework late
+
+## Output
+
+Summarize the inspection briefly and proceed to mode selection.
+"""
+
+# ============================================================================
+# STAGE 2: SELECT MODE
+# ============================================================================
+
+[[steps]]
+id = "stage-select-mode"
+title = "Stage 2: Choose delivery mode"
+needs = ["stage-inspect"]
+description = """
+Choose exactly one downstream workflow.
+
+## Selection rules
+
+Choose `delivery-workflow` when:
+- the work is small or very clear
+- one coherent feature is being built
+- the likely cost of late churn is low
+
+Choose `delivery-workflow-v2` when:
+- the work is still one feature, but discovery is noisy
+- there was substantial brainstorming, web research, or prototyping
+- a fresh planning/build session would reduce confusion
+
+Choose `epic-delivery-workflow` when:
+- the problem is clearly larger than one feature
+- it should decompose into feature/workstream beads first
+- ownership/dependencies across multiple execution units matter
+
+## Required output
+
+Decide and record:
+- `delivery_mode`: `spec-only` | `milestone-plan` | `umbrella-decomposition`
+- `workflow_formula`: one of the three downstream workflows
+- `risk_level`: `low` | `medium` | `high`
+- `reason`: short concrete rationale
+
+If confidence is low, say so explicitly in the rationale. Do not ask the human
+to choose unless a hidden consequence makes the decision genuinely unsafe.
+"""
+
+# ============================================================================
+# STAGE 3: RECORD DECISION
+# ============================================================================
+
+[[steps]]
+id = "stage-record-decision"
+title = "Stage 3: Record routing decision"
+needs = ["stage-select-mode"]
+description = """
+Write the routing decision to a durable artifact.
+
+## Write
+
+Create/update `docs/plans/{{feature}}/routing-decision.md` with:
+
+```markdown
+# Delivery Routing Decision
+
+Feature: {{feature}}
+Brief: {{brief}}
+
+- delivery_mode: <spec-only | milestone-plan | umbrella-decomposition>
+- workflow_formula: <delivery-workflow | delivery-workflow-v2 | epic-delivery-workflow>
+- risk_level: <low | medium | high>
+- reason: <short rationale>
+
+## Notes
+- existing artifacts found: <list or none>
+- important ambiguity: <if any>
+```
+
+Keep this concise. It is an audit note, not a second spec.
+"""
+
+# ============================================================================
+# STAGE 4: OUTPUT NEXT COMMAND
+# ============================================================================
+
+[[steps]]
+id = "stage-output-next-command"
+title = "Stage 4: Output next workflow command"
+needs = ["stage-record-decision"]
+description = """
+Output the exact downstream workflow command to run next.
+
+Because this router is itself a molecule, do NOT try to self-launch another
+workflow from inside this active molecule. Instead:
+- finish this router cleanly
+- output the exact next command
+
+## Output contract
+
+Report:
+- chosen `delivery_mode`
+- chosen `workflow_formula`
+- reason
+- exact next command to run
+
+Construct the next command in this form:
+
+```bash
+gt sling <workflow_formula> <current-crew> \
+  --var feature="{{feature}}" \
+  --var brief="{{brief}}" \
+  [--var epic_id="{{epic_id}}"] \
+  --var tracking="{{tracking}}"
+```
+
+If `epic_id` is empty, omit that flag.
+
+To determine `<current-crew>`, infer it from the current workspace path if
+needed (for example, the last path segment under `/crew/`).
+"""
+
+# ============================================================================
+# COMPLETE
+# ============================================================================
+
+[[steps]]
+id = "complete"
+title = "Workflow Complete"
+needs = ["stage-output-next-command"]
+description = """
+Delivery router complete.
+
+Artifacts:
+- `docs/plans/{{feature}}/routing-decision.md`
+
+Outcome:
+- the appropriate downstream workflow has been selected
+- the rationale is recorded
+- the exact next command is available
+"""

@@ -1,8 +1,9 @@
 # Formulas
 
 Spec-centric design and execution formulas for the `gt sling` pipeline. Five
-composable expansion formulas and three workflow orchestrators support
+composable expansion formulas and four workflow orchestrators support
 different delivery modes:
+- agent-driven routing into the right delivery mode
 - delegation-safe umbrella decomposition (`spec -> enrich -> decomposition plan -> beadify`)
 - lean single-session delivery (`spec -> enrich -> implement`)
 - two-session planned delivery (`spec -> enrich || plans -> build`)
@@ -90,6 +91,19 @@ flowchart TD
         DW2_DONE["complete"]
     end
 
+    subgraph ROUTER["delivery-router-workflow"]
+        DR_START["start"]
+        DR_INSPECT["inspect"]
+        DR_SELECT["select-mode"]
+        DR_RECORD["record-decision"]
+        DR_DONE["output next command"]
+    end
+
+    DR_START --> DR_INSPECT
+    DR_INSPECT --> DR_SELECT
+    DR_SELECT --> DR_RECORD
+    DR_RECORD --> DR_DONE
+
     EDW_START --> EDW_BOOT
     EDW_BOOT --> DS
     DS --> EDW_C1
@@ -130,12 +144,13 @@ flowchart TD
     DW_IMPL -. updates .-> LEDGER
     DW2_M1 -. updates .-> LEDGER
     DW2_REST -. updates .-> LEDGER
+    DR_RECORD -. writes .-> ROUTE["routing-decision.md"]
 
     classDef shared fill:#355c3a,color:#fff,stroke:#1f3a24,stroke-width:1px;
     classDef artifact fill:#f4f1e8,color:#333,stroke:#c9bfa8,stroke-width:1px;
 
     class DS,EN,DP,PL,BD,FR,MS,VF shared;
-    class SPEC,PLAN_DRAFT,PLANS,BEADS,LEDGER artifact;
+    class SPEC,PLAN_DRAFT,PLANS,BEADS,LEDGER,ROUTE artifact;
 ```
 
 ---
@@ -355,6 +370,37 @@ Related design exploration:
 - [Hybrid Formula Sketch](../../docs/plans/hybrid-prd-plan-pipeline/formula-sketch.md) — concrete stage sketch for `plan-expansion` and `delivery-workflow v2`
 
 ## Workflow Formula
+
+### Delivery Router
+
+**Formula:** `delivery-router-workflow`
+
+Agent-driven selector for the appropriate downstream delivery workflow.
+
+This workflow:
+1. inspects the brief, repo, and existing artifacts
+2. chooses a delivery mode
+3. records the rationale in `routing-decision.md`
+4. outputs the exact downstream `gt sling ...` command to run next
+
+It intentionally does not try to self-launch another workflow from inside the
+active router molecule; instead it finishes cleanly and tells you which
+workflow to run next.
+
+**Modes it can select:**
+- `delivery-workflow`
+- `delivery-workflow-v2`
+- `epic-delivery-workflow`
+
+**Usage:**
+```bash
+gt sling delivery-router-workflow <crew> \
+  --var feature="ipv6-support" \
+  --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
+  --var tracking="milestones"
+```
+
+---
 
 ### Epic Delivery
 
