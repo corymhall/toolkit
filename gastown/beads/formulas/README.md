@@ -338,6 +338,28 @@ gt sling delivery-workflow-v2 <crew> \
   --var tracking="milestones"
 ```
 
+**How to run Session 1 / Session 2**
+
+The intended boundary is after `enrich`, at the workflow checkpoint step.
+
+Session 1:
+1. Start the workflow normally.
+2. Run through bootstrap, draft-spec, and enrich.
+3. At `checkpoint-handoff-ready`, verify the spec is ready to hand off.
+4. Close that checkpoint step.
+5. Run `gt handoff` to end the session.
+
+Session 2:
+1. Start a fresh crew session as normal.
+2. Run `gt prime`.
+3. Check the hooked molecule with `gt mol status`.
+4. Run `bd mol current <molecule-id>`.
+5. Continue from the next step, which should be `stage-tracking-setup`.
+
+This is an operational boundary, not a special workflow pause primitive. The
+resume behavior relies on the normal hooked molecule flow: close the current
+step, hand off, then let the next session resume the next current step.
+
 ---
 
 ## Review Worker Formula
