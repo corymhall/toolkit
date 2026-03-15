@@ -342,17 +342,58 @@ Implement milestone 1 only.
 Create/update `docs/plans/{{feature}}/session-ledger.md` with:
 - current status
 - milestone checklist derived from `plans.md`
+- milestone self-check entries
 - commands run + outcomes
 - files changed
 - open risks/blockers
 
 ## Rules
 
+- stay in one owner session for implementation work
+- do not dispatch implementation work to external crews/polecats
+- subagents are allowed only for bounded subtasks (exploration, focused edits,
+  targeted tests), with the parent session owning integration
+- preserve `spec.md` intent while implementing; do not silently violate
+  Non-Negotiables or Forbidden Approaches
 - milestone 1 must validate the implementation shape, not finish the whole feature
-- declare the proof model before coding
-- execute only milestone 1 scope
-- run milestone 1 validation before marking it complete
-- if milestone 1 expands dramatically, stop and revise `plans.md`
+- follow `plans.md`, not memory
+
+## Select Domain Profiles
+
+Before implementation gets deep, choose the review/implementation domain lens.
+
+Selection order:
+1. explicit choice in spec or session context
+2. obvious repo/file heuristics
+3. default to `general`
+
+Examples:
+- Go-heavy work -> `go-development`
+- Neovim plugin work -> `neovim-plugin-development`
+
+Record the selected profiles in `session-context.md` and mirror them in the
+session ledger. Keep this conservative - choose specialist profiles only when
+the signal is strong.
+
+## Execution Loop
+
+1. Read `docs/plans/{{feature}}/spec.md`
+2. Read `docs/plans/{{feature}}/plans.md`
+3. Before coding, declare the proof model in `session-ledger.md`
+   - default for behavior changes / bug fixes: red-green evidence
+   - otherwise: explicit alternate proof model with rationale
+4. Execute only milestone 1 scope
+5. Run milestone 1 validation before marking it complete
+6. Write a milestone self-check covering:
+   - what changed
+   - what spec section / goal / constraint it satisfied
+   - what plan milestone was implemented
+   - what proof model was declared
+   - what evidence actually exists
+   - what remains risky or unclear
+   - whether the shape review should revise later milestones
+7. If milestone 1 expands dramatically, stop and revise `plans.md`
+8. Update `session-ledger.md`
 
 If tracking mode is `milestones`, set `{{feature}}: milestone 1 validated` to
 `in_progress` early and close it only when milestone 1 evidence exists.
@@ -403,12 +444,37 @@ Implement the remaining milestones in `plans.md`.
 
 ## Rules
 
+- stay in one owner session for implementation work
+- do not dispatch implementation work to external crews/polecats
+- subagents are allowed only for bounded subtasks (exploration, focused edits,
+  targeted tests), with the parent session owning integration
+- preserve `spec.md` intent while implementing; do not silently violate
+  Non-Negotiables or Forbidden Approaches
 - follow `plans.md`, not memory
+- before each milestone, declare the proof model if it changed
 - update `session-ledger.md` after each milestone
 - record proof and commands for each milestone
 - if a stop condition fires, revise `plans.md` before continuing
 - if tracking mode is `milestones`, set `implementation complete` to
   `in_progress` early and close it only when all planned milestones are done
+
+## Execution Loop
+
+For each remaining milestone:
+1. Read the milestone in `plans.md`
+2. Declare the proof model in `session-ledger.md`
+3. Execute the milestone
+4. Run the milestone validation commands / collect proof
+5. Write a milestone self-check covering:
+   - what changed
+   - what spec section / goal / constraint it satisfied
+   - what milestone was completed
+   - what proof model was declared
+   - what evidence actually exists
+   - what remains risky or unclear
+   - whether the next milestone still makes sense
+6. If the milestone feels risky, run one bounded drift-review subagent before continuing
+7. Update `session-ledger.md`
 
 Prefer small, verified increments over one large final diff.
 """
@@ -455,6 +521,10 @@ Optionally run:
 
 Use `mol-review-implementation` as the worker formula and include `spec.md`,
 `plans.md`, and the pushed branch state as the review inputs.
+
+Use the selected domain profile from `session-context.md` when it is strong
+enough to justify a specialist review, following the same conservative pattern
+as the original `delivery-workflow`.
 """
 
 # ============================================================================
