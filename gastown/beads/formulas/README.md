@@ -1,9 +1,9 @@
 # Formulas
 
-Spec-centric design and execution formulas for the `gt sling` pipeline. Four
+Spec-centric design and execution formulas for the `gt sling` pipeline. Five
 composable expansion formulas and three workflow orchestrators support
 different delivery modes:
-- delegation-safe umbrella decomposition (`spec -> enrich -> beadify`)
+- delegation-safe umbrella decomposition (`spec -> enrich -> decomposition plan -> beadify`)
 - lean single-session delivery (`spec -> enrich -> implement`)
 - two-session planned delivery (`spec -> enrich || plans -> build`)
 
@@ -17,26 +17,27 @@ The formulas follow an **expansion/workflow pattern**:
 
 **Spec-first, adaptable execution systems:**
 - `spec.md` — the durable requirements and design record
+- `plan-draft.md` — decomposition plan for `epic-delivery-workflow`
 - `plans.md` — milestone plan for `delivery-workflow-v2`
 - Beads — either execution decomposition (`beadify`) or lightweight tracking
 - `session-ledger.md` — execution evidence for delivery workflows
 
 ## The Pipeline
 
-Four expansion formulas, each independently runnable:
+Five expansion formulas, each independently runnable:
 
 ```
-┌─────────────┐      ┌─────────────┐      ┌──────────────┐
-│ Draft Spec  │ ───▶ │   Enrich    │ ───▶ │ Plan / Beads │
-│             │      │ (optional,  │      │              │
-│ brief →     │      │  repeatable)│      │ spec ->      │
-│ spec.md     │      │ spec →      │      │ plans.md or  │
-│             │      │ better spec │      │ beads        │
-└─────────────┘      └─────────────┘      └──────────────┘
+┌─────────────┐      ┌─────────────┐      ┌──────────────────────┐
+│ Draft Spec  │ ───▶ │   Enrich    │ ───▶ │ Plan / Decompose /   │
+│             │      │ (optional,  │      │ Beads                │
+│ brief →     │      │  repeatable)│      │                      │
+│ spec.md     │      │ spec →      │      │ spec -> plans.md /   │
+│             │      │ better spec │      │ plan-draft.md / beads│
+└─────────────┘      └─────────────┘      └──────────────────────┘
 ```
 
 Any entry point works. Already have a spec? Skip to `plan-expansion` or
-`beadify`. Want more rigor? Run `enrich` multiple times. Wrote the spec
+`decomposition-plan-expansion` or `beadify`. Want more rigor? Run `enrich` multiple times. Wrote the spec
 yourself? Go straight to the downstream expansion you need.
 
 ---
@@ -116,6 +117,44 @@ gt sling enrich-expansion <crew> \
 
 ---
 
+### Decomposition Plan
+
+**Formula:** `decomposition-plan-expansion`
+
+Reads a cleaned umbrella spec, generates `plan-draft.md`, runs the default two
+decomposition-plan review passes, and leaves behind a beadify-ready
+workstream/sequencing artifact for `epic-delivery-workflow`.
+
+**Steps:**
+1. Validate spec for decomposition planning
+2. Draft `plan-draft.md`
+3. Review pass 1: coverage + workstream boundaries
+4. Review pass 2: sequencing + cross-cutting concerns
+5. Finalize plan
+
+**Planning principles:**
+- `plan-draft.md` is not a second requirements doc
+- workstreams should map to coherent feature/workstream beads
+- sequencing should reflect real dependencies, not arbitrary phases
+- cross-cutting work should stay visible instead of disappearing between spec and beads
+
+**Input:** `docs/plans/{feature}/spec.md`
+**Output:** `docs/plans/{feature}/plan-draft.md`
+
+**Vars:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `feature` | yes | Feature name |
+
+**Usage:**
+```bash
+gt sling decomposition-plan-expansion <crew> \
+  --var feature="ipv6-support"
+```
+
+---
+
 ### Plan
 
 **Formula:** `plan-expansion`
@@ -159,12 +198,14 @@ gt sling plan-expansion <crew> \
 
 **Formula:** `beadify-expansion`
 
-The execution entry point. Reads a spec (any depth), explores the codebase, decomposes into tasks, runs 3 review passes, and creates beads with validated dependencies.
+The execution entry point. Reads a spec (any depth), optionally uses
+`plan-draft.md`, explores the codebase, decomposes into tasks, runs 3 review
+passes, and creates beads with validated dependencies.
 
 **Steps:**
 1. Validate spec exists
 2. Codebase exploration — 3 parallel agents (architecture, integration surface, patterns & conventions)
-3. Task decomposition — spec + codebase analysis → `beads-draft.md` (transient)
+3. Task decomposition — spec + optional decomposition plan + codebase analysis → `beads-draft.md` (transient)
 4. Review pass 1: Completeness — every spec Design element has a task
 5. Review pass 2: Dependencies — only true blockers, maximize parallelism
 6. Review pass 3: Clarity — each task implementable from description alone
@@ -178,7 +219,7 @@ The execution entry point. Reads a spec (any depth), explores the codebase, deco
 - Maximize parallelism (only add true blocking dependencies)
 - Acceptance criteria must be verifiable
 
-**Input:** `docs/plans/{feature}/spec.md` (any depth — 10 lines or 200)
+**Input:** `docs/plans/{feature}/spec.md` (required) and optional `docs/plans/{feature}/plan-draft.md`
 **Output:** Beads epic with tasks and dependency graph
 
 **Vars:**
@@ -208,6 +249,7 @@ The format scales naturally:
 - **Large work** (10+ tasks): 100+ lines — full Design sub-sections, Decision Log, Risks, Testing, Traceability
 
 See [docs/templates/spec.md](../docs/templates/spec.md) for the full template.
+See [docs/templates/plan-draft.md](../docs/templates/plan-draft.md) for the decomposition plan template used by `decomposition-plan-expansion`.
 See [docs/templates/plans.md](../docs/templates/plans.md) for the milestone plan template used by `plan-expansion`.
 
 Related design exploration:
@@ -220,10 +262,12 @@ Related design exploration:
 
 **Formula:** `epic-delivery-workflow`
 
-Composes all three expansion formulas into the full pipeline with checkpoints between stages. Use this for umbrella initiatives that need to be broken into feature/workstream beads, not for normal single-feature delivery.
+Composes the umbrella-side expansion formulas into the full pipeline with
+checkpoints between stages. Use this for initiatives that need to be broken
+into feature/workstream beads, not for normal single-feature delivery.
 
 ```
-Kickoff → Draft Spec → [checkpoint] → Enrich → [checkpoint] → Beadify → Complete
+Kickoff → Draft Spec → [checkpoint] → Enrich → [checkpoint] → Decomposition Plan → [checkpoint] → Beadify → Complete
 ```
 
 Checkpoints support crash recovery and session handoffs — if a session ends mid-workflow, the next session picks up at the last checkpoint.
@@ -232,6 +276,11 @@ The intended output granularity is:
 - one bead per coherent feature or workstream
 - one integration/final-validation bead where needed
 - not implementation-ready microtasks
+
+Artifacts produced:
+- `docs/plans/{feature}/spec.md`
+- `docs/plans/{feature}/plan-draft.md`
+- beads epic with feature/workstream beads and dependency graph
 
 Those resulting beads are expected to kick off `delivery-workflow` rather than be coded directly from the umbrella workflow.
 

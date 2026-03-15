@@ -1,7 +1,7 @@
 # Epic Delivery Workflow
 #
 # Composes all expansion formulas into an end-to-end pipeline:
-#   bootstrap → draft-spec → enrich → beadify
+#   bootstrap → draft-spec → enrich → decomposition-plan → beadify
 #
 # For decomposing an umbrella initiative into feature/workstream beads that
 # can each be executed with `delivery-workflow`.
@@ -15,11 +15,12 @@
 description = """
 Umbrella initiative pipeline from brief to feature/workstream beads.
 
-Composes four stages sequentially:
+Composes five stages sequentially:
 1. **Bootstrap** — ensure feature epic + integration branch exist
 2. **Draft Spec** — brief → spec.md with required serialized sections
 3. **Enrich** — preserve/fill serialized context (gap analysis + decisions)
-4. **Beadify** — umbrella spec → feature/workstream beads with validated dependency and traceability coverage
+4. **Decomposition Plan** — enriched spec → `plan-draft.md` with workstream boundaries and sequencing
+5. **Beadify** — spec + plan draft → feature/workstream beads with validated dependency and traceability coverage
 
 Use this when you are decomposing an initiative composed of multiple coherent
 features or workstreams. The goal is not implementation-ready microtasks. The
@@ -27,7 +28,7 @@ goal is a graph of feature-sized beads that are ready to kick off
 `delivery-workflow` independently.
 
 **Input:** Feature name + brief description
-**Output:** Reviewed umbrella spec + beads epic with feature/workstream beads and dependency graph
+**Output:** Reviewed umbrella spec + decomposition plan + beads epic with feature/workstream beads and dependency graph
 
 ## Step Lifecycle (Molecule Work Loop)
 
@@ -73,7 +74,7 @@ title = "Epic Delivery Kickoff"
 description = """
 ═══════════════════════════════════════════════════════════════
  EPIC DELIVERY WORKFLOW
- Full pipeline: bootstrap → brief → umbrella spec → enriched spec → feature/workstream beads
+ Full pipeline: bootstrap → brief → umbrella spec → enriched spec → decomposition plan → feature/workstream beads
 
  Feature: {{feature}}
  Brief:   {{brief}}
@@ -82,7 +83,8 @@ Stages:
    1. Bootstrap — epic + integration branch setup
    2. Draft Spec — codebase exploration + interactive dialogue
    3. Enrich — 6-dimension gap analysis + auto-fix + decisions
-   4. Beadify — feature/workstream decomposition + 3 review passes + bead creation
+   4. Decomposition Plan — workstream boundaries + sequencing + cross-cutting concerns
+   5. Beadify — feature/workstream decomposition + 3 review passes + bead creation
 
  Serialized fidelity requirements across stages:
    - Non-Negotiables
@@ -92,6 +94,7 @@ Stages:
 
  Output:
    - docs/plans/{{feature}}/spec.md (reviewed umbrella spec)
+   - docs/plans/{{feature}}/plan-draft.md (reviewed decomposition plan)
    - Beads epic with feature/workstream beads and dependency graph
 ═══════════════════════════════════════════════════════════════
 
@@ -258,24 +261,71 @@ Before handoff, verify enrich preserved:
 
 **Otherwise**, cycle your context:
 1. Close this step: `bd close <step-id>`
-2. Handoff: `gt handoff -s "Epic-delivery: enrich complete" -m "Umbrella spec enriched at docs/plans/{{feature}}/spec.md. Next: beadify to create feature/workstream beads."`
+2. Handoff: `gt handoff -s "Epic-delivery: enrich complete" -m "Umbrella spec enriched at docs/plans/{{feature}}/spec.md. Next: generate decomposition plan before beadify."`
 """
 
 # ============================================================================
-# STAGE 4: BEADIFY (expansion placeholder)
+# STAGE 4: DECOMPOSITION PLAN (expansion placeholder)
+# ============================================================================
+
+[[steps]]
+id = "stage-decomposition-plan"
+title = "Stage 4: Decomposition Plan"
+needs = ["checkpoint-after-enrich"]
+description = """
+Placeholder expanded by `decomposition-plan-expansion`.
+
+Read the enriched umbrella spec, separate it into coherent feature/workstream
+boundaries, and generate a reviewed `plan-draft.md`.
+
+**Input:** docs/plans/{{feature}}/spec.md
+**Output:** docs/plans/{{feature}}/plan-draft.md
+"""
+
+# ============================================================================
+# CHECKPOINT: After Decomposition Plan
+# ============================================================================
+
+[[steps]]
+id = "checkpoint-after-plan"
+title = "Checkpoint: Decomposition Plan Ready"
+needs = ["stage-decomposition-plan"]
+description = """
+## Checkpoint
+
+Decomposition plan (Stage 4) is complete.
+
+**Artifact:** docs/plans/{{feature}}/plan-draft.md
+
+Before handoff, verify:
+- workstream boundaries are coherent
+- major sequencing constraints are documented
+- cross-cutting concerns are explicit
+- the plan is ready to guide bead creation
+
+**If this is your first step in a fresh session**, close this step and continue.
+
+**Otherwise**, cycle your context:
+1. Close this step: `bd close <step-id>`
+2. Handoff: `gt handoff -s "Epic-delivery: decomposition plan complete" -m "Decomposition plan written at docs/plans/{{feature}}/plan-draft.md. Next: beadify using the enriched spec plus plan draft."`
+"""
+
+# ============================================================================
+# STAGE 5: BEADIFY (expansion placeholder)
 # ============================================================================
 
 [[steps]]
 id = "stage-beadify"
-title = "Stage 4: Beadify"
-needs = ["checkpoint-after-enrich"]
+title = "Stage 5: Beadify"
+needs = ["checkpoint-after-plan"]
 description = """
 Placeholder expanded by `beadify-expansion`.
 
-Read the spec, explore the codebase, decompose into tasks, run 3 review
-passes, create feature/workstream beads with validated dependencies.
+Read the spec, optional decomposition plan, explore the codebase, decompose
+into tasks, run 3 review passes, and create feature/workstream beads with
+validated dependencies.
 
-**Input:** docs/plans/{{feature}}/spec.md
+**Input:** docs/plans/{{feature}}/spec.md (+ docs/plans/{{feature}}/plan-draft.md if present)
 **Output:** Beads epic with feature/workstream beads and dependency graph
 """
 
@@ -294,12 +344,14 @@ Epic-delivery workflow is complete.
 - Stage 1: Epic + integration branch bootstrapped
 - Stage 2: Umbrella spec drafted from brief (interactive)
 - Stage 3: Umbrella spec enriched (6-dimension analysis, auto-fixes, decisions)
-- Stage 4: Feature/workstream beads created (decomposition, 3 review passes)
+- Stage 4: Decomposition plan created (`plan-draft.md`)
+- Stage 5: Feature/workstream beads created (decomposition, 3 review passes)
 - Fresh-session fidelity: Non-Negotiables + Forbidden Approaches + Decision Log +
-  Traceability carried from spec through bead generation
+  Traceability carried from spec and plan through bead generation
 
 **Artifacts:**
 - docs/plans/{{feature}}/spec.md (reviewed umbrella spec)
+- docs/plans/{{feature}}/plan-draft.md (reviewed decomposition plan)
 - Beads epic with feature/workstream beads and dependency graph
 
 **Next steps:**
@@ -320,6 +372,10 @@ with = "draft-spec-expansion"
 [[compose.expand]]
 target = "stage-enrich"
 with = "enrich-expansion"
+
+[[compose.expand]]
+target = "stage-decomposition-plan"
+with = "decomposition-plan-expansion"
 
 [[compose.expand]]
 target = "stage-beadify"

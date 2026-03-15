@@ -21,15 +21,16 @@
 #   gt sling beadify <crew> --var feature="ipv6-support" [--var epic_id="abc123"]
 
 description = """
-Spec to beads. Reads a spec, explores the codebase, decomposes into tasks,
-reviews, and creates beads with validated dependencies.
+Spec to beads. Reads a spec, optionally uses a decomposition plan, explores the
+codebase, decomposes into tasks, reviews, and creates beads with validated
+dependencies.
 
-**Input:** docs/plans/{{feature}}/spec.md (any depth — 10 lines or 200)
+**Input:** docs/plans/{{feature}}/spec.md (required) and optional docs/plans/{{feature}}/plan-draft.md
 **Output:** Beads epic with tasks and dependency graph
 
 Beadify does everything internally:
 - Codebase exploration (3 parallel agents)
-- Task decomposition (spec + codebase → tasks)
+- Task decomposition (spec + optional decomposition plan + codebase → tasks)
 - 3 sequential review passes (completeness, dependencies, clarity)
 - Human preview before committing
 - Bead creation via bd commands
@@ -195,6 +196,11 @@ fi
 
    Report the depth — this informs how much the codebase exploration needs to
    supplement. But exploration always runs regardless.
+
+4. Check for optional decomposition plan:
+   - If `docs/plans/{{feature}}/plan-draft.md` exists, read it and report that
+     beadify will use it for workstream boundaries and sequencing guidance.
+   - If it does not exist, continue in spec-only mode.
 
 ## Output
 
@@ -368,9 +374,8 @@ needs = ["{target}.codebase-exploration"]
 description = """
 Read the spec and codebase analysis, then decompose into a beads draft.
 
-This is the core step — it does the work that was previously a separate
-"plan writing" stage. The output is a beads draft (hierarchy of epics and
-tasks), not a plan document.
+This is the core step — it turns the design record (and optional decomposition
+plan) into a beads draft (hierarchy of epics and tasks).
 
 When in doubt, preserve detail. Do not shorten away constraints that a fresh
 session would need to implement correctly.
@@ -379,9 +384,10 @@ session would need to implement correctly.
 
 Read these files:
 1. `docs/plans/{{feature}}/spec.md` — what to build
-2. `docs/plans/{{feature}}/architecture.tmp` — where it fits
-3. `docs/plans/{{feature}}/integration-surface.tmp` — what code to touch
-4. `docs/plans/{{feature}}/patterns-conventions.tmp` — how to build it
+2. `docs/plans/{{feature}}/plan-draft.md` — workstream boundaries and sequencing guidance (if present)
+3. `docs/plans/{{feature}}/architecture.tmp` — where it fits
+4. `docs/plans/{{feature}}/integration-surface.tmp` — what code to touch
+5. `docs/plans/{{feature}}/patterns-conventions.tmp` — how to build it
 
 ## Decomposition Principles
 
@@ -409,6 +415,11 @@ and patterns analysis.
 - Forbidden Approaches must remain forbidden in task wording
 - Decision Log entries must either map to tasks or be explicitly deferred
 
+**If `plan-draft.md` exists, respect it.** Use it to:
+- keep workstream boundaries coherent
+- preserve intentional sequencing and parallelism notes
+- carry cross-cutting work into beads instead of letting it disappear
+
 ## Mapping Rules
 
 ### Hierarchy
@@ -427,6 +438,8 @@ Feature Epic: "{{feature}}"
 - **Phase/group sub-epics** (optional — use only when there are natural
   groupings of 3+ related tasks. For small specs with <6 tasks, a flat
   list under the feature epic is fine.)
+- If `plan-draft.md` exists, use its workstreams as the default grouping model
+  unless the codebase analysis shows a better boundary.
 - **1 task per discrete unit of work** — something one agent can complete
   in one session
 
@@ -454,11 +467,13 @@ If a task cannot be linked to at least one design anchor plus one of
 ### What Generates Tasks
 
 - Each element in the spec's Design section → one or more tasks
+- Each workstream in `plan-draft.md` (if present) → one epic or coherent task group
 - Shared types/interfaces used by multiple tasks → dedicated early task
 - Each item in the spec's Testing section → test criteria on relevant tasks
   (or a dedicated test task if testing is substantial)
 - Spec's Scope "Out" items → do NOT generate tasks for these
 - Spec's Open Questions → do NOT generate tasks; note in epic description
+- `plan-draft.md` cross-cutting concerns → dedicated beads or explicit acceptance criteria where appropriate
 
 ## Output
 
@@ -564,6 +579,7 @@ Answer: 'Did the decomposition miss any work from the spec?'
 ## Inputs
 - `docs/plans/{{feature}}/beads-draft.md` — the draft
 - `docs/plans/{{feature}}/spec.md` — the source spec
+- `docs/plans/{{feature}}/plan-draft.md` — optional decomposition guidance
 
 ## Checks
 
@@ -591,6 +607,10 @@ acceptance criteria on relevant tasks.
 - Every Non-Negotiable maps to one or more tasks.
 - No task conflicts with a Forbidden Approach unless Decision Log documents an exception.
 - Traceability Matrix is complete and internally consistent.
+
+### 7. Plan Alignment (if present)
+- If `plan-draft.md` exists, verify the resulting groups/tasks still reflect its
+  intended workstream boundaries and major sequencing constraints.
 
 ## Output
 
@@ -648,6 +668,7 @@ Answer: 'Are the blockers real, and are we missing any?'
 ## Inputs
 - `docs/plans/{{feature}}/beads-draft.md` — the draft
 - `docs/plans/{{feature}}/spec.md` — the source spec
+- `docs/plans/{{feature}}/plan-draft.md` — optional decomposition guidance
 
 ## Checks
 
@@ -667,6 +688,11 @@ Check for cycles: A blocks B blocks C blocks A.
 - How many tasks are ready immediately?
 - What's the critical path length?
 - Could changes increase parallelism?
+
+### 5. Plan Sequencing Alignment (if present)
+- If `plan-draft.md` exists, verify the bead dependencies still reflect its
+  intended ordering and parallelism guidance rather than inventing unnecessary
+  blockers.
 
 ## Output
 
