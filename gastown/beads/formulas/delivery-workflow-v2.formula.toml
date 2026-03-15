@@ -185,7 +185,7 @@ Create `docs/plans/{{feature}}/spec.md` using the shared spec template.
 """
 
 # ============================================================================
-# STAGE 3: ENRICH (expansion)
+# STAGE 3: ENRICH (expansion placeholder)
 # ============================================================================
 
 [[steps]]
