@@ -2,18 +2,17 @@
 #
 # Two-session delivery:
 #   session 1: bootstrap -> draft-spec -> enrich -> handoff
-#   session 2: tracking -> plan -> implement milestone 1 -> shape review
-#            -> implement rest -> final review -> verify/finalize
+#   session 2: execution-setup -> plan -> execution beads -> stage convoy
 #
-# This workflow keeps noisy exploration out of the build session while still
-# using Codex-native single-owner implementation once planning is locked.
+# This workflow keeps noisy exploration out of the build session, then hands
+# execution to a bead graph plus staged convoy while the current crew session
+# remains the owner.
 #
 # Usage:
 #   gt sling delivery-workflow-planned <crew> \
 #     --var feature="ipv6-support" \
 #     --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
-#     [--var epic_id="abc123"] \
-#     [--var tracking="milestones"]
+#     [--var epic_id="abc123"]
 
 description = """
 Planned two-session Codex-native delivery workflow.
@@ -24,34 +23,28 @@ Session 1 is for discovery and convergence:
 3. **Enrich**
 4. **Handoff Boundary**
 
-Session 2 is for planning and build execution:
-5. **Tracking Setup**
+Session 2 is for planning and execution setup:
+5. **Execution Setup**
 6. **Plan**
-7. **Implement Milestone 1**
-8. **Shape Review Checkpoint**
-9. **Implement Remaining Milestones**
-10. **Launch Final Review**
-11. **Monitor + Synthesize**
-12. **Verify + Finalize**
+7. **Create Execution Beads**
+8. **Stage Execution Convoy**
+9. **Execution Handoff Complete**
 
 Use this when exploratory design work is noisy and you want the build session
-to start from committed artifacts instead of chat history.
+to start from committed artifacts instead of chat history, but still want the
+current crew session to own execution through a bead graph rather than through
+the formula itself.
 
 **Input:** Feature name + brief description
-**Output:** Implemented feature + updated tracking + `spec.md` + `plans.md` +
-verification summary
+**Output:** `spec.md` + `plans.md` + execution beads + staged convoy ready for
+same-session delivery
 
 ## Artifacts
 
 - `docs/plans/{{feature}}/spec.md`
 - `docs/plans/{{feature}}/plans.md`
 - `docs/plans/{{feature}}/session-context.md`
-- `docs/plans/{{feature}}/session-ledger.md`
-
-## Tracking Modes
-
-- `milestones` (default): create a few child tasks under the epic
-- `epic-only`: keep only the root epic and append progress notes
+- staged convoy tracking the execution beads
 
 ## Step Lifecycle (Molecule Work Loop)
 
@@ -99,11 +92,6 @@ description = "Optional existing root epic ID to reuse"
 required = false
 default = ""
 
-[vars.tracking]
-description = "Tracking mode: milestones (default) or epic-only"
-required = false
-default = "milestones"
-
 [vars.bootstrap_epic_description]
 description = "Internal bootstrap epic description"
 required = false
@@ -126,11 +114,10 @@ description = """
  DELIVERY WORKFLOW PLANNED
  Two-session delivery:
    session 1 = discovery / convergence
-   session 2 = planning / build
+   session 2 = planning / execution setup
 
  Feature:  {{feature}}
  Brief:    {{brief}}
- Tracking: {{tracking}} (empty => milestones)
 
  Session 1:
    1. Bootstrap
@@ -139,20 +126,17 @@ description = """
    4. Handoff Boundary
 
  Session 2:
-   5. Tracking Setup
+   5. Execution Setup
    6. Plan (`plans.md`)
-   7. Implement Milestone 1
-   8. Shape Review Checkpoint
-   9. Implement Remaining Milestones
-  10. Launch Final Review
-  11. Monitor + Synthesize
-  12. Verify + Finalize
+   7. Create Execution Beads
+   8. Stage Execution Convoy
+   9. Execution Handoff Complete
 
  Artifacts:
    - docs/plans/{{feature}}/spec.md
    - docs/plans/{{feature}}/plans.md
    - docs/plans/{{feature}}/session-context.md
-   - docs/plans/{{feature}}/session-ledger.md
+   - staged convoy metadata in epic notes + session context
 ═══════════════════════════════════════════════════════════════
 
 Output this banner to the user, then close this step to begin.
@@ -231,7 +215,7 @@ Before proceeding, verify:
 Default action:
 1. Close this step
 2. Handoff / cycle context
-3. Resume in a fresh session at `stage-tracking-setup`
+3. Resume in a fresh session at `stage-execution-setup`
 
 Only continue in the same session if you are intentionally bypassing the
 recommended boundary for testing or expedience. If you do, state that clearly
@@ -239,15 +223,15 @@ in your status update.
 """
 
 # ============================================================================
-# STAGE 4: TRACKING SETUP
+# STAGE 4: EXECUTION SETUP
 # ============================================================================
 
 [[steps]]
-id = "stage-tracking-setup"
-title = "Stage 4: Tracking Setup"
+id = "stage-execution-setup"
+title = "Stage 4: Execution Setup"
 needs = ["checkpoint-handoff-ready"]
 description = """
-Set up lightweight tracking for the build session.
+Set up the execution handoff for session 2.
 
 ## Inputs
 
@@ -258,29 +242,15 @@ Set up lightweight tracking for the build session.
 
 ```bash
 EPIC_ID=$(awk -F': ' '/^epic_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
-TRACKING_MODE=$(awk -F': ' '/^tracking_mode:/{print $2}' docs/plans/{{feature}}/session-context.md)
-if [ -z "$TRACKING_MODE" ]; then TRACKING_MODE="milestones"; fi
 ```
 
 ## Always Update Root Epic
 
-Append a planning/build-start note:
+Append a planning/execution-setup note:
 
 ```bash
-bd update "$EPIC_ID" --append-notes "Session 2 start:\n- spec: docs/plans/{{feature}}/spec.md\n- status: planning/build session starting"
+bd update "$EPIC_ID" --append-notes "Session 2 start:\n- spec: docs/plans/{{feature}}/spec.md\n- status: planning complete, creating execution beads next"
 ```
-
-## If Tracking Mode = milestones
-
-Create only these milestone tasks if missing:
-
-1. `{{feature}}: plan locked`
-2. `{{feature}}: milestone 1 validated`
-3. `{{feature}}: implementation complete`
-4. `{{feature}}: verification complete`
-5. `{{feature}}: final cleanup and ship`
-
-Close `plan locked` only after `plans.md` is finalized.
 """
 
 # ============================================================================
@@ -290,7 +260,7 @@ Close `plan locked` only after `plans.md` is finalized.
 [[steps]]
 id = "stage-plan"
 title = "Stage 5: Plan"
-needs = ["stage-tracking-setup"]
+needs = ["stage-execution-setup"]
 description = """
 Placeholder expanded by `plan-expansion`.
 
@@ -298,197 +268,68 @@ Generate and finalize `docs/plans/{{feature}}/plans.md`.
 """
 
 # ============================================================================
-# STAGE 6: IMPLEMENT MILESTONE 1
+# STAGE 6: CREATE EXECUTION BEADS
 # ============================================================================
 
 [[steps]]
-id = "stage-implement-m1"
-title = "Stage 6: Implement Milestone 1"
+id = "stage-create-execution-beads"
+title = "Stage 6: Create Execution Beads"
 needs = ["stage-plan"]
 description = """
-Implement milestone 1 only.
+Placeholder expanded by `execution-beads-expansion`.
+"""
+
+# ============================================================================
+# STAGE 7: STAGE EXECUTION CONVOY
+# ============================================================================
+
+[[steps]]
+id = "stage-stage-convoy"
+title = "Stage 7: Stage Execution Convoy"
+needs = ["stage-create-execution-beads"]
+description = """
+Create or refresh the staged convoy that will track the execution beads.
 
 ## Inputs
 
-- `docs/plans/{{feature}}/spec.md`
-- `docs/plans/{{feature}}/plans.md`
+- root epic from `session-context.md`
+- execution beads created from `plans.md`
 
-## Build a Session Ledger
+## Stage
 
-Create/update `docs/plans/{{feature}}/session-ledger.md` with:
-- current status
-- milestone checklist derived from `plans.md`
-- milestone self-check entries
-- commands run + outcomes
-- files changed
-- open risks/blockers
+Run:
 
-## Rules
+```bash
+STAGE_JSON=$(gt convoy stage "$EPIC_ID" --json)
+CONVOY_ID=$(printf '%s\n' "$STAGE_JSON" | jq -r '.convoy_id')
+CONVOY_STATUS=$(printf '%s\n' "$STAGE_JSON" | jq -r '.status')
+```
 
-- stay in one owner session for implementation work
-- do not dispatch implementation work to external crews/polecats
-- subagents are allowed only for bounded subtasks (exploration, focused edits,
-  targeted tests), with the parent session owning integration
-- preserve `spec.md` intent while implementing; do not silently violate
-  Non-Negotiables or Forbidden Approaches
-- milestone 1 must validate the implementation shape, not finish the whole feature
-- follow `plans.md`, not memory
+## Persist
 
-## Select Domain Profiles
+Capture the staged convoy ID and write it into `docs/plans/{{feature}}/session-context.md`.
 
-Before implementation gets deep, choose the review/implementation domain lens.
+For example:
 
-Selection order:
-1. explicit choice in spec or session context
-2. obvious repo/file heuristics
-3. default to `general`
+```bash
+TMP_CONTEXT=$(mktemp)
+grep -Ev '^convoy_id:|^convoy_status:' docs/plans/{{feature}}/session-context.md > "$TMP_CONTEXT"
+{
+  cat "$TMP_CONTEXT"
+  printf 'convoy_id: %s\n' "$CONVOY_ID"
+  printf 'convoy_status: %s\n' "$CONVOY_STATUS"
+} > docs/plans/{{feature}}/session-context.md
+rm -f "$TMP_CONTEXT"
+```
 
-Examples:
-- Go-heavy work -> `go-development`
-- Neovim plugin work -> `neovim-plugin-development`
+Also append a root epic note including:
+- `plans.md` path
+- staged convoy ID
+- staged convoy status
+- next command to begin same-session execution with `$epic-delivery`
 
-Record the selected profiles in `session-context.md` and mirror them in the
-session ledger. Keep this conservative - choose specialist profiles only when
-the signal is strong.
-
-## Execution Loop
-
-1. Read `docs/plans/{{feature}}/spec.md`
-2. Read `docs/plans/{{feature}}/plans.md`
-3. Before coding, declare the proof model in `session-ledger.md`
-   - default for behavior changes / bug fixes: red-green evidence
-   - otherwise: explicit alternate proof model with rationale
-4. Execute only milestone 1 scope
-5. Run milestone 1 validation before marking it complete
-6. Write a milestone self-check covering:
-   - what changed
-   - what spec section / goal / constraint it satisfied
-   - what plan milestone was implemented
-   - what proof model was declared
-   - what evidence actually exists
-   - what remains risky or unclear
-   - whether the shape review should revise later milestones
-7. If milestone 1 expands dramatically, stop and revise `plans.md`
-8. Update `session-ledger.md`
-
-If tracking mode is `milestones`, set `{{feature}}: milestone 1 validated` to
-`in_progress` early and close it only when milestone 1 evidence exists.
-"""
-
-# ============================================================================
-# CHECKPOINT: SHAPE REVIEW
-# ============================================================================
-
-[[steps]]
-id = "checkpoint-shape-review"
-title = "Checkpoint: Shape Review"
-needs = ["stage-implement-m1"]
-description = """
-This is the early review stop intended to make final review churn smaller.
-
-Review milestone 1 against:
-- `spec.md`
-- `plans.md`
-- `session-ledger.md`
-
-Answer:
-- does milestone 1 prove the right implementation shape?
-- do `spec.md` and `plans.md` still match reality?
-- are there architectural surprises or hidden scope?
-- should milestones 2..N be revised before continuing?
-
-Allowed outcomes:
-- continue unchanged
-- revise `plans.md`
-- revise both `spec.md` and `plans.md`
-- stop and re-plan before continuing
-
-Do not proceed to the remaining milestones if this checkpoint reveals the shape
-is wrong.
-"""
-
-# ============================================================================
-# STAGE 7: IMPLEMENT REMAINING MILESTONES
-# ============================================================================
-
-[[steps]]
-id = "stage-implement-rest"
-title = "Stage 7: Implement Remaining Milestones"
-needs = ["checkpoint-shape-review"]
-description = """
-Implement the remaining milestones in `plans.md`.
-
-## Rules
-
-- stay in one owner session for implementation work
-- do not dispatch implementation work to external crews/polecats
-- subagents are allowed only for bounded subtasks (exploration, focused edits,
-  targeted tests), with the parent session owning integration
-- preserve `spec.md` intent while implementing; do not silently violate
-  Non-Negotiables or Forbidden Approaches
-- follow `plans.md`, not memory
-- before each milestone, declare the proof model if it changed
-- update `session-ledger.md` after each milestone
-- record proof and commands for each milestone
-- if a stop condition fires, revise `plans.md` before continuing
-- if tracking mode is `milestones`, set `implementation complete` to
-  `in_progress` early and close it only when all planned milestones are done
-
-## Execution Loop
-
-For each remaining milestone:
-1. Read the milestone in `plans.md`
-2. Declare the proof model in `session-ledger.md`
-3. Execute the milestone
-4. Run the milestone validation commands / collect proof
-5. Write a milestone self-check covering:
-   - what changed
-   - what spec section / goal / constraint it satisfied
-   - what milestone was completed
-   - what proof model was declared
-   - what evidence actually exists
-   - what remains risky or unclear
-   - whether the next milestone still makes sense
-6. If the milestone feels risky, run one bounded drift-review subagent before continuing
-7. Update `session-ledger.md`
-
-Prefer small, verified increments over one large final diff.
-"""
-
-# ============================================================================
-# STAGE 8: FINAL REVIEW LAUNCH
-# ============================================================================
-
-[[steps]]
-id = "stage-final-review-launch"
-title = "Stage 8: Launch Final Review Workers"
-needs = ["stage-implement-rest"]
-description = """
-Placeholder expanded by `final-review-launch-expansion`.
-"""
-
-# ============================================================================
-# STAGE 9: MONITOR + SYNTHESIZE
-# ============================================================================
-
-[[steps]]
-id = "stage-final-review-monitor"
-title = "Stage 9: Monitor Review Workers and Synthesize"
-needs = ["stage-final-review-launch"]
-description = """
-Placeholder expanded by `monitor-synthesize-expansion`.
-"""
-
-# ============================================================================
-# STAGE 10: VERIFY + FINALIZE
-# ============================================================================
-
-[[steps]]
-id = "stage-verify-finalize"
-title = "Stage 10: Verify, Finalize, and Report"
-needs = ["stage-final-review-monitor"]
-description = """
-Placeholder expanded by `verify-finalize-expansion`.
+Do not launch the convoy from this workflow. The staged convoy is a tracking
+artifact for the execution session, not a daemon-dispatch handoff.
 """
 
 # ============================================================================
@@ -498,25 +339,26 @@ Placeholder expanded by `verify-finalize-expansion`.
 [[steps]]
 id = "complete"
 title = "Workflow Complete"
-needs = ["stage-verify-finalize"]
+needs = ["stage-stage-convoy"]
 description = """
-Two-session delivery workflow complete.
+Two-session planned workflow complete.
 
 **Artifacts:**
 - docs/plans/{{feature}}/spec.md
 - docs/plans/{{feature}}/plans.md
 - docs/plans/{{feature}}/session-context.md
-- docs/plans/{{feature}}/session-ledger.md
-- <rig-root>/.runtime/reviews/{{feature}}/<run-id>/*.md
+- root epic child execution beads
+- staged convoy tracking those execution beads
 
-**Tracking:**
-- root epic updated with progress and final summary
-- optional milestone tasks updated/closed
+**Next Step:**
+- execute the staged convoy in the current session using `$epic-delivery`
+- use the root epic ID as the skill input
 
 **Modeling note:**
-This workflow treats convergence and build execution as different phases on
-purpose. Session 1 distills noisy exploration into `spec.md`; session 2 plans
-and builds from committed artifacts.
+This workflow treats convergence/planning and implementation as different
+phases on purpose. Session 1 distills noisy exploration into `spec.md`;
+session 2 produces `plans.md`, execution beads, and a staged convoy so
+implementation can run from beads rather than from the formula.
 """
 
 # ============================================================================
@@ -542,13 +384,5 @@ target = "stage-plan"
 with = "plan-expansion"
 
 [[compose.expand]]
-target = "stage-final-review-launch"
-with = "final-review-launch-expansion"
-
-[[compose.expand]]
-target = "stage-final-review-monitor"
-with = "monitor-synthesize-expansion"
-
-[[compose.expand]]
-target = "stage-verify-finalize"
-with = "verify-finalize-expansion"
+target = "stage-create-execution-beads"
+with = "execution-beads-expansion"

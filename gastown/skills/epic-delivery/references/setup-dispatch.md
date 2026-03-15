@@ -1,31 +1,23 @@
-# Setup and Launch Reference
+# Setup Reference
 
 ## TOC
 
-1. Setup steps
-2. Merge-blocks validation gate
-3. Launch
-4. Notes
+1. Resolve epic and branch context
+2. Reuse or stage convoy
+3. Validate execution beads
+4. When to re-stage
 
-## 1. Setup steps
+## 1. Resolve epic and branch context
 
-### 1.1 Reuse staged convoy if present
-
-```bash
-gt convoy list --all --json
-```
-
-If a staged convoy already tracks this epic, reuse it. Do not create duplicates.
-
-### 1.2 Ensure bead type is epic
+### 1.1 Ensure bead type is epic
 
 ```bash
-bd show <epic-id> --json | python3 -c "import json,sys; d=json.load(sys.stdin)[0]; print(d['issue_type'])"
-# If not epic:
-bd update <epic-id> -t epic
+bd show <epic-id> --json | jq -r '.[0].issue_type // .issue_type'
 ```
 
-### 1.3 Create or verify integration branch
+If it is not `epic`, stop and fix the modeling first.
+
+### 1.2 Create or verify integration branch
 
 ```bash
 gt mq integration status <epic-id>
@@ -33,64 +25,62 @@ gt mq integration status <epic-id>
 gt mq integration create <epic-id>
 ```
 
-Record integration branch name for later validation gates.
+Record the integration branch name for later reporting and validation.
 
-### 1.4 Stage convoy
+## 2. Reuse or stage convoy
+
+### 2.1 Reuse staged convoy if present
+
+```bash
+gt convoy list --all --json
+```
+
+If a staged convoy already tracks this epic, reuse it. Do not create duplicates.
+
+### 2.2 Stage convoy if needed
 
 ```bash
 gt convoy stage <epic-id> --json
 ```
 
-Record convoy ID from output.
+Record:
+- convoy ID
+- staged status
+- warnings, if any
+- wave summary
 
-## 2. Merge-blocks validation gate
+Do not run `gt convoy launch`.
 
-Goal: code-order dependencies should use `merge-blocks`.
+## 3. Validate execution beads
 
-### 2.1 Gather implementable leaves
+Gather the root epic children:
 
 ```bash
 bd list --parent <epic-id> --all --limit 0 --json
 ```
 
-Focus on types: `task`, `bug`, `feature`, `chore`.
+Confirm the child graph contains the expected execution units:
+- milestone beads
+- explicit checkpoint beads for review-stop / shape-review points
+- `final review`
+- `verification and ship`
 
-### 2.2 Inspect dependency types per leaf
+If the graph is still lightweight status tracking instead of real execution
+beads, stop and return to bead creation.
 
-For each leaf:
+## 4. When to re-stage
 
-```bash
-bd dep list <leaf-id> -t merge-blocks --json
-bd dep list <leaf-id> -t blocks --json
-```
-
-### 2.3 Convert legacy code-order blocks
-
-If a `blocks` edge represents code-order merge gating, convert it:
+Re-run:
 
 ```bash
-bd dep remove <blocked-id> <blocker-id>
-bd dep add <blocked-id> <blocker-id> --type merge-blocks
+gt convoy stage <epic-id> --json
 ```
 
-Keep `blocks` for non-merge sequencing dependencies.
+whenever:
+- execution beads were added or removed
+- deps changed materially
+- milestone sequencing changed
+- final review / verification beads were renamed or repaired
 
-### 2.4 Validation output
-
-Report:
-- total `merge-blocks` edges found
-- total legacy edges converted
-- any ambiguous edges left for human decision
-
-## 3. Launch
-
-```bash
-gt convoy launch <convoy-id>
-```
-
-Do not manually sling leaves after launch.
-
-## 4. Notes
-
-- Launch dispatches Wave 1 and transitions to daemon-managed feeding for later waves.
-- This skill does not run a long-lived monitor loop.
+The staged convoy is the shared tracking lens. Keep it aligned to the current
+bead graph.

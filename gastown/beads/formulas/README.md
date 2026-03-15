@@ -1,12 +1,12 @@
 # Formulas
 
-Spec-centric design and execution formulas for the `gt sling` pipeline. Nine
+Spec-centric design and execution formulas for the `gt sling` pipeline. Ten
 composable expansion formulas and four workflow orchestrators support
 different delivery modes:
 - agent-driven routing into the right delivery mode
 - delegation-safe umbrella decomposition (`spec -> enrich -> decomposition plan -> beadify`)
 - lean single-session delivery (`spec -> enrich -> implement`)
-- two-session planned delivery (`spec -> enrich || plans -> build`)
+- two-session planned delivery (`spec -> enrich || plans -> execution beads -> staged convoy`)
 
 ## Architecture
 
@@ -20,12 +20,13 @@ The formulas follow an **expansion/workflow pattern**:
 - `spec.md` — the durable requirements and design record
 - `plan-draft.md` — decomposition plan for `delivery-workflow-epic`
 - `plans.md` — milestone plan for `delivery-workflow-planned`
-- Beads — either execution decomposition (`beadify`) or lightweight tracking
-- `session-ledger.md` — execution evidence for delivery workflows
+- Beads — either umbrella decomposition (`beadify`) or planned execution beads
+- `session-ledger.md` — execution evidence for `delivery-workflow-quick`
+- staged convoy — execution tracking artifact for `delivery-workflow-planned`
 
 ## The Pipeline
 
-Five primary entry expansions, plus four shared lower-stage expansions used by
+Six primary entry expansions, plus three shared lower-stage expansions used by
 the delivery workflows:
 
 ```
@@ -51,6 +52,7 @@ flowchart TD
         EN["enrich-expansion"]
         DP["decomposition-plan-expansion"]
         PL["plan-expansion"]
+        EB["execution-beads-expansion"]
         BD["beadify-expansion"]
 
         FR["final-review-launch"]
@@ -60,7 +62,9 @@ flowchart TD
         SPEC["spec.md"]
         PLAN_DRAFT["plan-draft.md"]
         PLANS["plans.md"]
+        EXEC_BEADS["execution beads"]
         BEADS["beads graph"]
+        CONVOY["staged convoy"]
         LEDGER["session-ledger.md"]
     end
 
@@ -85,10 +89,9 @@ flowchart TD
         DW2_START["start"]
         DW2_BOOT["bootstrap"]
         DW2_HANDOFF["checkpoint-handoff-ready"]
-        DW2_TRACK["tracking-setup"]
-        DW2_M1["implement-m1"]
-        DW2_SHAPE["shape-review"]
-        DW2_REST["implement-rest"]
+        DW2_EXEC["execution-setup"]
+        DW2_BEADS["execution-beads"]
+        DW2_CONVOY["stage-convoy"]
         DW2_DONE["complete"]
     end
 
@@ -130,13 +133,11 @@ flowchart TD
     DW2_BOOT --> DS
     DS --> EN
     EN --> DW2_HANDOFF
-    DW2_HANDOFF --> DW2_TRACK
-    DW2_TRACK --> PL
-    PL --> DW2_M1
-    DW2_M1 --> DW2_SHAPE
-    DW2_SHAPE --> DW2_REST
-    DW2_REST --> FR
-    VF --> DW2_DONE
+    DW2_HANDOFF --> DW2_EXEC
+    DW2_EXEC --> PL
+    PL --> EB
+    EB --> DW2_CONVOY
+    DW2_CONVOY --> DW2_DONE
 
     FR --> MS
     MS --> VF
@@ -144,17 +145,17 @@ flowchart TD
     DS -. writes .-> SPEC
     DP -. writes .-> PLAN_DRAFT
     PL -. writes .-> PLANS
+    EB -. creates .-> EXEC_BEADS
     BD -. creates .-> BEADS
     DW_IMPL -. updates .-> LEDGER
-    DW2_M1 -. updates .-> LEDGER
-    DW2_REST -. updates .-> LEDGER
+    DW2_CONVOY -. stages .-> CONVOY
     DR_RECORD -. writes .-> ROUTE["routing-decision.md"]
 
     classDef shared fill:#355c3a,color:#fff,stroke:#1f3a24,stroke-width:1px;
     classDef artifact fill:#f4f1e8,color:#333,stroke:#c9bfa8,stroke-width:1px;
 
-    class DS,EN,DP,PL,BD,FR,MS,VF shared;
-    class SPEC,PLAN_DRAFT,PLANS,BEADS,LEDGER,ROUTE artifact;
+    class DS,EN,DP,PL,EB,BD,FR,MS,VF shared;
+    class SPEC,PLAN_DRAFT,PLANS,EXEC_BEADS,BEADS,CONVOY,LEDGER,ROUTE artifact;
 ```
 
 ---
@@ -311,6 +312,44 @@ gt sling plan-expansion <crew> \
 
 ---
 
+### Execution Beads
+
+**Formula:** `execution-beads-expansion`
+
+Reads a finalized `plans.md`, derives execution beads from the milestone plan,
+and creates the bead graph that a same-session execution skill will work
+through.
+
+**Steps:**
+1. Validate `spec.md`, `plans.md`, and root epic context
+2. Design execution bead graph from milestone plan
+3. Create/reuse execution beads under the root epic
+4. Repair dependencies and summarize the graph
+
+**Execution-bead principles:**
+- one execution bead per milestone
+- explicit checkpoint beads for review-stop / shape-review milestones
+- final review and verification beads always visible
+- bead descriptions stay concise and point back to `spec.md` / `plans.md`
+- use beads for execution ownership and dependencies, not as a markdown mirror
+
+**Input:** `docs/plans/{feature}/spec.md`, `docs/plans/{feature}/plans.md`, root epic from `session-context.md`
+**Output:** Root epic child execution beads with dependency graph
+
+**Vars:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `feature` | yes | Feature name |
+
+**Usage:**
+```bash
+gt sling execution-beads-expansion <crew> \
+  --var feature="ipv6-support"
+```
+
+---
+
 ### Beadify
 
 **Formula:** `beadify-expansion`
@@ -400,8 +439,7 @@ workflow to run next.
 ```bash
 gt sling delivery-workflow <crew> \
   --var feature="ipv6-support" \
-  --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
-  --var tracking="milestones"
+  --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```
 
 ---
@@ -449,15 +487,13 @@ gt sling delivery-workflow-epic <crew> \
 
 ---
 
-### Delivery Workflow
+### Delivery Workflow Quick
 
 **Formula:** `delivery-workflow-quick`
 
 Single uninterrupted Codex session from plan through implementation, explicit
 final review, and verification.
-No polecat delegation. Keeps Gastown visibility with either:
-- `milestones` mode: a few milestone child tasks
-- `epic-only` mode: one root epic with progress notes
+No polecat delegation. Keeps Gastown visibility through the root epic only.
 
 ```
  Kickoff -> Bootstrap -> Draft Spec -> Enrich -> Tracking Setup -> Implement -> Launch Final Review -> Monitor + Synthesize -> Verify + Finalize
@@ -477,24 +513,24 @@ the expected stage order.
 | `feature` | yes | Feature name |
 | `brief` | yes | 1-3 sentence description |
 | `epic_id` | no | Existing root epic to reuse |
-| `tracking` | no | `milestones` (default) or `epic-only` |
 
 **Usage:**
 ```bash
 gt sling delivery-workflow-quick <crew> \
   --var feature="ipv6-support" \
-  --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
-  --var tracking="milestones"
+  --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```
 
 ---
 
-### Delivery Workflow V2
+### Delivery Workflow Planned
 
 **Formula:** `delivery-workflow-planned`
 
 Recommended default delivery workflow when discovery is noisy and you want the
-build session to start fresh from committed artifacts.
+build session to start fresh from committed artifacts, but want execution to
+move into beads plus staged convoy tracking instead of staying inside the
+formula.
 
 Session 1:
 - Bootstrap
@@ -503,15 +539,14 @@ Session 1:
 - Handoff boundary
 
 Session 2:
-- Tracking Setup
+- Execution Setup
 - Plan (`plans.md`)
-- Implement milestone 1
-- Shape review checkpoint
-- Implement remaining milestones
-- Final review / verify / finalize
+- Create execution beads
+- Stage execution convoy
+- Hand off to `$epic-delivery` in the same session
 
 ```
- Kickoff -> Bootstrap -> Draft Spec -> Enrich -> [handoff] -> Tracking Setup -> Plan -> Implement M1 -> Shape Review -> Implement Rest -> Launch Final Review -> Monitor + Synthesize -> Verify + Finalize
+ Kickoff -> Bootstrap -> Draft Spec -> Enrich -> [handoff] -> Execution Setup -> Plan -> Execution Beads -> Stage Convoy -> Complete
 ```
 
 Use this when:
@@ -519,6 +554,7 @@ Use this when:
   exploration noise
 - you want `enrich` to distill that into a clean `spec.md`
 - you want 2 default plan review passes before code starts
+- you want implementation to be driven from execution beads rather than from the formula
 
 **Vars:**
 
@@ -527,14 +563,12 @@ Use this when:
 | `feature` | yes | Feature name |
 | `brief` | yes | 1-3 sentence description |
 | `epic_id` | no | Existing root epic to reuse |
-| `tracking` | no | `milestones` (default) or `epic-only` |
 
 **Usage:**
 ```bash
 gt sling delivery-workflow-planned <crew> \
   --var feature="ipv6-support" \
-  --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
-  --var tracking="milestones"
+  --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```
 
 **How to run Session 1 / Session 2**
@@ -553,11 +587,15 @@ Session 2:
 2. Run `gt prime`.
 3. Check the hooked molecule with `gt mol status`.
 4. Run `bd mol current <molecule-id>`.
-5. Continue from the next step, which should be `stage-tracking-setup`.
+5. Continue from the next step, which should be `stage-execution-setup`.
 
 This is an operational boundary, not a special workflow pause primitive. The
 resume behavior relies on the normal hooked molecule flow: close the current
 step, hand off, then let the next session resume the next current step.
+
+When the workflow completes, execution no longer lives in the formula. The next
+step is to use `$epic-delivery` to work the staged convoy and close the
+execution beads in the current session.
 
 ---
 

@@ -1,11 +1,20 @@
 ---
 name: epic-delivery
-description: Deliver a beads epic via staged convoy launch with daemon-managed scheduling. Use when an epic is ready and you need to ensure merge-gated dependencies, stage/launch convoy, and report execution status without manual dispatch loops or gt mq integration land.
+description: Execute a planned delivery epic in the current session using execution beads, with a staged convoy as the tracking surface. Use when an epic already has execution beads and you want to work the convoy-backed plan yourself without daemon dispatch.
 ---
 
 # Epic Delivery
 
-Run a stage-and-launch workflow for epic execution. Let convoy + daemon handle scheduling after launch.
+Execute a delivery epic in the current session.
+
+This skill assumes planning is already done:
+- `spec.md` exists
+- `plans.md` exists for planned delivery
+- execution beads already exist under the root epic
+
+The convoy is used as a tracking artifact, not a scheduler. Keep it staged,
+work the tracked beads in the current session, and use `gt convoy status` as
+the shared status surface.
 
 ## Input
 
@@ -15,46 +24,51 @@ Required:
 Auto-detected:
 - Rig from current workspace
 
+Optional but expected:
+- `docs/plans/<feature>/spec.md`
+- `docs/plans/<feature>/plans.md`
+- staged convoy already attached to the epic
+
 ## Non-Negotiable Rules
 
-1. Use single auto mode only: stage then launch.
-2. Never run `gt sling <convoy-id>`.
-3. Do not run manual per-leaf dispatch loops after launch.
-4. Prefer `merge-blocks` for code-order dependencies (`bd dep add <blocked> <blocker> --type merge-blocks`).
-5. Validate dependency modeling before launch.
-6. Never run `gt mq integration land <epic-id>` in this workflow.
+1. Keep ownership in the current session.
+2. Do not run `gt convoy launch <convoy-id>`.
+3. Do not `gt sling` individual execution leaves from this skill.
+4. Treat the staged convoy as a tracking surface, not a dispatcher.
+5. Re-stage the convoy if the execution bead graph changes materially.
+6. Never run `gt mq integration land <epic-id>` in this skill.
 
 ## Workflow
 
-1. Setup integration context.
-- Reuse staged convoy if it already tracks the epic.
+1. Setup convoy context.
+- Reuse an existing staged convoy if present.
 - Ensure epic type is `epic`.
 - Create/verify integration branch.
-- Stage convoy.
+- Stage the convoy if needed.
 - See [references/setup-dispatch.md](references/setup-dispatch.md).
 
-2. Validate merge-gated dependencies before launch.
-- For code-order dependencies, ensure `merge-blocks` is used.
-- Convert legacy `blocks` edges used for code-order gating to `merge-blocks`.
-- Record validation summary (how many `merge-blocks` edges found/converted).
+2. Validate the execution graph.
+- Confirm execution beads exist under the epic.
+- Confirm dependencies still match the intended milestone/checkpoint order.
+- Restage if the graph changed after the last stage.
 - See [references/setup-dispatch.md](references/setup-dispatch.md).
 
-3. Launch convoy.
-- Launch the staged convoy with `gt convoy launch <convoy-id>`.
-- Do not manually sling leaves.
-- See [references/setup-dispatch.md](references/setup-dispatch.md).
-
-4. Post-launch snapshot (no loop).
-- Capture one status snapshot for user visibility:
-  - `gt convoy status <convoy-id>`
-  - `gt mq integration status <epic-id>`
-- Report what was launched and what the daemon/refinery will process next.
-- Do not run continuous monitor loops in this skill.
+3. Execute the convoy in-session.
+- Inspect convoy status.
+- Find the next ready tracked bead.
+- Work it to completion in the current session.
+- Refresh convoy status and repeat.
 - See [references/monitoring-handoff.md](references/monitoring-handoff.md).
 
-5. Validate and report when execution is complete.
-- If work is already complete now, run validation and reporting now.
-- Otherwise, stop after snapshot and tell user this skill should be rerun for final validation once daemon/refinery finish.
+4. Handle blocked or ambiguous execution states.
+- If open tracked beads remain but none are ready, inspect blockers and stop on
+  the real execution problem.
+- If the graph or plan is wrong, repair the beads and re-stage the convoy.
+- See [references/failure-handling.md](references/failure-handling.md).
+
+5. Finalize tracking and report.
+- When all tracked beads are closed, close the convoy explicitly.
+- Summarize plan-vs-actual and verification state.
 - See [references/validation-reporting.md](references/validation-reporting.md).
 
 ## Output Contract
@@ -66,20 +80,17 @@ Report each major transition clearly:
 - Convoy ID
 - Integration branch
 
-2. Dependency validation:
-- `merge-blocks` edges detected
-- Legacy `blocks` edges converted
-- Any remaining blockers requiring human decision
+2. Execution status:
+- Open tracked beads
+- Ready tracked beads
+- Next bead selected
 
-3. Launch result:
-- Launch command outcome
-- Wave summary from launch output
+3. Blocked state, if any:
+- Open but not-ready beads
+- Blocking deps or execution ambiguity
+- Whether re-stage is required
 
-4. Post-launch snapshot:
-- Convoy status
-- Integration queue status
-- Explicit note that daemon/refinery now own scheduling
-
-5. Validation handoff:
-- If not complete: exact command to rerun this skill later
-- If complete: gate results + plan-vs-actual summary
+4. Completion:
+- Convoy close result
+- Plan-vs-actual summary
+- Verification/gate summary

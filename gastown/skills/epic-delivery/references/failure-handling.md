@@ -2,74 +2,75 @@
 
 ## TOC
 
-1. Stage or launch failure
-2. Dependency modeling issues
-3. Refinery anomalies after launch
-4. Stale bead status after merge
+1. Staging failure
+2. No ready tracked bead
+3. Graph drift during execution
+4. Convoy close failure
 5. Never-do list
 
-## 1. Stage or launch failure
+## 1. Staging failure
 
 Detect with:
 
 ```bash
 gt convoy stage <epic-id> --json
-gt convoy launch <convoy-id>
 ```
 
 Action:
-- Report exact failing command and first actionable error line.
-- Do not fall back to manual per-leaf sling loops.
-- Fix the blocking condition, then rerun stage/launch.
+- Report the exact failing command and the first actionable error line.
+- Fix the execution bead graph or epic modeling issue.
+- Re-stage after the fix.
 
-## 2. Dependency modeling issues
+## 2. No ready tracked bead
 
-If code-order dependencies are still represented as `blocks`, convert before launch:
+Symptom:
+- tracked beads are still open
+- `bd ready --json` contains no convoy-tracked bead
+
+Action:
+1. Inspect blockers:
 
 ```bash
-bd dep remove <blocked-id> <blocker-id>
-bd dep add <blocked-id> <blocker-id> --type merge-blocks
+gt convoy status <convoy-id>
+bd blocked --json
 ```
 
-If edge intent is ambiguous (code-order vs sequencing), escalate for user decision.
+2. Decide which of these is true:
+- the current dependency graph is correct and you are waiting on a prior bead
+- the graph is wrong and needs repair
+- the plan is wrong and needs revision
 
-## 3. Refinery anomalies after launch
+Do not improvise external dispatch just because nothing is ready.
+
+## 3. Graph drift during execution
+
+If bead titles, deps, or checkpoint structure change materially during execution:
+
+```bash
+gt convoy stage <epic-id> --json
+```
+
+Re-stage so convoy tracking matches the current graph.
+
+If the drift comes from a real plan mistake, repair `plans.md` before repairing
+the beads.
+
+## 4. Convoy close failure
 
 Detect with:
 
 ```bash
-gt convoy status <convoy-id>
-gt mq integration status <epic-id> --json
-gt mq list <rig> --epic <epic-id> --json
+gt convoy close <convoy-id>
 ```
 
-Action:
-- Report anomaly clearly (re-assignment, stuck queue, missing MR progression).
-- Keep convoy/daemon model intact; do not switch to manual dispatch mode in this skill.
-
-## 4. Stale bead status after merge
-
-Symptom:
-- MR merged to integration branch.
-- Bead still open/in_progress.
-
-Detect:
-
-```bash
-gt mq integration status <epic-id>
-bd show <task-id>
-```
-
-Recovery:
-
-```bash
-bd close <task-id> --force
-```
-
-Use only after merge confirmation.
+If close fails:
+- inspect the allegedly still-open tracked beads
+- reconcile any stale bead status
+- close the convoy only after the tracked set is genuinely complete
 
 ## 5. Never-do list
 
-- Never run manual per-leaf dispatch loops as fallback for this skill.
-- Never kill polecats.
+- Never run `gt convoy launch <convoy-id>` in this skill.
+- Never fall back to `gt sling` loops for execution leaves.
+- Never treat the staged convoy as proof that execution is complete.
 - Never run `gt mq integration land <epic-id>` here.

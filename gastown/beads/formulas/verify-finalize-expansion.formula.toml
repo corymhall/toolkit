@@ -31,15 +31,10 @@ Run final verification, then finalize tracking state and summary.
 
 ```bash
 EPIC_ID=$(awk -F': ' '/^epic_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
-TRACKING_MODE=$(awk -F': ' '/^tracking_mode:/{print $2}' docs/plans/{{feature}}/session-context.md)
 ```
 
-- `milestones` mode:
-  - close `{{feature}}: implementation complete` when code is done
-  - close `{{feature}}: verification complete` when validation passes
-  - close `{{feature}}: final cleanup and ship` after final summary + push
-- `epic-only` mode:
-  - append final status note to root epic (implementation + verification complete)
+Append the final execution summary to the root epic. Do not create or close
+lightweight milestone tracker beads from this shared stage.
 
 ## Final Epic Note
 

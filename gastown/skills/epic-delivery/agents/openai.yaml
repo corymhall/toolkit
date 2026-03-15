@@ -1,4 +1,4 @@
 interface:
   display_name: "Epic Delivery"
-  short_description: "Deliver a beads epic via stage+launch convoy with daemon-managed scheduling"
-  default_prompt: "Use $epic-delivery to validate merge-blocks dependencies, stage and launch convoy for this epic, capture a post-launch snapshot, and avoid manual monitor/dispatch loops. Do not run gt mq integration land."
+  short_description: "Execute a planned delivery epic in the current session with a staged convoy as tracking"
+  default_prompt: "Use $epic-delivery to reuse or stage the convoy for this epic, validate the execution bead graph, work the ready tracked beads in this same session, and close the convoy when the tracked execution beads are done. Do not run gt convoy launch or gt mq integration land."

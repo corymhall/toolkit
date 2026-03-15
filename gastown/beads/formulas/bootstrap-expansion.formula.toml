@@ -25,11 +25,6 @@ description = "Optional existing root epic ID to reuse"
 required = false
 default = ""
 
-[vars.tracking]
-description = "Tracking mode"
-required = false
-default = "milestones"
-
 [vars.bootstrap_epic_description]
 description = "Root epic description used when creating a new epic"
 required = false
@@ -86,13 +81,10 @@ git switch <integration-branch-from-status-output>
 
 ```bash
 mkdir -p docs/plans/{{feature}}
-TRACKING_MODE="{{tracking}}"
-if [ -z "$TRACKING_MODE" ]; then TRACKING_MODE="milestones"; fi
 cat > docs/plans/{{feature}}/session-context.md <<CTX
 feature: {{feature}}
 brief: {{brief}}
 epic_id: $EPIC_ID
-tracking_mode: $TRACKING_MODE
 review_categories: all
 review_profiles_selected: general
 delivery_mode: {{delivery_mode_context}}
@@ -101,5 +93,5 @@ CTX
 
 ## Output
 
-Report epic ID, integration branch, and tracking mode.
+Report epic ID and integration branch.
 """
