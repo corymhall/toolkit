@@ -103,6 +103,9 @@ flowchart TD
     DR_INSPECT --> DR_SELECT
     DR_SELECT --> DR_RECORD
     DR_RECORD --> DR_DONE
+    DR_DONE -. routes to .-> EDW_START
+    DR_DONE -. routes to .-> DW_START
+    DR_DONE -. routes to .-> DW2_START
 
     EDW_START --> EDW_BOOT
     EDW_BOOT --> DS
