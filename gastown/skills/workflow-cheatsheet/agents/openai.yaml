@@ -1,0 +1,4 @@
+interface:
+  display_name: "Workflow Cheatsheet"
+  short_description: "Pick the right Gas Town workflow fast"
+  default_prompt: "Use $workflow-cheatsheet to choose the right Gas Town workflow and the exact dispatch commands."
