@@ -2,7 +2,7 @@
 #
 # End-to-end delivery in ONE Codex session:
 #   bootstrap -> draft-spec -> enrich -> epic tracking -> implement
-#   -> launch final review -> monitor+synthesize -> verify/finalize
+#   -> implementation review skill -> verify/finalize
 #
 # No polecat delegation, no handoff checkpoints. Keeps ownership in one session,
 # while still recording status in beads.
@@ -17,15 +17,14 @@
 description = """
 Quick Codex-native delivery workflow with epic-level Gastown tracking.
 
-Composes eight stages sequentially:
+Composes seven stages sequentially:
 1. **Bootstrap** - ensure root epic + integration branch exist
 2. **Draft Spec** - produce the standard `spec.md` design record
 3. **Enrich** - tighten spec gaps while preserving serialized intent and traceability
 4. **Tracking Setup** - record the locked plan and execution start on the root epic
 5. **Implement** - execute all work in THIS session (subagents optional)
-6. **Launch Final Review** - create a review checkpoint and sling sidecar reviewers
-7. **Monitor + Synthesize** - keep monitoring until reviewers reach terminal state, then synthesize findings
-8. **Verify + Finalize** - validate, update tracking, and summarize
+6. **Implementation Review** - run the shared multi-agent review skill
+7. **Verify + Finalize** - validate, update tracking, and summarize
 
 Use this when you want Codex continuity benefits from a single uninterrupted
 thread and only need epic-level visibility in Gastown.
@@ -125,9 +124,8 @@ description = """
    3. Enrich (gap analysis)
    4. Tracking Setup (root epic notes only)
    5. Implement (same session, optional subagents)
-   6. Launch Final Review (Codex + Claude sidecars, optional specialist)
-   7. Monitor + Synthesize
-   8. Verify + Finalize
+   6. Implementation Review (shared skill)
+   7. Verify + Finalize
 
  Artifacts:
    - docs/plans/{{feature}}/spec.md
@@ -296,37 +294,35 @@ Prefer small, verified increments over one large final diff.
 """
 
 # ============================================================================
-# STAGE 6: FINAL REVIEW LAUNCH
+# STAGE 6: IMPLEMENTATION REVIEW
 # ============================================================================
 
 [[steps]]
-id = "stage-final-review-launch"
-title = "Stage 6: Launch Final Review Workers"
+id = "stage-implementation-review"
+title = "Stage 6: Run Implementation Review"
 needs = ["stage-implement"]
 description = """
-Placeholder expanded by `final-review-launch-expansion`.
+Run the shared `$implementation-review` skill before final verification.
+
+This stage owns:
+- creating the review checkpoint commit and pushing it
+- launching the Codex + Claude review workers
+- monitoring them to terminal state
+- synthesizing findings
+- returning to fix work if the review finds blocking issues
+
+Do not proceed to final verification until the implementation review skill says
+the review boundary is clean.
 """
 
 # ============================================================================
-# STAGE 7: MONITOR + SYNTHESIZE
-# ============================================================================
-
-[[steps]]
-id = "stage-final-review-monitor"
-title = "Stage 7: Monitor Review Workers and Synthesize"
-needs = ["stage-final-review-launch"]
-description = """
-Placeholder expanded by `monitor-synthesize-expansion`.
-"""
-
-# ============================================================================
-# STAGE 8: VERIFY + FINALIZE
+# STAGE 7: VERIFY + FINALIZE
 # ============================================================================
 
 [[steps]]
 id = "stage-verify-finalize"
-title = "Stage 8: Verify, Finalize, and Report"
-needs = ["stage-final-review-monitor"]
+title = "Stage 7: Verify, Finalize, and Report"
+needs = ["stage-implementation-review"]
 description = """
 Placeholder expanded by `verify-finalize-expansion`.
 """
@@ -373,14 +369,6 @@ with = "draft-spec-expansion"
 [[compose.expand]]
 target = "stage-enrich"
 with = "enrich-expansion"
-
-[[compose.expand]]
-target = "stage-final-review-launch"
-with = "final-review-launch-expansion"
-
-[[compose.expand]]
-target = "stage-final-review-monitor"
-with = "monitor-synthesize-expansion"
 
 [[compose.expand]]
 target = "stage-verify-finalize"

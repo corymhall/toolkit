@@ -26,8 +26,8 @@ The formulas follow an **expansion/workflow pattern**:
 
 ## The Pipeline
 
-Six primary entry expansions, plus three shared lower-stage expansions used by
-the delivery workflows:
+Six primary entry expansions, plus shared workflow support for final
+verification and implementation review:
 
 ```
 ┌─────────────┐      ┌─────────────┐      ┌──────────────────────┐
@@ -55,9 +55,8 @@ flowchart TD
         EB["execution-beads-expansion"]
         BD["beadify-expansion"]
 
-        FR["final-review-launch"]
-        MS["monitor-synthesize"]
         VF["verify-finalize"]
+        RS["implementation-review skill"]
 
         SPEC["spec.md"]
         PLAN_DRAFT["plan-draft.md"]
@@ -82,6 +81,7 @@ flowchart TD
         DW_BOOT["bootstrap"]
         DW_TRACK["tracking-setup"]
         DW_IMPL["stage-implement"]
+        DW_REVIEW["implementation-review"]
         DW_DONE["complete"]
     end
 
@@ -126,7 +126,8 @@ flowchart TD
     DS --> EN
     EN --> DW_TRACK
     DW_TRACK --> DW_IMPL
-    DW_IMPL --> FR
+    DW_IMPL --> DW_REVIEW
+    DW_REVIEW --> VF
     VF --> DW_DONE
 
     DW2_START --> DW2_BOOT
@@ -139,22 +140,20 @@ flowchart TD
     EB --> DW2_CONVOY
     DW2_CONVOY --> DW2_DONE
 
-    FR --> MS
-    MS --> VF
-
     DS -. writes .-> SPEC
     DP -. writes .-> PLAN_DRAFT
     PL -. writes .-> PLANS
     EB -. creates .-> EXEC_BEADS
     BD -. creates .-> BEADS
     DW_IMPL -. updates .-> LEDGER
+    DW_REVIEW -. runs .-> RS
     DW2_CONVOY -. stages .-> CONVOY
     DR_RECORD -. writes .-> ROUTE["routing-decision.md"]
 
     classDef shared fill:#355c3a,color:#fff,stroke:#1f3a24,stroke-width:1px;
     classDef artifact fill:#f4f1e8,color:#333,stroke:#c9bfa8,stroke-width:1px;
 
-    class DS,EN,DP,PL,EB,BD,FR,MS,VF shared;
+    class DS,EN,DP,PL,EB,BD,VF,RS shared;
     class SPEC,PLAN_DRAFT,PLANS,EXEC_BEADS,BEADS,CONVOY,LEDGER,ROUTE artifact;
 ```
 
@@ -492,12 +491,12 @@ gt sling delivery-workflow-epic <crew> \
 
 **Formula:** `delivery-workflow-quick`
 
-Single uninterrupted Codex session from plan through implementation, explicit
-final review, and verification.
+Single uninterrupted Codex session from plan through implementation, shared
+implementation review, and verification.
 No polecat delegation. Keeps Gastown visibility through the root epic only.
 
 ```
- Kickoff -> Bootstrap -> Draft Spec -> Enrich -> Tracking Setup -> Implement -> Launch Final Review -> Monitor + Synthesize -> Verify + Finalize
+ Kickoff -> Bootstrap -> Draft Spec -> Enrich -> Tracking Setup -> Implement -> Implementation Review -> Verify + Finalize
 ```
 
 Use this when context continuity matters more than parallel delegation.

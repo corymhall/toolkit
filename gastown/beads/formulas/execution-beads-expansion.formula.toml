@@ -126,6 +126,12 @@ Each execution bead description should be concise and execution-oriented:
 - stop conditions, if any
 - pointers back to `spec.md` and `plans.md`
 
+For the `implementation review` bead specifically:
+- direct the executor to run `$implementation-review`
+- require checkpoint commit + pushed branch + shared review artifacts
+- require Codex + Claude review runs plus synthesis before closing the bead
+- require a return to fix work if the review is blocking
+
 Do not copy the entire milestone text verbatim into bead descriptions.
 Beads are execution contracts, not markdown mirrors.
 

@@ -61,6 +61,8 @@ Optional but expected:
 3. Execute the convoy in-session.
 - Inspect convoy status.
 - Find the next ready tracked bead.
+- If the selected bead is `implementation review`, run `$implementation-review`
+  instead of treating it like a generic execution bead.
 - If no local tracked bead is ready but `validation_bead_id` is the final
   remaining target, execute that capstone validation bead explicitly.
 - Work it to completion in the current session.
