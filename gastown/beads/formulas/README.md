@@ -329,7 +329,8 @@ through.
 **Execution-bead principles:**
 - one execution bead per milestone
 - explicit checkpoint beads for review-stop / shape-review milestones
-- final review and verification beads always visible
+- one local implementation-review gate bead before convoy capstone validation
+- convoy staging is expected to append the capstone validation bead
 - bead descriptions stay concise and point back to `spec.md` / `plans.md`
 - use beads for execution ownership and dependencies, not as a markdown mirror
 
@@ -595,7 +596,8 @@ step, hand off, then let the next session resume the next current step.
 
 When the workflow completes, execution no longer lives in the formula. The next
 step is to use `$epic-delivery` to work the staged convoy and close the
-execution beads in the current session.
+execution beads plus the convoy-added capstone validation bead in the current
+session.
 
 ---
 

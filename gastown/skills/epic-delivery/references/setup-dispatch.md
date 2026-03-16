@@ -48,6 +48,7 @@ Record:
 - staged status
 - warnings, if any
 - wave summary
+- validation bead ID, if present in JSON output
 
 Do not run `gt convoy launch`.
 
@@ -62,8 +63,11 @@ bd list --parent <epic-id> --all --limit 0 --json
 Confirm the child graph contains the expected execution units:
 - milestone beads
 - explicit checkpoint beads for review-stop / shape-review points
-- `final review`
-- `verification and ship`
+- `implementation review`
+
+Then read `validation_bead_id` from `session-context.md` when present. That
+capstone bead is expected to come from convoy staging, not from local bead
+creation.
 
 If the graph is still lightweight status tracking instead of real execution
 beads, stop and return to bead creation.
@@ -80,7 +84,8 @@ whenever:
 - execution beads were added or removed
 - deps changed materially
 - milestone sequencing changed
-- final review / verification beads were renamed or repaired
+- implementation review bead was renamed or repaired
+- session context lost `validation_bead_id` and you need to refresh convoy metadata
 
 The staged convoy is the shared tracking lens. Keep it aligned to the current
 bead graph.

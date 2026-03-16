@@ -55,6 +55,10 @@ Re-stage so convoy tracking matches the current graph.
 If the drift comes from a real plan mistake, repair `plans.md` before repairing
 the beads.
 
+If the convoy-added capstone validation bead should be regenerated, re-stage
+from the convoy ID after the first epic-based stage so you refresh metadata
+without creating duplicate capstone beads.
+
 ## 4. Convoy close failure
 
 Detect with:
