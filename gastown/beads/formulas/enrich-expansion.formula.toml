@@ -20,9 +20,10 @@
 # deepen a thin spec into a thorough one.
 
 description = """
-Read a spec, make it better. Finds gaps, fixes what's obvious, asks about
-what needs human judgment, and folds everything back into the spec while
-preserving serialized context for fresh-session delegation.
+Read a spec, make it better. Uses separate slung reviewer sessions to find
+gaps, fixes what's obvious, asks about what needs human judgment, and folds
+everything back into the spec while preserving serialized context for
+fresh-session delegation.
 
 **Input:** docs/plans/{{feature}}/spec.md (any depth)
 **Output:** Updated docs/plans/{{feature}}/spec.md (enriched)
@@ -53,8 +54,13 @@ Each finding is classified as:
 
 ## Execution Style
 
-Use intent-level delegation over rigid tool choreography.
+Use separate reviewer sessions for the main enrichment analysis. The parent
+session owns synthesis, auto-fixes, and decision handling.
 - Prioritize outcome, constraints, inputs, and artifacts.
+- Materialize review inputs into a shared `.runtime` directory before slinging
+  fresh reviewers.
+- Require reviewers to mail full reports back instead of editing the spec
+  directly.
 - When a required decision is missing, call `request_user_input` instead of
   asking multiple-choice questions in plain text.
 - Ask 1 concise question at a time (max 3 per call), provide mutually
@@ -90,7 +96,7 @@ Do NOT batch-close steps or work ahead.
 formula = "enrich-expansion"
 type = "expansion"
 pour = true
-version = 1
+version = 2
 
 [vars]
 [vars.feature]
@@ -254,7 +260,8 @@ title = "Analyze spec across 6 dimensions"
 needs = ["{target}.codebase-exploration"]
 description = """
 Read the spec and codebase context, then analyze through 6 dimensions.
-Produce a findings list where each finding is classified as auto-fix or
+Use separate reviewer sessions to generate the raw findings, then synthesize
+them into one findings list where each item is classified as auto-fix or
 decision.
 
 ## Inputs
@@ -262,82 +269,117 @@ decision.
 1. `docs/plans/{{feature}}/spec.md` — the spec
 2. `docs/plans/{{feature}}/codebase-context.tmp` — codebase context (if available)
 
-## Analysis Prompt
+## Prepare Shared Review Inputs
 
-Analyze the spec through each dimension. For each dimension, only report
-findings that are genuine issues. If a dimension is clean, say so in one
-line and move on. Do NOT generate findings for the sake of completeness.
-Prefer precision and completeness over concision when preserving context.
+```bash
+TOP=$(git rev-parse --show-toplevel)
+RIG_ROOT=$(printf '%s\n' "$TOP" | sed -E 's#/crew/[^/]+$##; s#/polecats/[^/]+/[^/]+$##')
+RIG_NAME=$(basename "$RIG_ROOT")
+REPORT_TO="${BD_ACTOR}"
+REVIEW_DIR="$RIG_ROOT/.runtime/reviews/{{feature}}/enrich-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$REVIEW_DIR"
+cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
+test -f docs/plans/{{feature}}/codebase-context.tmp && cp docs/plans/{{feature}}/codebase-context.tmp "$REVIEW_DIR/codebase-context.tmp"
+```
 
-### Dimension 1: Completeness
+## Launch 2 Separate Reviewers
 
-What's missing that would block implementation?
+Reviewer A: completeness + ambiguity + scope
 
-- Could an engineer start building from this spec, or would they immediately
-  have questions?
-- Are there components mentioned but not described?
-- Are there user flows with missing steps?
-- Are there error cases not addressed?
-- Is the scope clear enough to know what NOT to build?
+```bash
+ENRICH_A_ID=$(bd create "Enrich review A: {{feature}}" --ephemeral -t task --wisp-type ping --silent \
+  --description "$(cat <<EOF
+Read:
+- $REVIEW_DIR/spec.md
+- $REVIEW_DIR/codebase-context.tmp (if present)
 
-Only flag things where the absence would cause an engineer to stop and ask.
-Do NOT flag nice-to-haves or things any competent engineer would infer.
+Review focus:
+- Completeness: what's missing that would block implementation?
+- Ambiguity: what could be interpreted two different ways?
+- Scope: is the boundary clear, and is anything misplaced?
 
-### Dimension 2: Ambiguity
+For each finding:
+- Dimension
+- Finding title
+- Why it matters
+- Classification: auto-fix | decision
+- Concrete suggested change to the spec
 
-What could be interpreted two different ways?
+If a reviewed dimension is clean, say so explicitly.
 
-- Are there statements where two engineers would disagree on the meaning?
-- Are there vague terms like "fast", "simple", "appropriate" without definition?
-- Are there conditional requirements without defined conditions?
-- Would this cause a PR review debate?
+Send your full markdown report back by mail:
 
-Only flag genuine ambiguity where the wrong interpretation would lead to
-wrong implementation. Do NOT flag minor wording preferences.
+gt mail send $REPORT_TO -s \"Enrich review A report: {{feature}}\" --stdin <<'BODY'
+<full markdown report>
+BODY
 
-### Dimension 3: Feasibility
+Rules:
+- Do not edit files
+- Do not create issues
+- After mailing the report, close this bead
+EOF
+)")
 
-What's technically hard or impossible given the codebase?
+gt sling "$ENRICH_A_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
+  --agent codex \
+  --args "Read the hooked enrich-review bead, mail the full report to $REPORT_TO, then close the bead."
+```
 
-- Does the spec assume capabilities the codebase doesn't have?
-- Are there performance requirements that conflict with the architecture?
-- Are there dependencies that don't support the proposed use?
-- What would be surprisingly expensive to implement?
+Reviewer B: feasibility + risks + consistency
 
-Use the codebase context to verify claims. Only flag issues where you
-have evidence from the actual code, not theoretical concerns.
+```bash
+ENRICH_B_ID=$(bd create "Enrich review B: {{feature}}" --ephemeral -t task --wisp-type ping --silent \
+  --description "$(cat <<EOF
+Read:
+- $REVIEW_DIR/spec.md
+- $REVIEW_DIR/codebase-context.tmp (if present)
 
-### Dimension 4: Scope
+Review focus:
+- Feasibility: what's technically hard or impossible given the codebase?
+- Risks: what could go wrong that isn't acknowledged?
+- Consistency: does the spec contradict itself or the codebase?
 
-Is the boundary clear? Is anything misplaced?
+For each finding:
+- Dimension
+- Finding title
+- Why it matters
+- Classification: auto-fix | decision
+- Concrete suggested change to the spec
 
-- Are there items in scope that should be out? (scope creep risk)
-- Are there items missing from "Out of Scope" that will inevitably be requested?
-- Is the MVP clear — what's the smallest version that delivers value?
-- Are there natural phase boundaries the spec should acknowledge?
+If a reviewed dimension is clean, say so explicitly.
 
-### Dimension 5: Risks
+Send your full markdown report back by mail:
 
-What could go wrong that isn't acknowledged?
+gt mail send $REPORT_TO -s \"Enrich review B report: {{feature}}\" --stdin <<'BODY'
+<full markdown report>
+BODY
 
-- Are there failure modes not discussed?
-- Are there migration or backwards-compatibility concerns?
-- Are there security implications?
-- Are there dependencies on external teams or systems?
+Rules:
+- Do not edit files
+- Do not create issues
+- Quote concrete codebase evidence where applicable
+- After mailing the report, close this bead
+EOF
+)")
 
-Only flag risks with real impact. Do NOT generate theoretical risk lists.
+gt sling "$ENRICH_B_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
+  --agent claude \
+  --args "Read the hooked enrich-review bead, mail the full report to $REPORT_TO, then close the bead."
+```
 
-### Dimension 6: Consistency
+## Await Both Reports
 
-Does the spec contradict itself or the codebase?
+Monitor your inbox until both subjects arrive:
 
-- Do different sections of the spec say different things?
-- Does the spec claim something about the codebase that isn't true?
-- Are there naming inconsistencies?
-- Does the proposed approach conflict with established patterns?
+- `Enrich review A report: {{feature}}`
+- `Enrich review B report: {{feature}}`
 
-Use the codebase context to verify. Quote specific code when a
-contradiction exists.
+Use:
+
+```bash
+gt mail inbox
+gt mail read <mail-id>
+```
 
 ### Fidelity Preservation Check (run before classification)
 
@@ -350,9 +392,10 @@ contradiction exists.
 If a fidelity conflict appears, create a Decision item rather than silently
 rewriting or deleting prior intent.
 
-## Classification
+## Synthesis And Classification
 
-For EACH finding, classify:
+Read both mailed reports and synthesize them into one findings file. For EACH
+finding in the synthesis, classify:
 
 **Auto-fix** — apply silently if ALL of these are true:
 - There is one clearly correct answer

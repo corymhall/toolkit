@@ -16,9 +16,8 @@ The convoy is used as a tracking artifact, not a scheduler. Keep it staged,
 work the tracked beads in the current session, and use `gt convoy status` as
 the shared status surface.
 
-When convoy staging was done from an epic on an upstream build that includes
-PR #2805, the staged convoy may also include an auto-created capstone
-validation bead. Treat that as the final execution unit.
+For planned delivery, convoy stages should use `--no-validate`, so
+`implementation review` is the final expected execution unit.
 
 ## Input
 
@@ -54,17 +53,15 @@ Optional but expected:
 2. Validate the execution graph.
 - Confirm execution beads exist under the epic.
 - Confirm dependencies still match the intended milestone/checkpoint order.
-- Read `validation_bead_id` from session context when present.
 - Restage if the graph changed after the last stage.
 - See [references/setup-dispatch.md](references/setup-dispatch.md).
 
 3. Execute the convoy in-session.
 - Inspect convoy status.
 - Find the next ready tracked bead.
-- If the selected bead is `implementation review`, run `$implementation-review`
-  instead of treating it like a generic execution bead.
-- If no local tracked bead is ready but `validation_bead_id` is the final
-  remaining target, execute that capstone validation bead explicitly.
+- If the selected bead is `implementation review`, run
+  `$review-implementation` instead of treating it like a generic execution
+  bead.
 - Work it to completion in the current session.
 - Refresh convoy status and repeat.
 - See [references/monitoring-handoff.md](references/monitoring-handoff.md).

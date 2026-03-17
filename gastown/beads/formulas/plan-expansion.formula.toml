@@ -14,8 +14,9 @@
 #   gt sling plan-expansion <crew> --var feature="ipv6-support"
 
 description = """
-Read a cleaned `spec.md`, generate `plans.md`, run the default two plan review
-passes, and leave behind a build-ready milestone plan.
+Read a cleaned `spec.md`, generate `plans.md`, run two slung plan review
+passes with separate reviewer sessions mailing reports back, and leave behind a
+build-ready milestone plan.
 
 **Input:** `docs/plans/{{feature}}/spec.md`
 **Output:** `docs/plans/{{feature}}/plans.md`
@@ -26,7 +27,12 @@ implement code.
 
 ## Review Model
 
-By default this formula runs two explicit plan review passes:
+By default this formula runs two explicit plan review passes. Each pass:
+
+- materializes the current review inputs into a shared `.runtime` directory
+- slings 2 separate reviewer workers
+- waits for both mailed reports
+- applies fixes in the parent session before continuing
 
 1. **Completeness + scope/constraints**
 2. **Sequencing + testability/risk**
@@ -67,7 +73,7 @@ starting anything else. Do not work ahead from memory.
 formula = "plan-expansion"
 type = "expansion"
 pour = true
-version = 1
+version = 2
 
 [vars]
 [vars.feature]
@@ -210,29 +216,132 @@ Review `plans.md` for completeness and spec alignment.
 - `docs/plans/{{feature}}/spec.md`
 - `docs/plans/{{feature}}/plans.md`
 
-## Review Questions
+## Prepare Shared Review Inputs
 
-1. **Completeness**
-   - Does the plan cover all material goals and acceptance criteria?
-   - Is any important slice missing entirely?
+Before slinging fresh reviewers, materialize the current artifact state in a
+shared directory:
 
-2. **Scope**
-   - Is any milestone carrying out-of-scope or clearly deferrable work?
-   - Are non-goals still respected?
+```bash
+TOP=$(git rev-parse --show-toplevel)
+RIG_ROOT=$(printf '%s\n' "$TOP" | sed -E 's#/crew/[^/]+$##; s#/polecats/[^/]+/[^/]+$##')
+RIG_NAME=$(basename "$RIG_ROOT")
+REPORT_TO="${BD_ACTOR}"
+REVIEW_DIR="$RIG_ROOT/.runtime/reviews/{{feature}}/plan-pass-1-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$REVIEW_DIR"
+cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
+cp docs/plans/{{feature}}/plans.md "$REVIEW_DIR/plans.md"
+```
 
-3. **Constraints**
-   - Do milestones respect stated constraints and non-negotiables?
-   - Did prototype learnings become explicit rules rather than implicit code cargo cult?
+## Launch 2 Separate Reviewers
+
+Create ephemeral review beads with the prompt embedded in the bead
+description, then sling them raw so the sidecar reviewers work independently
+and mail their full reports back.
+
+Reviewer A: completeness
+
+```bash
+COMPLETE_ID=$(bd create "Plan review 1A: {{feature}} completeness" --ephemeral -t task --wisp-type ping --silent \
+  --description "$(cat <<EOF
+Read:
+- $REVIEW_DIR/spec.md
+- $REVIEW_DIR/plans.md
+
+Review focus:
+- Does the plan cover all material goals and acceptance criteria?
+- Is any important slice missing entirely?
+- Are milestone boundaries complete enough to execute without hidden missing work?
+
+Report format:
+- Finding title
+- Severity: must-fix | should-fix
+- Why it matters
+- Suggested plan change
+
+Send your full markdown report back by mail:
+
+gt mail send $REPORT_TO -s \"Plan review 1A report: {{feature}}\" --stdin <<'BODY'
+<full markdown report>
+BODY
+
+Rules:
+- Do not edit files
+- Do not create issues
+- After mailing the report, close this bead
+EOF
+)")
+
+gt sling "$COMPLETE_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
+  --agent codex \
+  --args "Read the hooked review bead, mail the full report to $REPORT_TO, then close the bead."
+```
+
+Reviewer B: scope + constraints
+
+```bash
+SCOPE_ID=$(bd create "Plan review 1B: {{feature}} scope and constraints" --ephemeral -t task --wisp-type ping --silent \
+  --description "$(cat <<EOF
+Read:
+- $REVIEW_DIR/spec.md
+- $REVIEW_DIR/plans.md
+
+Review focus:
+- Is any milestone carrying out-of-scope or clearly deferrable work?
+- Are non-goals still respected?
+- Do milestones respect stated constraints and non-negotiables?
+- Did prototype learnings become explicit rules rather than implicit code cargo cult?
+
+Report format:
+- Finding title
+- Severity: must-fix | should-fix
+- Why it matters
+- Suggested plan or spec change
+
+Send your full markdown report back by mail:
+
+gt mail send $REPORT_TO -s \"Plan review 1B report: {{feature}}\" --stdin <<'BODY'
+<full markdown report>
+BODY
+
+Rules:
+- Do not edit files
+- Do not create issues
+- After mailing the report, close this bead
+EOF
+)")
+
+gt sling "$SCOPE_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
+  --agent claude \
+  --args "Read the hooked review bead, mail the full report to $REPORT_TO, then close the bead."
+```
+
+## Await Both Reports
+
+Monitor your inbox until both subjects arrive:
+
+- `Plan review 1A report: {{feature}}`
+- `Plan review 1B report: {{feature}}`
+
+Use:
+
+```bash
+gt mail inbox
+gt mail read <mail-id>
+```
 
 ## Apply Fixes
 
-If issues are found:
-- update `plans.md`
-- update `spec.md` only if the plan reveals a real spec gap or contradiction
+Read both reports. Apply all must-fix items and any should-fix items that make
+the plan materially better.
+
+- update `docs/plans/{{feature}}/plans.md`
+- update `docs/plans/{{feature}}/spec.md` only if the review reveals a real
+  spec gap or contradiction
 
 ## Output
 
 Report:
+- which reports arrived
 - issues found
 - fixes applied
 - whether the spec also needed revision
@@ -254,30 +363,125 @@ Review `plans.md` for sequencing quality, testability, and late-rework risk.
 - `docs/plans/{{feature}}/spec.md`
 - `docs/plans/{{feature}}/plans.md`
 
-## Review Questions
+## Prepare Shared Review Inputs
 
-1. **Sequencing**
-   - Is the milestone order correct?
-   - Are there hidden dependencies or unnecessary serialization?
+```bash
+TOP=$(git rev-parse --show-toplevel)
+RIG_ROOT=$(printf '%s\n' "$TOP" | sed -E 's#/crew/[^/]+$##; s#/polecats/[^/]+/[^/]+$##')
+RIG_NAME=$(basename "$RIG_ROOT")
+REPORT_TO="${BD_ACTOR}"
+REVIEW_DIR="$RIG_ROOT/.runtime/reviews/{{feature}}/plan-pass-2-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$REVIEW_DIR"
+cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
+cp docs/plans/{{feature}}/plans.md "$REVIEW_DIR/plans.md"
+```
 
-2. **Testability**
-   - Can each milestone be validated before moving on?
-   - Are the validation commands or proof expectations concrete enough?
+## Launch 2 Separate Reviewers
 
-3. **Risk**
-   - What could still force major refactoring late?
-   - Are the stop conditions strong enough to catch drift before the end?
+Reviewer A: sequencing
+
+```bash
+SEQ_ID=$(bd create "Plan review 2A: {{feature}} sequencing" --ephemeral -t task --wisp-type ping --silent \
+  --description "$(cat <<EOF
+Read:
+- $REVIEW_DIR/spec.md
+- $REVIEW_DIR/plans.md
+
+Review focus:
+- Is the milestone order correct?
+- Are there hidden dependencies or unnecessary serialization?
+- Is the implementation order likely to create late rework?
+
+Report format:
+- Finding title
+- Severity: must-fix | should-fix
+- Why it matters
+- Suggested reorder or dependency change
+
+Send your full markdown report back by mail:
+
+gt mail send $REPORT_TO -s \"Plan review 2A report: {{feature}}\" --stdin <<'BODY'
+<full markdown report>
+BODY
+
+Rules:
+- Do not edit files
+- Do not create issues
+- After mailing the report, close this bead
+EOF
+)")
+
+gt sling "$SEQ_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
+  --agent codex \
+  --args "Read the hooked review bead, mail the full report to $REPORT_TO, then close the bead."
+```
+
+Reviewer B: testability + risk
+
+```bash
+TEST_ID=$(bd create "Plan review 2B: {{feature}} testability and risk" --ephemeral -t task --wisp-type ping --silent \
+  --description "$(cat <<EOF
+Read:
+- $REVIEW_DIR/spec.md
+- $REVIEW_DIR/plans.md
+
+Review focus:
+- Can each milestone be validated before moving on?
+- Are the validation commands or proof expectations concrete enough?
+- What could still force major refactoring late?
+- Are the stop conditions strong enough to catch drift before the end?
+
+Report format:
+- Finding title
+- Severity: must-fix | should-fix
+- Why it matters
+- Suggested validation or risk-mitigation change
+
+Send your full markdown report back by mail:
+
+gt mail send $REPORT_TO -s \"Plan review 2B report: {{feature}}\" --stdin <<'BODY'
+<full markdown report>
+BODY
+
+Rules:
+- Do not edit files
+- Do not create issues
+- After mailing the report, close this bead
+EOF
+)")
+
+gt sling "$TEST_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
+  --agent claude \
+  --args "Read the hooked review bead, mail the full report to $REPORT_TO, then close the bead."
+```
+
+## Await Both Reports
+
+Monitor your inbox until both subjects arrive:
+
+- `Plan review 2A report: {{feature}}`
+- `Plan review 2B report: {{feature}}`
+
+Use:
+
+```bash
+gt mail inbox
+gt mail read <mail-id>
+```
 
 ## Apply Fixes
 
-If issues are found:
-- update `plans.md`
-- update `spec.md` if the review reveals unresolved ambiguity that would make
-  the build session unsafe
+Read both reports. Apply all must-fix items and any should-fix items that make
+the plan materially safer to execute.
+
+- update `docs/plans/{{feature}}/plans.md`
+- update `docs/plans/{{feature}}/spec.md` only if the review reveals unresolved
+  ambiguity that would make the build session unsafe
 
 ## Output
 
 Report:
+- which reports arrived
 - sequencing issues fixed
 - validation gaps fixed
 - late-rework risks that remain, if any

@@ -40,7 +40,7 @@ If a staged convoy already tracks this epic, reuse it. Do not create duplicates.
 ### 2.2 Stage convoy if needed
 
 ```bash
-gt convoy stage <epic-id> --json
+gt convoy stage <epic-id> --json --no-validate
 ```
 
 Record:
@@ -48,7 +48,6 @@ Record:
 - staged status
 - warnings, if any
 - wave summary
-- validation bead ID, if present in JSON output
 
 Do not run `gt convoy launch`.
 
@@ -65,10 +64,6 @@ Confirm the child graph contains the expected execution units:
 - explicit checkpoint beads for review-stop / shape-review points
 - `implementation review`
 
-Then read `validation_bead_id` from `session-context.md` when present. That
-capstone bead is expected to come from convoy staging, not from local bead
-creation.
-
 If the graph is still lightweight status tracking instead of real execution
 beads, stop and return to bead creation.
 
@@ -77,7 +72,7 @@ beads, stop and return to bead creation.
 Re-run:
 
 ```bash
-gt convoy stage <epic-id> --json
+gt convoy stage <epic-id> --json --no-validate
 ```
 
 whenever:
@@ -85,7 +80,6 @@ whenever:
 - deps changed materially
 - milestone sequencing changed
 - implementation review bead was renamed or repaired
-- session context lost `validation_bead_id` and you need to refresh convoy metadata
 
 The staged convoy is the shared tracking lens. Keep it aligned to the current
 bead graph.

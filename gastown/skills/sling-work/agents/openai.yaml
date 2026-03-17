@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sling Work"
+  short_description: "Dispatch work to another worker and either monitor it or record it for later follow-up"
+  default_prompt: "Use $sling-work to launch bounded work to another Gas Town worker, keep orchestration ownership in the current session, prepare visible inputs when needed, and either monitor to a real terminal condition or record the handoff cleanly for later follow-up."

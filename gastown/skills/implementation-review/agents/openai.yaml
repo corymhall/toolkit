@@ -1,4 +1,0 @@
-interface:
-  display_name: "Implementation Review"
-  short_description: "Run the shared multi-agent implementation review boundary"
-  default_prompt: "Use $implementation-review to create a review checkpoint for this feature, sling Codex and Claude mol-review-implementation workers, monitor them, synthesize the reports, and return to fix work if blocking findings exist."

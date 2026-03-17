@@ -56,7 +56,7 @@ flowchart TD
         BD["beadify-expansion"]
 
         VF["verify-finalize"]
-        RS["implementation-review skill"]
+        RS["review-implementation skill"]
 
         SPEC["spec.md"]
         PLAN_DRAFT["plan-draft.md"]
@@ -81,7 +81,7 @@ flowchart TD
         DW_BOOT["bootstrap"]
         DW_TRACK["tracking-setup"]
         DW_IMPL["stage-implement"]
-        DW_REVIEW["implementation-review"]
+        DW_REVIEW["review-implementation"]
         DW_DONE["complete"]
     end
 
@@ -195,7 +195,10 @@ gt sling draft-spec-expansion <crew> \
 
 **Formula:** `enrich-expansion`
 
-Reads an existing spec, finds gaps across 6 analytical dimensions, auto-fixes what's obvious, asks about what needs human judgment, and folds everything back into the spec. Can be run multiple times — each pass finds what the previous missed.
+Reads an existing spec, uses separate slung reviewer sessions to find gaps
+across 6 analytical dimensions, auto-fixes what's obvious, asks about what
+needs human judgment, and folds everything back into the spec. Can be run
+multiple times — each pass finds what the previous missed.
 
 **Dimensions:**
 1. **Completeness** — What's missing that would block implementation?
@@ -208,11 +211,17 @@ Reads an existing spec, finds gaps across 6 analytical dimensions, auto-fixes wh
 **Steps:**
 1. Validate spec exists with the core serialized sections and identify any missing planning sections to strengthen
 2. Explore codebase — ground analysis in real code, not assumptions
-3. Analyze spec across 6 dimensions — classify each finding as auto-fix or decision
-4. Apply auto-fixes silently
-5. Present decisions to human — one at a time, with options and recommendations
-6. Fold answers into spec as design statements
-7. Cleanup transient files and commit
+3. Materialize a shared review bundle and sling 2 separate reviewers
+4. Synthesize mailed review reports into `enrichment-findings.tmp`
+5. Apply auto-fixes silently
+6. Present decisions to human — one at a time, with options and recommendations
+7. Fold answers into spec as design statements
+8. Cleanup transient files and commit
+
+**Review model:**
+- reviewer A: completeness + ambiguity + scope
+- reviewer B: feasibility + risks + consistency
+- reviewers mail full reports back; the parent session applies fixes
 
 **Findings are classified as:**
 - **Auto-fix** — one clearly correct answer (best practice, codebase convention) → applied silently
@@ -276,16 +285,21 @@ gt sling decomposition-plan-expansion <crew> \
 
 **Formula:** `plan-expansion`
 
-Reads a cleaned spec, generates `plans.md`, runs the default two plan review
-passes, and leaves behind a build-ready milestone plan for
+Reads a cleaned spec, generates `plans.md`, runs the default two slung plan
+review passes, and leaves behind a build-ready milestone plan for
 `delivery-workflow-planned`.
 
 **Steps:**
 1. Validate spec for planning
 2. Draft `plans.md`
-3. Review pass 1: completeness + scope/constraints
-4. Review pass 2: sequencing + testability/risk
+3. Materialize shared review inputs and sling review pass 1: completeness + scope/constraints
+4. Materialize shared review inputs and sling review pass 2: sequencing + testability/risk
 5. Finalize plan
+
+**Review model:**
+- each pass slings 2 separate reviewers
+- reviewers mail full reports back
+- the parent session applies fixes between passes
 
 **Planning principles:**
 - `plans.md` is a milestone plan, not a second spec
@@ -328,8 +342,8 @@ through.
 **Execution-bead principles:**
 - one execution bead per milestone
 - explicit checkpoint beads for review-stop / shape-review milestones
-- one local implementation-review gate bead before convoy capstone validation
-- convoy staging is expected to append the capstone validation bead
+- one local implementation review gate bead as the final expected execution gate
+- convoy staging should use `--no-validate` for new planned-delivery runs
 - bead descriptions stay concise and point back to `spec.md` / `plans.md`
 - use beads for execution ownership and dependencies, not as a markdown mirror
 
@@ -595,8 +609,7 @@ step, hand off, then let the next session resume the next current step.
 
 When the workflow completes, execution no longer lives in the formula. The next
 step is to use `$epic-delivery` to work the staged convoy and close the
-execution beads plus the convoy-added capstone validation bead in the current
-session.
+execution beads in the current session.
 
 ---
 

@@ -2,7 +2,7 @@
 #
 # End-to-end delivery in ONE Codex session:
 #   bootstrap -> draft-spec -> enrich -> epic tracking -> implement
-#   -> implementation review skill -> verify/finalize
+#   -> review-implementation -> verify/finalize
 #
 # No polecat delegation, no handoff checkpoints. Keeps ownership in one session,
 # while still recording status in beads.
@@ -298,21 +298,18 @@ Prefer small, verified increments over one large final diff.
 # ============================================================================
 
 [[steps]]
-id = "stage-implementation-review"
+id = "stage-review-implementation"
 title = "Stage 6: Run Implementation Review"
 needs = ["stage-implement"]
 description = """
-Run the shared `$implementation-review` skill before final verification.
+Run `$review-implementation` before final verification.
 
 This stage owns:
-- creating the review checkpoint commit and pushing it
-- launching the Codex + Claude review workers
-- monitoring them to terminal state
-- synthesizing findings
+- running the spec-vs-implementation audit with both `gpt` and `claude`
+- synthesizing the review result
 - returning to fix work if the review finds blocking issues
 
-Do not proceed to final verification until the implementation review skill says
-the review boundary is clean.
+Do not proceed to final verification until the review result is clean.
 """
 
 # ============================================================================
@@ -322,7 +319,7 @@ the review boundary is clean.
 [[steps]]
 id = "stage-verify-finalize"
 title = "Stage 7: Verify, Finalize, and Report"
-needs = ["stage-implementation-review"]
+needs = ["stage-review-implementation"]
 description = """
 Placeholder expanded by `verify-finalize-expansion`.
 """

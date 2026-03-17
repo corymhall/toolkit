@@ -302,13 +302,12 @@ Run:
 ```bash
 EXISTING_CONVOY_ID=$(awk -F': ' '/^convoy_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
 if [ -n "$EXISTING_CONVOY_ID" ]; then
-  STAGE_JSON=$(gt convoy stage "$EXISTING_CONVOY_ID" --json)
+  STAGE_JSON=$(gt convoy stage "$EXISTING_CONVOY_ID" --json --no-validate)
 else
-  STAGE_JSON=$(gt convoy stage "$EPIC_ID" --json)
+  STAGE_JSON=$(gt convoy stage "$EPIC_ID" --json --no-validate)
 fi
 CONVOY_ID=$(printf '%s\n' "$STAGE_JSON" | jq -r '.convoy_id')
 CONVOY_STATUS=$(printf '%s\n' "$STAGE_JSON" | jq -r '.status')
-VALIDATION_BEAD_ID=$(printf '%s\n' "$STAGE_JSON" | jq -r '.validation_bead_id // empty')
 ```
 
 ## Persist
@@ -316,23 +315,22 @@ VALIDATION_BEAD_ID=$(printf '%s\n' "$STAGE_JSON" | jq -r '.validation_bead_id //
 Capture the staged convoy metadata and write it into `docs/plans/{{feature}}/session-context.md`.
 
 Important:
-- first stage from the root epic so convoy staging can append the upstream
-  capstone validation bead
+- stage with `--no-validate` so the convoy tracks only the local execution
+  graph
+- `implementation review` is the final expected gate for new planned-delivery
+  runs
 - later re-stage from the convoy ID so you refresh the tracked graph instead of
-  creating a second capstone validation bead
+  creating a duplicate staged convoy
 
 For example:
 
 ```bash
 TMP_CONTEXT=$(mktemp)
-grep -Ev '^convoy_id:|^convoy_status:|^validation_bead_id:' docs/plans/{{feature}}/session-context.md > "$TMP_CONTEXT"
+grep -Ev '^convoy_id:|^convoy_status:' docs/plans/{{feature}}/session-context.md > "$TMP_CONTEXT"
 {
   cat "$TMP_CONTEXT"
   printf 'convoy_id: %s\n' "$CONVOY_ID"
   printf 'convoy_status: %s\n' "$CONVOY_STATUS"
-  if [ -n "$VALIDATION_BEAD_ID" ]; then
-    printf 'validation_bead_id: %s\n' "$VALIDATION_BEAD_ID"
-  fi
 } > docs/plans/{{feature}}/session-context.md
 rm -f "$TMP_CONTEXT"
 ```
@@ -341,7 +339,6 @@ Also append a root epic note including:
 - `plans.md` path
 - staged convoy ID
 - staged convoy status
-- staged convoy validation bead ID, if present
 - next command to begin same-session execution with `$epic-delivery`
 
 Do not launch the convoy from this workflow. The staged convoy is a tracking

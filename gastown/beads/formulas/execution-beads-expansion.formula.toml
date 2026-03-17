@@ -107,10 +107,11 @@ Translate `plans.md` into a concrete execution bead graph.
    - make downstream milestones depend on that checkpoint, not directly on the milestone
 4. Always create this final local gate bead:
    - `{{feature}}: implementation review`
-5. Do NOT create a local capstone validation bead.
-   - the staged convoy is expected to append the upstream validation bead as the
-     final wave for epic input
-   - the workflow should persist that `validation_bead_id` after staging
+5. Do NOT create a separate final validation bead.
+   - for planned delivery, `implementation review` is the final expected local
+     gate
+   - convoy staging should use `--no-validate` so no extra capstone bead is
+     required for new runs
 6. Dependency rules:
    - `implementation review` depends on the last implementation milestone/checkpoint
    - use normal `blocks` dependencies unless `plans.md` makes a true merge-gated
@@ -127,9 +128,10 @@ Each execution bead description should be concise and execution-oriented:
 - pointers back to `spec.md` and `plans.md`
 
 For the `implementation review` bead specifically:
-- direct the executor to run `$implementation-review`
-- require checkpoint commit + pushed branch + shared review artifacts
-- require Codex + Claude review runs plus synthesis before closing the bead
+- direct the executor to run `$review-implementation` in preflight mode
+- use both `gpt` and `claude` reviewer lanes with `--categories all`
+- scope review against `docs/plans/{{feature}}/spec.md` and the current branch's
+  implementation changes for this delivery
 - require a return to fix work if the review is blocking
 
 Do not copy the entire milestone text verbatim into bead descriptions.
@@ -141,7 +143,7 @@ Produce a brief bead graph summary:
 - milestone bead count
 - checkpoint bead count
 - local review gate beads
-- whether convoy staging will be expected to add the capstone validation bead
+- confirmation that `implementation review` is the final expected gate
 - notable dependency edges
 """
 

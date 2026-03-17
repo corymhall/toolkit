@@ -13,7 +13,7 @@
 Detect with:
 
 ```bash
-gt convoy stage <epic-id> --json
+gt convoy stage <epic-id> --json --no-validate
 ```
 
 Action:
@@ -47,17 +47,13 @@ Do not improvise external dispatch just because nothing is ready.
 If bead titles, deps, or checkpoint structure change materially during execution:
 
 ```bash
-gt convoy stage <epic-id> --json
+gt convoy stage <epic-id> --json --no-validate
 ```
 
 Re-stage so convoy tracking matches the current graph.
 
 If the drift comes from a real plan mistake, repair `plans.md` before repairing
 the beads.
-
-If the convoy-added capstone validation bead should be regenerated, re-stage
-from the convoy ID after the first epic-based stage so you refresh metadata
-without creating duplicate capstone beads.
 
 ## 4. Convoy close failure
 

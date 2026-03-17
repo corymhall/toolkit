@@ -21,9 +21,6 @@ Proceed only when every tracked execution bead is closed.
 If open tracked beads remain, return to the execution loop or blocked-state
 handling. Do not summarize early.
 
-If `validation_bead_id` exists in session context, confirm that bead is also
-closed before reporting completion.
-
 ## 2. Close the convoy
 
 Once all tracked beads are closed:
@@ -67,7 +64,6 @@ Read:
 - `docs/plans/<feature>/spec.md`
 - `docs/plans/<feature>/plans.md`
 - root epic + child execution beads
-- convoy-added capstone validation bead, if present
 
 Inspect integration delta:
 
@@ -87,7 +83,6 @@ Plan vs Actual
 - <milestone 1>: Met (bead <id>)
 - <milestone 2>: Met (bead <id>)
 - <checkpoint/implementation review>: Met (bead <id>)
-- <capstone validation>: Met (bead <id>)
 
 Notes
 - <important execution or validation details>
