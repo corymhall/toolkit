@@ -467,6 +467,12 @@ Store the output and include it verbatim in both sub-agent prompts under `## Bea
 
 **CRITICAL: Dispatch reviewer lanes concurrently for true parallelism.**
 
+**Model contract:** If `gpt` is selected, that means a real Codex reviewer lane
+running as a separate `worker-high` subagent. Do not replace that lane with
+your own synthesis pass, a "self review", or an implicit read-through. If the
+Codex lane cannot be launched or fails, report `GPT: Failed ([reason])` and
+continue only with the remaining successful lanes.
+
 **Special Note on Gemini:** Gemini requires a TWO-STEP approach to avoid serialization issues:
 1. First, write the prompt to a temp file
 2. Then, call gemini reading from the temp file in a concurrent lane
@@ -624,6 +630,10 @@ For each issue:
 
 Dispatch a GPT reviewer subagent (`worker-high`) using the brief below.
 Pre-read beads issues are included in the prompt for faster review.
+
+This lane is mandatory whenever `gpt` was selected. Record the spawned agent ID
+and wait for its actual output. Never mark the GPT lane as "done" just because
+you personally understand the code or because you plan to synthesize later.
 
 ```text
 [Sub-agent brief above]
@@ -826,12 +836,24 @@ Use the `awaiter` subagent for long-running waits and polling across reviewer la
 - Poll approximately every 2 minutes.
 - Do not stop after first incomplete cycle.
 
+**Minimum patience policy:**
+- Do not classify a reviewer as "stuck" after a few seconds or one quick poll.
+- The first serious status check should happen after roughly 2 minutes unless
+  you already have a hard failure signal (non-zero exit, explicit error, agent
+  terminated).
+- Do not classify an active lane as stalled unless it has shown no progress for
+  at least 10 minutes after starting.
+- Claude and Gemini reviews often take 10-15 minutes end-to-end. Codex review
+  lanes can also take several minutes when they are reading a broad scope.
+
 **Timeouts:** Use 900000ms (15 minutes) for all agents. Reviews take time - don't give up early.
 
 **Do NOT timeout prematurely.** When waiting for results:
 - Use `timeout: 900000` (15 minutes) for all agents
 - If one agent times out but others succeed, note this in the output and proceed
 - Do not abandon waits early; keep collecting until success/failure is confirmed
+- If a lane is still reading files, running tools, or otherwise making visible
+  progress, keep waiting rather than reclassifying it as stuck
 
 **If you get a timeout and suspect the agent is still running:**
 1. Wait an additional 2-3 minutes
@@ -897,6 +919,9 @@ Only treat as actual failures:
 2. **Do NOT supplement with your own reads** - synthesis uses agent outputs only
 3. **Proceed IMMEDIATELY to Step 4** - don't add extra investigation
 4. **If results are incomplete**, note gaps in the synthesis rather than trying to fill them
+5. **Do NOT substitute a missing GPT/Codex lane with a self review** - if the
+   Codex reviewer did not actually return a report, mark that lane failed or
+   missing and synthesize only from the real returned lanes
 
 ## Step 4: Synthesize Results
 
@@ -1201,5 +1226,6 @@ skill if available.
 | **Sequential result collection** | Collect all reviewer lanes concurrently before synthesis |
 | **Stopping after first wait cycle** | Use `awaiter` subagent and continue polling until all lanes finish/fail |
 | **Extra exploration after collection** | Proceed IMMEDIATELY to synthesis - don't supplement with your own reads |
+| **Replacing Codex with "self review"** | `gpt` means a real `worker-high` reviewer lane; if it never ran, mark GPT failed/missing instead of pretending it reviewed |
 | **Skipping change verification** | After applying changes, re-read files and summarize what changed |
 | **Table cell overflow** | Keep completion matrix cells under 30 chars - use status shorthand |

@@ -149,6 +149,20 @@ Use multiple signals, but treat them differently:
 - `find "$REVIEW_DIR" -type f` is the completion signal
   - use it to detect when review artifacts actually exist
 
+Review workers are often slow because they are doing real file reads and
+comparison work. Expect a normal lane to take 10-20 minutes. Do not classify a
+reviewer as "stuck" after a few seconds or a single fast poll.
+
+Minimum patience rules:
+- after launch, give the worker roughly 2 minutes before the first real
+  progress judgment unless you already have a hard failure signal
+- if the worker has started reviewing, keep waiting while `gt peek` shows file
+  reads, tool use, or report-writing progress
+- only classify a started worker as stalled after at least 10 minutes with no
+  visible progress, or after an explicit hard failure
+- if the worker is merely sitting at the initial assigned prompt, use the
+  explicit nudge below before considering failure
+
 If `gt peek` shows the worker still sitting at the initial assigned prompt,
 nudge it explicitly:
 
@@ -158,6 +172,10 @@ gt nudge <rig>/<polecat> "Run gt hook and execute the hooked mol-review-implemen
 
 Do not synthesize review results until the expected shared report files exist
 under `$REVIEW_DIR`.
+
+Do not treat parent-session synthesis as a substitute for the required Codex
+review report. If the Codex sidecar did not produce its report, record that as
+an incomplete/failed lane.
 
 Do not synthesize review results in this step. Launch the workers, record the
 worker identities and expected report paths in `session-ledger.md`, then move to

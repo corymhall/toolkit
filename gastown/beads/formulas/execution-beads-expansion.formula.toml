@@ -130,6 +130,8 @@ Each execution bead description should be concise and execution-oriented:
 For the `implementation review` bead specifically:
 - direct the executor to run `$review-implementation` in preflight mode
 - use both `gpt` and `claude` reviewer lanes with `--categories all`
+- treat `gpt` as a required dedicated Codex reviewer lane, not as a parent
+  session self-review fallback
 - scope review against `docs/plans/{{feature}}/spec.md` and the current branch's
   implementation changes for this delivery
 - require a return to fix work if the review is blocking

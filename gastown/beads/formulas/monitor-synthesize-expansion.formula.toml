@@ -60,6 +60,8 @@ Then decide whether to continue waiting, retry, or classify failure.
 
 ## Retry Policy
 
+- Treat a "wait window" as a real monitoring interval of roughly 2 minutes, not
+  a few seconds.
 - If `gt peek` shows the worker still at the initial assigned prompt after the
   first wait window, send one explicit nudge
 - If it still has not started after the second wait window, classify startup as
@@ -68,6 +70,10 @@ Then decide whether to continue waiting, retry, or classify failure.
   notes and clone before deciding whether the run failed
 - If the worker is clearly making progress, keep monitoring and do not
   summarize yet
+- Once a worker has actually started reviewing, do not classify it as stalled
+  unless there has been at least 10 minutes of no visible progress or you have
+  an explicit hard failure signal
+- Review runs commonly take 10-20 minutes overall; patience is the default
 
 Example startup nudge:
 
@@ -82,6 +88,8 @@ Do NOT:
 - summarize intermediate state as final state
 - synthesize before reports exist or failures are explicitly classified
 - ask the human whether to keep monitoring unless retry policy is exhausted
+- replace a missing Codex review lane with an informal parent-session
+  "self review"
 
 ## Synthesis
 
