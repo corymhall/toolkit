@@ -35,6 +35,10 @@ If the worker appears to run but the expected result is missing:
 - inspect hook status
 - inspect worker state
 - inspect the expected output location
+- if the worker claimed it sent mail, re-check `gt mail inbox` and read recent
+  matching subjects
+- if the report/mail is still missing, nudge the worker to resend it or restate
+  where it was written
 
 Do not call the run successful without the promised artifact or completion
 signal.

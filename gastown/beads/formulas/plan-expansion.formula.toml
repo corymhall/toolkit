@@ -69,6 +69,11 @@ Execute exactly that current wisp and nothing beyond it.
 
 After closing a wisp, stop and re-run `bd mol current <molecule-id>` before
 starting anything else. Do not work ahead from memory.
+
+Re-running `bd mol current <molecule-id>` is a refresh step, not a stop-and-wait
+boundary. If it returns another actionable wisp, execute it immediately. Do not
+pause for apologies, hand-holding, or workflow-boundary summaries unless the
+current wisp explicitly says `STOP` or requires `request_user_input`.
 """
 formula = "plan-expansion"
 type = "expansion"
@@ -329,6 +334,13 @@ gt mail inbox
 gt mail read <mail-id>
 ```
 
+Do not nudge reviewers for a report immediately after sling. First use
+`gt peek <rig>/<polecat>` to see whether they are still reviewing. If a
+reviewer says it mailed the report but you do not see it yet, re-check the
+inbox, inspect `gt peek` and `gt hook show`, then nudge the reviewer to resend
+the report. Do not move on without both reports or an explicit failure
+classification.
+
 ## Apply Fixes
 
 Read both reports. Apply all must-fix items and any should-fix items that make
@@ -468,6 +480,13 @@ Use:
 gt mail inbox
 gt mail read <mail-id>
 ```
+
+Do not nudge reviewers for a report immediately after sling. First use
+`gt peek <rig>/<polecat>` to see whether they are still reviewing. If a
+reviewer says it mailed the report but you do not see it yet, re-check the
+inbox, inspect `gt peek` and `gt hook show`, then nudge the reviewer to resend
+the report. Do not move on without both reports or an explicit failure
+classification.
 
 ## Apply Fixes
 

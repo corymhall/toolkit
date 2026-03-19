@@ -71,9 +71,15 @@ Do not launch until these are clear enough to monitor honestly.
    in committed form or shared artifacts.
 4. Define the terminal condition before you launch.
 5. If you monitor, use `gt peek` as the primary live-progress signal.
-6. If a worker stalls at the initial prompt, nudge once before calling it a
+6. Do not nudge a worker to hurry or send the report until `gt peek` shows the
+   worker is idle, stuck at the initial prompt, or otherwise no longer making
+   progress on the assigned work.
+7. If a worker says it sent mail or produced an artifact and you cannot find it
+   yet, treat that as a coordination problem to investigate, not permission to
+   move on.
+8. If a worker stalls at the initial prompt, nudge once before calling it a
    failure.
-7. When launching multiple sidecars, prefer distinct targets or sequential
+9. When launching multiple sidecars, prefer distinct targets or sequential
    launch confirmation so hooks do not race on one idle worker.
 
 ## Workflow

@@ -20,6 +20,10 @@ Secondary signals:
 Use the artifact or hook signal as the completion proof, not a guess based on
 "it has probably finished by now."
 
+If completion depends on mailed output, "the worker said it mailed it" is not
+completion proof. Keep coordinating until the mail is visible in your inbox or
+the run is explicitly classified as failed.
+
 ## 2. Terminal conditions
 
 Choose the relevant terminal condition before launch. Common examples:
@@ -34,12 +38,18 @@ explicitly classified as failed/stalled.
 
 ## 3. Retry policy
 
+- Before nudging, check `gt peek` first. If the worker is actively reading,
+  editing, testing, or writing the requested output, keep waiting instead of
+  interrupting it.
 - If `gt peek` shows the worker still at the initial assigned prompt after the
   first wait window, send one explicit nudge.
 - If it still has not started after the second wait window, classify startup as
   failed.
 - If the hook clears but the expected artifact is missing, inspect worker state
   before assuming success.
+- If the worker says it mailed or wrote the result but you cannot see it yet,
+  re-check the inbox/output location, inspect `gt peek` and `gt hook show`,
+  then nudge the worker to resend or restate the result.
 - If the worker is clearly making progress, keep waiting instead of summarizing
   early.
 

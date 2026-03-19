@@ -61,6 +61,11 @@ bd mol current <molecule-id>
 After closing a wisp, stop and re-run `bd mol current <molecule-id>` before
 starting anything else. Do not begin the next stage from memory, expected
 sequence, prior banner text, or "workflow intent" alone.
+
+Re-running `bd mol current <molecule-id>` is a refresh step, not a stop-and-wait
+boundary. If it returns another actionable wisp, execute it immediately. Do not
+pause for apologies, hand-holding, or workflow-boundary summaries unless the
+current wisp explicitly says `STOP` or requires `request_user_input`.
 """
 formula = "delivery-workflow"
 type = "workflow"

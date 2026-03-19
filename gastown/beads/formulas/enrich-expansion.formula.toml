@@ -87,6 +87,11 @@ After closing a wisp, stop and re-run `bd mol current <molecule-id>` before
 starting anything else. Do not begin the next stage from memory, expected
 sequence, prior banner text, or "workflow intent" alone.
 
+Re-running `bd mol current <molecule-id>` is a refresh step, not a stop-and-wait
+boundary. If it returns another actionable wisp, execute it immediately. Do not
+pause for apologies, hand-holding, or workflow-boundary summaries unless the
+current wisp explicitly says `STOP` or requires `request_user_input`.
+
 Status updates are not pause points. If a wisp tells you to report findings,
 state, or completion, do so and then continue the molecule loop immediately
 unless the wisp explicitly requires `request_user_input` or says `STOP`.
@@ -380,6 +385,13 @@ Use:
 gt mail inbox
 gt mail read <mail-id>
 ```
+
+Do not nudge reviewers for a report immediately after sling. First use
+`gt peek <rig>/<polecat>` to see whether they are still reviewing. If a
+reviewer says it mailed the report but you do not see it yet, re-check the
+inbox, inspect `gt peek` and `gt hook show`, then nudge the reviewer to resend
+the report. Do not move on without both reports or an explicit failure
+classification.
 
 ### Fidelity Preservation Check (run before classification)
 
