@@ -1,0 +1,21 @@
+# Example work-rig fragment for the local sample city.
+#
+# This is a shape artifact for M1. Agent names and override targets are still
+# placeholders until the local work-pack inventory is chosen.
+
+[[rigs]]
+name = "example-work-repo"
+path = "/path/to/example-work-repo"
+includes = ["../../packs/base", "../../packs/work"]
+suspended = true
+
+[[rigs.overrides]]
+agent = "worker-template"
+suspended = true
+
+[rigs.overrides.pool]
+max = 0
+
+[[rigs.overrides]]
+agent = "implementation-review"
+suspended = true

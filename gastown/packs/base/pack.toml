@@ -1,0 +1,10 @@
+[pack]
+name = "base"
+version = "0.1.0"
+schema = 1
+
+# M1 shape-only placeholder.
+# Concrete agents, prompts, and formulas are intentionally deferred until the
+# M2 human review stop.
+[formulas]
+dir = "formulas"

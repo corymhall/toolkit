@@ -1,0 +1,18 @@
+# Local sample city for the gascity pack family.
+#
+# This file is intentionally shape-first. It documents how the local `base`,
+# `work`, and `personal` packs are expected to compose in this repo.
+
+[workspace]
+name = "gascity-local"
+provider = "claude"
+includes = ["../../packs/base"]
+
+[daemon]
+patrol_interval = "30s"
+max_restarts = 3
+restart_window = "15m"
+shutdown_timeout = "10s"
+
+# See `rigs-work.toml` and `rigs-personal.toml` for example rig fragments that
+# can be copied into this file once the concrete local agents are defined.
