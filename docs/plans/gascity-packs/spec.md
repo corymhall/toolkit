@@ -50,6 +50,8 @@ In:
   resumable follow-up.
 - Define the role of daemon/controller, orders, and optional helper roles in
   the intended system.
+- Make redirect/shared storage and contributor/maintainer routing first-class
+  v1 concerns rather than compatibility-only extension points.
 
 Out:
 - Implement the packs, prompts, formulas, or scripts.
@@ -91,6 +93,9 @@ Out:
   including what “cleanup” means in the initial design.
 - A-7: The spec leaves remaining uncertainty serialized as decisions or open
   questions rather than implicit ambiguity.
+- A-8: A work rig configured with the `work` pack must not be able to execute a
+  direct push-to-main or merge-to-main worker flow through config/formula
+  wiring, even if prompt text attempts to steer it there.
 
 ## User Stories / Scenarios
 
@@ -137,6 +142,47 @@ The v1 architecture uses a **three-pack split**:
 The city config chooses which rigs include which packs and then layers policy on
 top with `suspended`, pool overrides, order overrides, and agent patches.
 
+The pack split must also be concrete enough to implement:
+
+| Pack | Owns | Excludes |
+|------|------|----------|
+| `base` | shared owner-session prompts, shared fragments, shared scripts, safe common formulas, shared examples/docs | trust-class-specific worker submit behavior |
+| `work` | work-safe worker prompts, branch/worktree formulas, conservative worker defaults, work-repo-safe order defaults | direct-commit and merge-to-main submit flows |
+| `personal` | personal-repo worker variants, direct-commit or merge-friendly submit flows, more autonomous defaults | work-repo branch-protection assumptions |
+
+Examples:
+- shared owner/crew prompts belong in `base`
+- a “prepare branch only” worker formula belongs in `work`
+- a direct-commit variant belongs in `personal`
+
+### Policy Surface
+
+The design must bind policy to the surface that can actually enforce it:
+
+- **Pack capability**
+  - prompts
+  - formulas
+  - scripts
+  - reusable defaults shared by a trust class
+- **City policy**
+  - workspace includes
+  - provider defaults
+  - city-wide suspend/resume posture
+  - global order defaults
+- **Per-rig policy**
+  - repo classification (`personal` vs `work`)
+  - rig suspended state
+  - pool min/max and enablement
+  - direct push permission
+  - risky order overrides (`enabled = false` or manual-only posture)
+
+Concrete examples:
+- “work rigs start suspended by default” belongs in rig config
+- “a pool worker exists as a capability” belongs in a pack
+- “this work rig currently has worker pool max = 0” belongs in rig override
+- “no push-to-main worker flow on work rigs” must be enforced by config/formula
+  wiring, not only by prompt text
+
 ### Components
 
 #### 1. Owner Session
@@ -170,6 +216,11 @@ For work repos, the v1 default is **prepare branch only**:
 - stop before merge-oriented action
 
 This preserves automation value while keeping trust boundaries explicit.
+For v1, the flow ends after local branch preparation and optional remote push
+according to rig policy. PR creation, PR updates, and merge/refinery handoff are
+explicitly out of scope for the default worker path.
+The default work-repo posture allows pushing feature branches, but never
+directly pushing or merging to `main`.
 
 #### 3. Optional Future PR Handler
 
@@ -199,8 +250,8 @@ multi-rig, multi-session environment because it offers a path to shared issue
 state without requiring each working copy to own an independent local database.
 
 V1 should therefore treat redirects as a supported storage topology:
-- canonical bead store lives in one location
-- worktrees or satellite clones may redirect to it
+- each rig or routing domain may designate one canonical bead store
+- redirected worktrees or satellite clones for that rig may point to it
 - `bd where` and Beads routing logic remain the source of truth for active
   storage location
 
@@ -215,9 +266,12 @@ Beads also supports role-aware routing:
 - contributors can route planning/issues to a separate planning repo
 
 This is directly relevant to the user's split between personal ownership and
-external/work repos. V1 should not necessarily implement the full routing
-workflow on day one, but the design should explicitly support it as a native
-extension path rather than inventing an incompatible parallel model.
+external/work repos. V1 treats contributor/maintainer routing as a first-class
+design concern. Pack and city behavior should assume that routing is active and
+must be correct, overrideable, and safe for work-repo usage. In particular,
+the implementation must confirm that contributor posture can be enforced even in
+repos where the user has push access, so that routing cannot silently fall back
+to maintainer semantics and reintroduce unsafe main-branch behavior.
 
 #### Dolt
 
@@ -245,6 +299,8 @@ Required bead metadata:
 - `work_dir`
 - `branch`
 - `target`
+- `push_remote`
+- `base_branch`
 - optional rejection / follow-up metadata for later continuation
 
 Required behavior:
@@ -255,6 +311,12 @@ Required behavior:
 
 This makes the worker flow resumable without requiring the original runtime to
 remain alive forever.
+
+The existing `mol-polecat-work` formula is a reference pattern for worktree,
+branch, and metadata handling, but it is not the direct v1 worker formula. Its
+current submit path pushes and reassigns to refinery, so the `work` pack will
+need a forked or replacement variant that stops at the intended prepare-branch
+boundary.
 
 ### Session Lifecycle for Pool Workers
 
@@ -280,6 +342,9 @@ For this design, that means:
 The exact archive-vs-close policy can remain implementation-specific, but the
 spec should require that completed workers do not remain indefinitely eligible
 for new work by accident.
+For v1, review/fixup follow-up uses the same pool template rather than a
+separate dedicated follow-up template. The later split remains available if
+review behavior diverges enough to justify it.
 
 ### Personal vs Work Rig Policy
 
@@ -344,13 +409,16 @@ This design does not require recreating the whole Gastown town.
 - [N-3] Reusable capabilities must live in local packs; trust policy must live
   in city/rig configuration.
 - [N-4] V1 must remain compatible with the mature `bd` + Dolt production path.
-- [N-5] Shared Beads redirects and Dolt-aware storage topology must be treated
-  as supported design inputs, not accidental edge cases.
+- [N-5] Shared Beads redirects and Dolt-aware storage topology are first-class
+  v1 requirements, not accidental edge cases.
 - [N-6] Pool-worker completion must remove the worker from active routing rather
   than letting completed sessions sit indefinitely in a way that risks surprise
   reuse.
 - [N-7] Review follow-up must be resumable from durable bead metadata, not only
   from one surviving worker session.
+- [N-8] Contributor/maintainer routing must be correct and overrideable in v1,
+  including in environments where repository push access alone would otherwise
+  imply maintainer behavior.
 
 ## Forbidden Approaches
 
@@ -372,12 +440,13 @@ This design does not require recreating the whole Gastown town.
 | D-1 | Pack structure | Three-pack split: `base`, `work`, `personal` | Two-pack split; single pack | Best match for explicit trust separation and reuse | Resolved |
 | D-2 | Large-work ownership | Long-lived owner session is the default path | Subagent-first or pool-first execution | Aligns with local Codex workflow preferences and existing planning lens | Resolved |
 | D-3 | Small work-repo worker default | Prepare branch only | Auto-submit PR; merge/refinery handoff | Preserves automation while respecting branch/PR trust boundaries | Resolved |
-| D-4 | PR review follow-up owner | Resume worker-oriented flow from bead metadata | Owner session only; dedicated PR handler | Best current starting point while preserving resumability | Resolved |
+| D-4 | PR review follow-up owner | Resume worker-oriented flow from bead metadata using the same pool template in v1 | Owner session only; dedicated PR handler | Best current starting point while preserving resumability without adding new pack surface too early | Resolved |
 | D-5 | Beads storage baseline | Keep `bd` + Dolt for v1 | File store baseline; custom exec store baseline | Mature runtime path with known workflow compatibility | Resolved |
-| D-6 | Shared-store posture | Treat redirects/shared store as core supported topology | Ignore redirects until later | Native Beads support already exists and matters for multi-clone workflows | Resolved |
-| D-7 | Contributor/maintainer routing | Support as a design-aligned native extension path | Ignore native role-aware routing | Closely matches the user's ownership split across repos | Resolved |
+| D-6 | Shared-store posture | Treat redirects/shared store as a core v1 operating model | Redirect-compatible only; ignore redirects until later | The user wants shared storage to be foundational rather than a later compatibility layer | Resolved |
+| D-7 | Contributor/maintainer routing | Make routing first-class in v1 and verify it is safe/overrideable | Compatibility-only rollout; ignore native role-aware routing | This is crucial to prevent unsafe maintainer behavior on work repos | Resolved |
 | D-8 | Controller-side helper roles | Keep controller mandatory, defer deacon/refinery recreation | Rebuild full town roles immediately | The user wants selective infrastructure, not whole-system parity | Resolved |
 | D-9 | Pool-worker completion model | Drain and reclaim active workers; resume via metadata | Keep finished workers hanging around as active sessions | Better match for ephemeral worker intent and existing pool lifecycle direction | Resolved |
+| D-10 | Work-repo default push behavior | Allow feature-branch push by default on work rigs, but never push/merge to `main` | Local-only by default; merge/refinery submission | The user is comfortable with branch pushes and wants useful automation without violating main-branch trust boundaries | Resolved |
 
 ## Traceability
 
@@ -393,7 +462,9 @@ This design does not require recreating the whole Gastown town.
 | Decision D-1 | request_user_input choice | User selected the three-pack split |
 | Decision D-3 | request_user_input choice | User selected prepare-branch flow for work repos |
 | Decision D-4 | request_user_input choice | User selected resume-worker follow-up as the starting model |
-| Decision D-6 | request_user_input choice + Beads docs | User elevated shared redirects to a core concern after research |
+| Decision D-6 | request_user_input choice + Beads docs | User elevated shared redirects/shared storage to a core v1 concern after research |
+| Decision D-7 | request_user_input choice + Beads docs | User made contributor/maintainer routing first-class and explicitly called out safe override behavior as critical |
+| Decision D-10 | request_user_input choice | User allows feature-branch pushes on work repos but not pushes or merges to `main` |
 
 ## Risks
 
@@ -412,6 +483,9 @@ This design does not require recreating the whole Gastown town.
 - Validate that work rigs can start suspended and stay dormant until resumed.
 - Validate that worker formulas on work rigs never perform direct-to-main
   behavior.
+- Validate that a work rig configured with the `work` pack cannot execute a
+  direct push-to-main or merge-to-main worker flow through config/formula
+  wiring.
 - Validate that worktree + branch metadata is sufficient for a later worker
   session to continue after simulated PR feedback.
 - Validate a redirected/shared Beads topology with at least one canonical store
@@ -422,10 +496,6 @@ This design does not require recreating the whole Gastown town.
 ## Open Questions
 
 - [ ] Should v1 include explicit contributor-routing setup commands and docs, or
-  only design compatibility for them?
-- [ ] When a work-repo worker finishes branch preparation, should it always push
-  the branch, or should that remain a per-rig policy toggle?
-- [ ] Should resumed PR-follow-up workers be created via the same pool template
-  or via a separate review/fixup template?
+  what is the smallest safe setup surface to make that routing bulletproof?
 - [ ] What is the smallest useful v1 order set for work rigs that adds value
   without surprising autonomy?
