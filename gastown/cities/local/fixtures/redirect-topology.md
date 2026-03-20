@@ -5,10 +5,12 @@ This is the first supported local topology for the `gascity-packs` effort.
 ## Shape
 
 ```text
-toolkit/
-  .beads/                 # canonical beads store for the local pack repo
-  crew/quick/.beads/      # redirect -> ../../.beads
-  crew/other/.beads/      # redirect -> ../../.beads
+~/city/
+  city.toml               # city root
+  .beads/                 # canonical beads store for the city/routing target
+
+~/gt/toolkit/crew/quick/.beads      # redirect -> ~/city/.beads
+~/gt/toolkit/crew/other/.beads      # redirect -> ~/city/.beads
 ```
 
 Rules:
@@ -21,7 +23,8 @@ Rules:
 
 ## Why This Is The Supported Topology
 
-- it preserves the "do not commit `.beads`" local experience
+- it preserves the "do not commit `.beads`" local experience even when the city
+  root lives outside the repo that owns the pack files
 - it keeps one source of truth per routing target
 - it matches the current Gastown-style redirect model
 

@@ -4,8 +4,8 @@
 # `work`, and `personal` packs are expected to compose in this repo.
 
 [workspace]
-name = "gascity-local"
-provider = "claude"
+name = "city"
+provider = "codex"
 includes = ["../../packs/base"]
 
 [daemon]

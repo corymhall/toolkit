@@ -14,8 +14,8 @@ hardening`.
 - one canonical `.beads/` store per routing target
 - redirect + ignore is the default local cleanliness model
 - contributor routing stays explicit and overrideable
-- work/open-source repos default to contributor routing when planning should
-  stay out of the repo, even with push access
+- work/open-source repos with push access may still use maintainer routing when
+  redirect + ignore already keep beads state out of normal commits
 - broader cross-repo storage patterns remain deferred
 
 ## Review Questions
