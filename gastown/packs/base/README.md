@@ -9,5 +9,10 @@ Intended contents:
 - owner-session defaults for larger work
 - shared policy/config surface that `work` and `personal` build on
 
-This directory is M1 shape-only scaffolding. M2 is the first milestone that
-should decide the concrete prompt and formula inventory.
+Current runnable surface:
+
+- rig-scoped `owner` agent for long-lived larger-work ownership
+- `prompts/owner-session.md.tmpl` for the base owner-session prompt
+
+This pack should remain neutral across `work` and `personal`. Worker submit
+behavior and trust-class-specific landing rules stay out of `base`.

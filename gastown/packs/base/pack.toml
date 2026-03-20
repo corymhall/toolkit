@@ -3,8 +3,13 @@ name = "base"
 version = "0.1.0"
 schema = 1
 
-# M1 shape-only placeholder.
-# Concrete agents, prompts, and formulas are intentionally deferred until the
-# M2 human review stop.
+# Shared owner-session defaults and neutral shared surfaces.
 [formulas]
 dir = "formulas"
+
+[[agent]]
+name = "owner"
+scope = "rig"
+work_dir = ".gc/agents/{{.Rig}}/owner"
+prompt_template = "prompts/owner-session.md.tmpl"
+nudge = "Review the current work, partner with the human, and own larger tasks end-to-end."

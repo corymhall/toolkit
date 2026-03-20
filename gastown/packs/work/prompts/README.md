@@ -1,14 +1,13 @@
-# Work Pack Prompt Candidates
+# Work Pack Prompts
 
-The local `work` pack prompt surface should focus on:
+The first runnable local work-pack prompt is:
 
-- branch-only execution
-- metadata discipline
-- resumable follow-up
-- explicit refusal of direct-to-main and merge-to-main behavior
+- `worker.md.tmpl`
+  - explains the branch-only stop boundary
+  - makes bead metadata the durable handoff surface
+  - keeps the disposable session work dir separate from the bead-scoped
+    worktree
+  - explicitly forbids direct-to-main and merge-to-main behavior
 
-Before writing real prompt text, review:
-
-- what limitations the worker must understand
-- what edge cases need to be spelled out
-- what policy should live in config/formula wiring instead of prompt text
+Policy still belongs in config and formula wiring where possible. The prompt is
+there to reinforce the intended worker behavior, not to be the only safeguard.

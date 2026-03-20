@@ -1,16 +1,20 @@
-# Work Pack Formula Candidates
+# Work Pack Formulas
 
-This directory is still review-first in M3.
+The first runnable local work-pack formula is:
 
-Current local direction:
+- `mol-work-branch-ready.formula.toml`
+  - creates or reuses a bead-scoped worktree
+  - creates or reuses a `corymhall/<issue>` feature branch
+  - records durable bead metadata (`work_dir`, `branch`, `target`,
+    `push_remote`, `base_branch`)
+  - always pushes the feature branch to `origin`
+  - closes the implementation bead at the branch-ready handoff boundary
+  - relies on the target repo's own docs (`AGENTS.md`, `CLAUDE.md`, README,
+    scripts) for setup and verification commands
 
-- treat `mol-polecat-work` as a reference pattern
-- design a local branch-only variant rather than copying the refinery handoff
-- keep work-pack formula ownership inside `work`, not `base`
+Design constraints:
 
-Open questions:
-
-- Do we want one local work formula first, or a small shared worker base plus a
-  work-specific extension?
-- How much of the reference structure survives once refinery and direct push are
-  removed?
+- direct push or merge to `main` stays forbidden
+- no automatic resume rebase; rebasing is an explicit follow-up decision
+- PR/review/fixup work is downstream and out of scope for this formula
+- the durable continuation surface is bead metadata plus the recorded worktree

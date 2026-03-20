@@ -1,11 +1,19 @@
 # Shared Prompt Fragments
 
-Candidate local shared fragments for the `base` pack:
+Current local shared fragments for the `base` pack:
 
-- `operational-awareness` (adapt)
-- `approval-fallacy` (adapt)
-- `capability-ledger` (optional / adapt only if it proves useful)
-- `command-glossary` (do not keep by default; consider a tiny local quick-reference elsewhere if needed)
+- `propulsion.md.tmpl`
+  - lightweight owner-session version of the hook/assignment principle
+- `capability-ledger.md.tmpl`
+  - short ownership/history framing for the long-lived owner session
+- `architecture.md.tmpl`
+  - local city/rig/workspace model for this pack family
+- `landing-policy.md.tmpl`
+  - shared landing-policy language for owner sessions, with room for later
+    work/personal specialization
 
-These names reflect the current planning intent only. The M2 human stop is
-where the actual fragment inventory and wording should be confirmed.
+Still intentionally omitted by default:
+
+- a full command glossary
+- the heavier Gastown operational-awareness tutorial
+- direct copies of town-specific routing or communication protocol sections

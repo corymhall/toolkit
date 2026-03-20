@@ -3,6 +3,18 @@ name = "work"
 version = "0.1.0"
 schema = 1
 
-# M1 shape-only placeholder.
+# Conservative work-repo worker defaults.
 [formulas]
 dir = "formulas"
+
+[[agent]]
+name = "worker"
+scope = "rig"
+work_dir = ".gc/agents/{{.Rig}}/workers/{{.AgentBase}}"
+prompt_template = "prompts/worker.md.tmpl"
+nudge = "Check your hook, prepare or resume the branch-ready worktree, and stop at the handoff boundary."
+idle_timeout = "2h"
+default_sling_formula = "mol-work-branch-ready"
+[agent.pool]
+min = 0
+max = 2
