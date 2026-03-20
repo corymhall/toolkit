@@ -8,9 +8,8 @@ wrong pack boundary or accidentally reintroduce unsafe work-repo automation.
 - Primary optimization: reduce rework by validating pack boundaries and policy
   enforcement before deeper workflow wiring
 - Planning assumptions: this is the follow-on implementation plan for the
-  validated v1 design, and the work will primarily land in the Gas City repo
-  surfaces that already own packs, formulas, config loading, and acceptance
-  tests
+  validated v1 design, the work lands locally in this repo, and the `gascity`
+  repo is reference material rather than the implementation target
 
 ## Milestones
 
@@ -26,8 +25,8 @@ Goal:
 Planned changes:
 - Define the new pack layout and ownership boundaries using the existing pack
   model from `docs/guides/shareable-packs.md`
-- Add or sketch pack roots modeled on current pack surfaces such as
-  `examples/gastown/packs/gastown/pack.toml`
+- Add or sketch local pack roots in this repo, using current pack surfaces such
+  as `examples/gastown/packs/gastown/pack.toml` only as reference material
 - Add the shared policy/config substrate needed for pack includes, rig
   suspension, pool limits, and overrideable direct-push posture
 - Add a minimal sample city config showing one `personal` rig and one `work`
@@ -50,15 +49,19 @@ Acceptance criteria:
   them
 
 Validation commands / proof:
-- `go test ./internal/config ./cmd/gc`
-- `go test ./test/acceptance -run 'TestGasCityPackShape|TestGasCitySupportedTopology'`
-- Expected artifacts: checked-in sample city fixture plus a resolved-config
-  snapshot for one `personal` and one `work` rig on the supported topology
+- Expected artifacts: local pack tree in this repo, sample city fixture,
+  supported-topology notes, and contributor/maintainer routing notes
+- Expected walkthrough: trace one `personal` and one `work` rig through the
+  local pack/config layout and the supported topology
 - Expected assertion: runtime artifacts remain untracked under the supported
   local ignore/exclude strategy
 
 Review stop:
 - yes
+
+Human stop:
+- Before leaving M1, pause for human review of the contributor/maintainer
+  routing model and do not proceed until it is fully understood.
 
 ### M2. Base Pack Owner Session and Controller Policy
 
@@ -81,13 +84,19 @@ Acceptance criteria:
   design work
 
 Validation commands / proof:
-- `go test ./internal/orders ./internal/config`
-- `go test ./test/acceptance -run TestGasCityBaseOwnerFlow`
-- Expected artifact: sample city fixture showing owner-session resolution plus
-  disabled/manual risky order posture on a work rig
+- Expected artifacts: local `base` pack prompt/formula inventory, controller
+  posture notes, and sample owner-session configuration in this repo
+- Expected walkthrough: inspect the owner-session path and the disabled/manual
+  order posture for work rigs in detail
+- Expected assertion: the selected prompts, formulas, and shared assets are
+  intentional and understandable before implementation continues
 
 Review stop:
 - yes
+
+Human stop:
+- Before leaving M2, pause for human review of prompt, formula, and shared asset
+  choices so the intended local pack surfaces are fully understood.
 
 ### M3. Work Pack Safe Branch Flow and Worker Lifecycle
 
@@ -120,15 +129,18 @@ Acceptance criteria:
   state rather than depending on a surviving worker session
 
 Validation commands / proof:
-- `go test ./test/acceptance -run 'TestWorkRigBranchOnlyFlow|TestWorkRigResumeFromMetadata|TestWorkRigRejectsMainSubmit'`
-- `go test ./internal/config ./internal/formula`
-- Expected artifacts: fixture-backed bead metadata snapshot containing
-  `work_dir`, `branch`, `target`, `push_remote`, and `base_branch`
+- Expected artifacts: local work-pack flow contract, bead metadata contract,
+  cleanup/resume walkthrough, and supported-topology branch-only flow notes
 - Expected assertion: adversarial attempts to push or merge to `main` on a
   `work` rig fail at config/formula wiring rather than prompt text alone
 
 Review stop:
 - yes
+
+Human stop:
+- Before leaving M3, pause for human review of practical limitations, edge
+  cases, and real-world workflow behavior so the branch-only worker model is
+  fully understood.
 
 ### M4. Personal Pack Variants on the Shared Policy Surface
 
@@ -152,10 +164,10 @@ Acceptance criteria:
   examples alone
 
 Validation commands / proof:
-- `go test ./test/acceptance -run 'TestPersonalRigPolicy|TestWorkVsPersonalResolvedConfig'`
-- `go test ./internal/config`
-- Expected artifact: resolved-config diff showing the same shared substrate with
-  different personal/work overrides
+- Expected artifacts: local personal/work config diff, example pack overlays,
+  and explicit notes on which behaviors remain work-only versus personal-only
+- Expected walkthrough: compare `personal` and `work` behavior on the same local
+  shared substrate and confirm the boundary is easy to explain
 
 Review stop:
 - yes
@@ -183,10 +195,10 @@ Acceptance criteria:
 - Broader cross-repo topology work remains explicitly deferred
 
 Validation commands / proof:
-- `go test ./test/acceptance -run TestGasCitySupportedTopologyRouting`
-- `go test ./internal/beads ./internal/config`
-- Expected artifact: supported-topology fixture plus contributor-override
-  assertions for work-repo posture
+- Expected artifacts: supported-topology hardening notes, contributor-override
+  scenarios, and explicit deferred edge cases
+- Expected walkthrough: trace the supported topology and contributor posture in
+  detail and confirm the limitations are documented rather than hidden
 
 Review stop:
 - yes
@@ -214,9 +226,11 @@ Acceptance criteria:
   implicit
 
 Validation commands / proof:
-- `go test ./...`
 - Expected artifact: documented sample configuration that matches the supported
   topology and passes the earlier safety tests unchanged
+- Expected walkthrough: confirm the docs/examples in this repo still match the
+  agreed local implementation model and do not quietly drift back toward a
+  `gascity`-repo build plan
 
 Review stop:
 - optional
