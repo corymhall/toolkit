@@ -456,7 +456,7 @@ This design does not require recreating the whole Gastown town.
 |--------------|--------|-------|
 | Goals | user dialogue + planning session | Derived from stated desire for selective autonomy, many rigs, and trust-separated workflows |
 | Constraints | user dialogue + `codebase-context.tmp` | Includes repo ownership rules, many-rig scaling, and storage/runtime concerns |
-| Pack family design | user choice + `docs/guides/shareable-packs.md` | User selected three-pack split; Gas City pack guidance supports local reusable packs |
+| Pack family design | user choice + `~/github/gascity/docs/guides/shareable-packs.md` | User selected three-pack split; Gas City pack guidance supports local reusable packs |
 | Storage model | user dialogue + Beads/Gas City research | Combines Gas City `bd` baseline with Beads redirect/shared-store and Dolt capabilities |
 | Work-repo worker flow | user choice + `mol-polecat-work` exploration | Existing formula provides reusable worktree/branch metadata patterns, but final refinery handoff is intentionally replaced |
 | Session lifecycle section | user question + Gas City pool/session docs | Added specifically to answer what happens after a pool worker is "done" |

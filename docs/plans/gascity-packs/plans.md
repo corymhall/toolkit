@@ -24,9 +24,10 @@ Goal:
 
 Planned changes:
 - Define the new pack layout and ownership boundaries using the existing pack
-  model from `docs/guides/shareable-packs.md`
+  model from `~/github/gascity/docs/guides/shareable-packs.md` as reference
 - Add or sketch local pack roots in this repo, using current pack surfaces such
-  as `examples/gastown/packs/gastown/pack.toml` only as reference material
+  as `~/github/gascity/examples/gastown/packs/gastown/pack.toml` only as
+  reference material
 - Add the shared policy/config substrate needed for pack includes, rig
   suspension, pool limits, and overrideable direct-push posture
 - Add a minimal sample city config showing one `personal` rig and one `work`

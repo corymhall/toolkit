@@ -8,10 +8,3 @@ name = "example-personal-repo"
 path = "/path/to/example-personal-repo"
 includes = ["../../packs/base", "../../packs/personal"]
 suspended = false
-
-[[rigs.overrides]]
-agent = "worker-template"
-suspended = false
-
-[rigs.overrides.pool]
-max = 2
