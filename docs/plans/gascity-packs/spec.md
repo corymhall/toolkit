@@ -54,7 +54,9 @@ In:
   v1 concerns rather than compatibility-only extension points.
 
 Out:
-- Implement the packs, prompts, formulas, or scripts.
+- Treat this spec document as the design contract, not the file-by-file
+  implementation plan for packs, prompts, formulas, or scripts. Implementation
+  sequencing belongs in the follow-on milestone plan.
 - Build GitHub issue polling or GitHub-label-driven autoscaling in v1.
 - Implement a dedicated PR handler or merge/refinery replacement in v1.
 - Implement a custom `exec:` Beads provider in v1.

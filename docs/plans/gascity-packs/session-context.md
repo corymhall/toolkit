@@ -4,3 +4,5 @@ epic_id: tool-1nt
 review_categories: all
 review_profiles_selected: general
 delivery_mode: two-session
+convoy_id: hq-cv-3wv11
+convoy_status: staged_ready
