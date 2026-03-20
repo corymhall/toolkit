@@ -8,9 +8,6 @@ Current local shared fragments for the `base` pack:
   - short ownership/history framing for the long-lived owner session
 - `architecture.md.tmpl`
   - local city/rig/workspace model for this pack family
-- `landing-policy.md.tmpl`
-  - shared landing-policy language for owner sessions, with room for later
-    work/personal specialization
 
 Still intentionally omitted by default:
 

@@ -6,7 +6,10 @@ Intended contents:
 
 - branch-only worker prompts and formulas
 - conservative worktree and resumability helpers
+- work-specific crew/owner prompt variants
 - no direct-to-main or merge-to-main assumptions
 
-This directory is M1 shape-only scaffolding. M3 is the first milestone that
-should decide the concrete worker flow details.
+Current runnable surface:
+
+- branch-only `worker` agent + `mol-work-branch-ready`
+- `owner-work.md.tmpl` prompt override for the shared `owner` agent

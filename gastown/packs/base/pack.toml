@@ -6,10 +6,3 @@ schema = 1
 # Shared owner-session defaults and neutral shared surfaces.
 [formulas]
 dir = "formulas"
-
-[[agent]]
-name = "owner"
-scope = "rig"
-work_dir = ".gc/agents/{{.Rig}}/owner"
-prompt_template = "prompts/owner-session.md.tmpl"
-nudge = "Review the current work, partner with the human, and own larger tasks end-to-end."

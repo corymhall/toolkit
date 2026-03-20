@@ -2,7 +2,14 @@
 name = "personal"
 version = "0.1.0"
 schema = 1
+includes = ["../base"]
 
-# M1 shape-only placeholder.
 [formulas]
 dir = "formulas"
+
+[[agent]]
+name = "owner"
+scope = "rig"
+work_dir = ".gc/agents/{{.Rig}}/owner"
+prompt_template = "prompts/owner-personal.md.tmpl"
+nudge = "Review the current work, partner with the human, and own larger tasks end-to-end."

@@ -1,16 +1,8 @@
-# Personal Pack Prompt Candidates
+# Personal Pack Prompts
 
-The local `personal` pack prompt surface should only hold behavior that is
-personal-specific.
+The local `personal` pack now provides:
 
-Candidate direction:
-
-- keep `base` identity and shared fragments
-- add personal-only autonomy guidance only where it genuinely diverges
-- avoid copying the full owner-session prompt just to change a small policy
-
-Open questions:
-
-- Do we want a separate personal owner prompt at all, or only personal-specific
-  overlays/fragments?
-- Which behaviors are safer as config than as prompt text?
+- `owner-personal.md.tmpl`
+  - overrides the shared `owner` prompt with the personal-repo landing model
+  - keeps the shared crew identity and operational sections
+  - allows a more direct personal workflow without mutating the `work` defaults

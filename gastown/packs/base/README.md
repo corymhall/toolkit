@@ -11,8 +11,8 @@ Intended contents:
 
 Current runnable surface:
 
-- rig-scoped `owner` agent for long-lived larger-work ownership
-- `prompts/owner-session.md.tmpl` for the base owner-session prompt
+- shared owner-session prompt assets and fragments in `prompts/`
+- reusable owner-session wording that `work` and `personal` can build on
 
 This pack should remain neutral across `work` and `personal`. Worker submit
 behavior and trust-class-specific landing rules stay out of `base`.

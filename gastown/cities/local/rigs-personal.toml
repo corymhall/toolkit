@@ -6,5 +6,5 @@
 [[rigs]]
 name = "example-personal-repo"
 path = "/path/to/example-personal-repo"
-includes = ["../../packs/base", "../../packs/personal"]
+includes = ["../../packs/personal"]
 suspended = false

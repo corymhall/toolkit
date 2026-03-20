@@ -8,5 +8,6 @@ Intended contents:
 - personal-only overrides layered on top of the shared `base` surface
 - local behavior that should never silently bleed into `work` rigs
 
-This directory is M1 shape-only scaffolding. M4 is the first milestone that
-should decide the concrete personal variants.
+Current runnable surface:
+
+- `owner-personal.md.tmpl` prompt override for the shared `owner` agent

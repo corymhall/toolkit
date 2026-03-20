@@ -17,13 +17,13 @@ shutdown_timeout = "10s"
 [[rigs]]
 name = "example-work-repo"
 path = "/path/to/example-work-repo"
-includes = ["../../packs/base", "../../packs/work"]
+includes = ["../../packs/work"]
 suspended = true
 
 [[rigs]]
 name = "example-personal-repo"
 path = "/path/to/example-personal-repo"
-includes = ["../../packs/base", "../../packs/personal"]
+includes = ["../../packs/personal"]
 suspended = false
 
 # See `rigs-work.toml` and `rigs-personal.toml` for the same examples split into
