@@ -7,7 +7,7 @@ or formula text is finalized.
 
 The local `base` pack should own:
 
-- the long-lived owner-session prompt for larger work
+- the shared long-lived owner-session prompt fragments for larger work
 - shared prompt fragments that are safe across trust classes
 - safe common formulas that are not specific to `work` or `personal`
 - shared scripts or setup helpers that are neutral across trust classes
@@ -24,7 +24,7 @@ The local `base` pack should not own:
 
 | Path | Purpose | Notes |
 |------|---------|-------|
-| `prompts/owner-session.md.tmpl` | Long-lived owner-session path for larger work | New local prompt; review wording before using it |
+| `prompts/shared/owner-common.md.tmpl` | Shared owner-session body reused by trust-class prompts | Concrete shared asset |
 | `prompts/shared/command-glossary.md.tmpl` | Shared command vocabulary | Candidate local fragment |
 | `prompts/shared/operational-awareness.md.tmpl` | Shared operational guardrails | Candidate local fragment |
 | `prompts/shared/approval-fallacy.md.tmpl` | Shared “finish the work” behavior | Candidate local fragment |

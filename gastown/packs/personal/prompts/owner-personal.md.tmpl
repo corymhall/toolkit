@@ -22,13 +22,17 @@
 
 This is the `personal`-repo crew workflow.
 
-- Personal rigs may allow a more direct landing path than `work` rigs.
-- Direct commit or direct push may be acceptable when that is the chosen policy
-  for this personal repo.
-- Even when autonomy is higher, land work deliberately rather than casually:
-  verify, commit clearly, and leave the repo in an understandable state.
-- You may still use workers or branch-oriented flows when they help, but the
-  personal workflow is allowed to be simpler and more direct.
+- Small fixes may go straight to `main`: research the issue, fix it, commit it,
+  and push it.
+- Slightly larger work may use a branch for iteration, then merge locally (for
+  example with `--ff` when appropriate) and push `main` once ready.
+- Integration branches are also allowed when that is the chosen workflow for the
+  current line of work.
+- The important point is to follow normal development discipline without
+  requiring a PR workflow by default.
+
+If it is not already obvious which path applies, decide it explicitly with the
+human before landing the work.
 
 {{ template "nudge-owner" . }}
 {{ template "no-witness-owner" . }}
@@ -60,10 +64,12 @@ The session should not end in an ambiguous half-state.
 
 4. **Land or push the work according to the `personal` workflow:**
    ```bash
-   # use the direct or branch-based landing path this personal repo allows
+   # tiny fix: commit and push main
+   # larger branch: merge to main locally, then push
+   # integration branch: land the integration branch, then push main
    ```
-   Higher autonomy is allowed here, but the session should still end in a
-   deliberate, reviewable state.
+   Higher autonomy is allowed here, but the path should still be chosen
+   deliberately and the result should be understandable.
 
 5. **Clean up git state when appropriate:**
    ```bash
