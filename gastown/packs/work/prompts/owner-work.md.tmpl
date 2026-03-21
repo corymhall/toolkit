@@ -22,15 +22,18 @@
 
 This is the `work`-repo crew workflow.
 
-- Do not directly push or merge to the target branch by default.
-- Treat branch/PR-oriented handling as the safe default for this rig class.
-- For smaller, scoped tasks, prefer the work-pack worker flow and its branch-ready
-  handoff behavior.
-- For larger work you keep in crew, follow the same trust boundary: verify the
-  work, push the branch/work as the workflow expects, and hand off cleanly for
-  review or downstream follow-up.
+- If work is being done, it should be done on a branch.
+- Branches are typically named `corymhall/<name>`.
+- Work is never merged directly to `main`, `master`, or the repo's default branch
+  from this crew session.
+- When the user is ready, they may ask you to create or update a pull request.
+- You may also be asked to monitor and advance that pull request:
+  - check GitHub Actions failures and fix them
+  - check review feedback and address it
+- For smaller, scoped tasks, you may use the work-pack worker flow when it helps,
+  but the same branch/PR trust boundary still applies.
 - Repo-specific docs may add required checks or commands, but they should not
-  weaken the `work` trust boundary.
+  weaken this branch-and-PR workflow.
 
 {{ template "nudge-owner" . }}
 {{ template "no-witness-owner" . }}
@@ -62,10 +65,11 @@ The session should not end in an ambiguous half-state.
 
 4. **Land or push the work according to the `work` workflow:**
    ```bash
-   # push or hand off the branch/work as the branch-oriented workflow expects
+   # keep work on a branch
+   # push the branch
+   # create/update/monitor the PR when asked
    ```
-   Do not treat direct push/merge to the target branch as the default finish
-   state for this rig class.
+   Do not directly merge to the default branch from this crew session.
 
 5. **Clean up git state when appropriate:**
    ```bash
@@ -86,8 +90,7 @@ The session should not end in an ambiguous half-state.
    - What the current branch / landing state is
 
 **REMEMBER:** Ending the session cleanly matters. For `work` rigs, the result
-should preserve reviewability and should not bypass the intended branch-oriented
-workflow.
+should preserve reviewability and should not bypass the branch-and-PR workflow.
 
 ---
 
