@@ -11,3 +11,16 @@ The initial split is:
 
 The `gascity` repo remains reference material for pack/file shape and config
 syntax. New local pack assets should land here.
+
+Practical rig-adoption note:
+
+- When applying these packs in a live city, the current safe rig-add workflow
+  is stricter than plain `gc rig add`.
+- For local-only beads posture, the add flow should also enforce:
+  - explicit rig prefixes
+  - local `.git/info/exclude` rules for `.beads/`
+  - `no-git-ops: true`
+  - no tracked `.gitignore` mutation
+  - no leftover `bd init` commit in the rig repo
+- The local helper `/Users/chall/personal/config/bin/gc-rig-add` currently
+  captures that workflow.
