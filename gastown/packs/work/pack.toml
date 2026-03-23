@@ -11,7 +11,9 @@ dir = "formulas"
 [[agent]]
 name = "owner"
 scope = "rig"
-work_dir = ".gc/agents/{{.Rig}}/owner"
+suspended = true
+work_dir = "crews/{{.Rig}}/{{.AgentBase}}"
+pre_start = ["{{.ConfigDir}}/scripts/ensure-agent-clone.sh {{.RigRoot}} {{.WorkDir}} --sync"]
 prompt_template = "prompts/owner-work.md.tmpl"
 nudge = "Review the current work, partner with the human, and own larger tasks end-to-end."
 
