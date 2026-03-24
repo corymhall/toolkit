@@ -1,0 +1,66 @@
+# Verify + Finalize Expansion
+#
+# Shared final verification/finalization stage for delivery workflows.
+
+description = """
+Run final verification, finalize tracking state, and summarize completion.
+"""
+formula = "verify-finalize-expansion"
+type = "expansion"
+pour = true
+version = 1
+
+[vars]
+[vars.feature]
+description = "Feature name"
+required = true
+
+[[template]]
+id = "{target}.execute"
+title = "Verify, Finalize, and Report"
+description = """
+Run final verification, then finalize tracking state and summary.
+
+## Verification
+
+- Execute relevant test/lint/build commands for changed areas.
+- If full suite is too expensive, run targeted commands and state limitations.
+- Record all verification commands + outcomes in `session-ledger.md`.
+
+## Tracking Finalization
+
+```bash
+CONVOY_ID=$(awk -F': ' '/^convoy_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
+EPIC_ID=$(awk -F': ' '/^epic_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
+```
+
+Append the final execution summary to the convoy. If a tracking epic exists,
+mirror the same summary there. For single-session quick delivery, land the
+owned convoy after confirming the work is complete.
+
+## Final Notes
+
+Append:
+- spec path
+- if `plans.md` exists, include plans path
+- ledger path
+- review artifact paths
+- verification commands run
+- unresolved risks (if any)
+- completion status
+
+Then finalize the owned convoy:
+
+```bash
+gc convoy status "$CONVOY_ID"
+gc convoy land "$CONVOY_ID"
+```
+
+## Output
+
+Provide a concise completion report including:
+- what was implemented
+- what was verified
+- convoy land result
+- what remains (if anything)
+"""

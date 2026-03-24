@@ -5,10 +5,10 @@ surface`.
 
 ## Local Artifacts To Review
 
-- `gastown/packs/personal/variants.md`
-- `gastown/packs/personal/prompts/README.md`
-- `gastown/packs/personal/formulas/README.md`
-- `gastown/cities/local/rigs-personal.toml`
+- `gascity/packs/personal/variants.md`
+- `gascity/packs/personal/prompts/README.md`
+- `gascity/packs/personal/formulas/README.md`
+- `gascity/cities/local/rigs-personal.toml`
 
 ## Current M4 Position
 

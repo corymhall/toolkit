@@ -1,0 +1,16 @@
+{{ define "architecture-owner" }}
+## Local Architecture
+
+```
+City root: {{ .CityRoot }}
+Rig root:  {{ .RigRoot }}
+Workspace: {{ .WorkDir }}
+```
+
+Key concepts:
+- the city root owns shared runtime state and city-level coordination
+- the rig root is the repo whose work you primarily own in this session
+- the owner session is the persistent, high-context path for larger work
+- optional workers handle smaller, branch-oriented tasks when you decide to use them
+- beads, hook, and mail provide the durable work and handoff surfaces
+{{ end }}

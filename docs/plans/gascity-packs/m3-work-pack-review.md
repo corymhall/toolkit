@@ -5,10 +5,10 @@ This note supports the M3 human stop for
 
 ## Local Artifacts To Review
 
-- `gastown/packs/work/worker-lifecycle.md`
-- `gastown/packs/work/metadata-contract.md`
-- `gastown/packs/work/formulas/README.md`
-- `gastown/packs/work/prompts/README.md`
+- `gascity/packs/work/worker-lifecycle.md`
+- `gascity/packs/work/metadata-contract.md`
+- `gascity/packs/work/formulas/README.md`
+- `gascity/packs/work/prompts/README.md`
 
 ## Current M3 Position
 

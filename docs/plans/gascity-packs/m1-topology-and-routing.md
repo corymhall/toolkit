@@ -8,7 +8,7 @@ contract`.
 The local pack family lives in this repo:
 
 ```text
-gastown/
+gascity/
   packs/
     base/
     work/

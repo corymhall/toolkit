@@ -1,0 +1,13 @@
+# Example work-rig fragment for the local sample city.
+#
+# This is a shape artifact for M1.
+#
+# Overrides are intentionally omitted here until the local agent inventory is
+# real. The goal is for this fragment to remain loadable instead of pointing at
+# placeholder agent names that do not exist yet.
+
+[[rigs]]
+name = "example-work-repo"
+path = "/path/to/example-work-repo"
+includes = ["../../packs/work"]
+suspended = true

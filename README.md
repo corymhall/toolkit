@@ -1,6 +1,16 @@
 # toolkit
 
-A collection of skills, formulas, and templates for AI-assisted software engineering. Organized into two namespaces you can install independently.
+A collection of skills, formulas, packs, and templates for AI-assisted
+software engineering.
+
+This repo now has three top-level areas:
+
+- `general/` — product-agnostic engineering skills
+- `gascity/` — canonical Gas City assets for the current model
+- `gastown/` — legacy / compatibility Gas Town assets
+
+Planning docs stay at the top level under `docs/plans/` because they are
+session-planning artifacts for this repo, not installable namespace content.
 
 ## General Skills
 
@@ -16,17 +26,18 @@ Language-specific development skills, review tools, and multi-model evaluation. 
 | [git-spice-stack-prs](general/skills/git-spice-stack-prs/) | Manage stacked GitHub PRs with git-spice — branch creation, submit, restack, and update cycles. |
 | [receiving-code-review](https://github.com/obra/superpowers/tree/main/skills/receiving-code-review) | Protocol for handling review feedback — verify before implementing, push back when wrong. *(upstream: obra/superpowers)* |
 
-## Gas Town
+## Gas City
 
-Skills and formulas for the [Gas Town](https://github.com/steveyegge/gastown) multi-agent workspace built on [Beads](https://github.com/steveyegge/beads) issue tracking.
+Canonical skills, formulas, and local pack-family assets for the current
+Gas City operating model.
 
 ### Skills
 
 | Skill | Description |
 |-------|-------------|
-| [brainstorming](gastown/skills/brainstorming/) | Interactive spec writing through dialogue — clarify intent, explore approaches, write a design spec. |
-| [review-implementation](gastown/skills/review-implementation/) | Review code changes against a spec to verify implementation completeness and correctness. |
-| [epic-delivery](gastown/skills/epic-delivery/) | Dispatch beads to polecats for swarm-style execution with dependency-aware task waves. |
+| [brainstorming](gascity/skills/brainstorming/) | Interactive spec writing through dialogue — clarify intent, explore approaches, write a design spec. |
+| [review-implementation](gascity/skills/review-implementation/) | Review code changes against a spec to verify implementation completeness and correctness. |
+| [epic-delivery](gascity/skills/epic-delivery/) | Work a convoy-backed execution plan in-session with convoy-first tracking. |
 
 ### Formula Portfolio
 
@@ -51,7 +62,8 @@ blocks underneath them.
 
 Any entry point works. Already have a spec? Skip to beadify. Want more rigor? Run enrich multiple times.
 
-See [gastown/beads/formulas/README.md](gastown/beads/formulas/README.md) for full formula documentation.
+See [gascity/formulas/README.md](gascity/formulas/README.md) for full formula
+documentation.
 
 #### Workflow roles
 
@@ -104,20 +116,48 @@ gt sling epic-delivery-workflow <crew> \
 #### Installing formulas
 
 ```bash
-cp gastown/beads/formulas/*.formula.toml ~/gt/.beads/formulas/
+cp gascity/formulas/*.formula.toml ~/gt/.beads/formulas/
 ```
 
 Or copy to a specific rig's `.beads/formulas/` directory for project-scoped use.
+
+#### Local pack family
+
+The canonical local Gas City pack family now lives under
+[gascity/packs/](/Users/chall/gt/toolkit/crew/quick/gascity/packs).
+
+The related planning docs stay at top level in
+[docs/plans/gascity-packs/](/Users/chall/gt/toolkit/crew/quick/docs/plans/gascity-packs).
+
+## Gastown
+
+Legacy and compatibility assets for the older Gas Town model stay under
+`gastown/`.
+
+These are useful when:
+
+- preserving older GT-oriented workflows
+- comparing old vs new behavior during migration
+- keeping GT-specific skills that do not belong in the canonical Gas City path
+
+Examples include:
+
+- [gastown/skills/gastown-upstream-sync/](/Users/chall/gt/toolkit/crew/quick/gastown/skills/gastown-upstream-sync)
+- [gastown/skills/sling-work/](/Users/chall/gt/toolkit/crew/quick/gastown/skills/sling-work)
+- [gastown/skills/workflow-cheatsheet/](/Users/chall/gt/toolkit/crew/quick/gastown/skills/workflow-cheatsheet)
+- [gastown/beads/formulas/](/Users/chall/gt/toolkit/crew/quick/gastown/beads/formulas)
 
 ## What's here
 
 | Directory | Contents |
 |-----------|----------|
 | `general/skills/` | Language-specific development, review, and evaluation skills. No Gas Town dependency. |
-| `gastown/skills/` | Gas Town skills — brainstorming, implementation review, epic delivery. |
-| `gastown/beads/formulas/` | Gas Town `.formula.toml` files — expansion formulas, top-level workflows, and the review worker formula. |
-| `gastown/docs/templates/` | The [spec template](gastown/docs/templates/spec.md) — standard format for all specs. |
-| `gastown/docs/plans/` | Specs for features built in this repo. |
+| `gascity/skills/` | Canonical Gas City skills for the current workflow model. |
+| `gascity/formulas/` | Canonical Gas City formulas and workflow expansions. |
+| `gascity/packs/` | Local Gas City pack family and sample city assets. |
+| `gascity/docs/templates/` | Canonical spec/plan templates used by the Gas City workflows. |
+| `gastown/` | Legacy / compatibility Gas Town assets. |
+| `docs/plans/` | Session planning docs for this repo, including Gas City migration and pack work. |
 
 ## Acknowledgements
 

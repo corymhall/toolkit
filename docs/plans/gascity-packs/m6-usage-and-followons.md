@@ -5,8 +5,8 @@ artifacts in this repo.
 
 ## Where The Local Artifacts Live
 
-- local pack roots: `gastown/packs/`
-- local sample city fixture: `gastown/cities/local/`
+- local pack roots: `gascity/packs/`
+- local sample city fixture: `gascity/cities/local/`
 - planning and review notes: `docs/plans/gascity-packs/`
 
 ## What These Artifacts Represent Today
@@ -14,7 +14,7 @@ artifacts in this repo.
 - `base/` defines the local owner-session and shared-policy surface
 - `work/` defines the conservative branch-only worker direction
 - `personal/` defines the more autonomous personal-only direction
-- `gastown/cities/local/` shows how the split is expressed from config
+- `gascity/cities/local/` shows how the split is expressed from config
 - the real city root is expected to live outside this repo (for example
   `~/city`) and consume these local pack/fixture ideas
 

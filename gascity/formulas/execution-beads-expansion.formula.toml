@@ -1,0 +1,188 @@
+# Execution Beads Expansion
+#
+# Turn a finalized milestone plan into execution beads plus review/verification
+# gates under the execution convoy.
+
+description = """
+Read `plans.md`, derive execution beads from the milestone plan, validate the
+dependency shape, and create the bead graph that the execution session will
+work through.
+
+**Input:** `docs/plans/{{feature}}/spec.md`, `docs/plans/{{feature}}/plans.md`,
+and the execution convoy/tracking bead in `session-context.md`
+**Output:** Execution-convoy child beads with a dependency graph aligned to
+`plans.md`
+
+This expansion is intentionally narrower than `beadify-expansion`.
+It does not rediscover the task graph from scratch. It translates the already
+reviewed milestone plan into execution beads.
+"""
+formula = "execution-beads-expansion"
+type = "expansion"
+pour = true
+version = 1
+
+[vars]
+[vars.feature]
+description = "Feature name (maps to docs/plans/{{feature}}/plans.md)"
+required = true
+
+[[template]]
+id = "{target}.kickoff"
+title = "Execution Beads Kickoff"
+description = """
+═══════════════════════════════════════════════════════════════
+ EXECUTION BEADS
+ Finalized `plans.md` -> execution beads -> dependency graph
+
+ Inputs:
+   - docs/plans/{{feature}}/spec.md
+   - docs/plans/{{feature}}/plans.md
+   - docs/plans/{{feature}}/session-context.md
+
+ Output:
+   - execution convoy child beads aligned to `plans.md`
+═══════════════════════════════════════════════════════════════
+
+Output this banner to the user, then close this step to begin.
+"""
+
+[[template]]
+id = "{target}.validate-inputs"
+title = "Validate spec, plan, and convoy context"
+needs = ["{target}.kickoff"]
+description = """
+Validate that execution bead creation is grounded in the finalized planning artifacts.
+
+## Validate
+
+1. Confirm these files exist:
+   - `docs/plans/{{feature}}/spec.md`
+   - `docs/plans/{{feature}}/plans.md`
+   - `docs/plans/{{feature}}/session-context.md`
+
+2. Read `plans.md` and confirm it is implementation-ready:
+   - milestones are explicit
+   - each milestone has acceptance criteria
+   - each milestone has validation commands or proof expectations
+   - stop conditions are explicit where needed
+
+3. Read `session-context.md` and resolve the execution convoy and tracking bead:
+
+```bash
+CONVOY_ID=$(awk -F': ' '/^convoy_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
+EPIC_ID=$(awk -F': ' '/^epic_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
+bd show "$CONVOY_ID"
+bd show "$EPIC_ID"
+```
+
+4. If `plans.md` still reads like a vague outline rather than a build contract,
+   STOP and return to planning.
+
+## Output
+
+Report:
+- plan path
+- execution convoy ID
+- root epic ID
+- whether the plan is ready to become execution beads
+"""
+
+[[template]]
+id = "{target}.design-graph"
+title = "Design execution bead graph from `plans.md`"
+needs = ["{target}.validate-inputs"]
+description = """
+Translate `plans.md` into a concrete execution bead graph.
+
+## Inputs
+
+- `docs/plans/{{feature}}/spec.md`
+- `docs/plans/{{feature}}/plans.md`
+
+## Graph Rules
+
+1. Create one execution task bead per milestone in `plans.md`.
+2. Preserve milestone order only where the plan says sequencing is real.
+3. If a milestone is marked as a review stop / shape-check milestone:
+   - create the milestone task
+   - create a review checkpoint bead immediately after it
+   - make downstream milestones depend on that checkpoint, not directly on the milestone
+4. Always create this final local gate bead:
+   - `{{feature}}: implementation review`
+5. Do NOT create a separate final validation bead.
+   - for planned delivery, `implementation review` is the final expected local
+     gate
+6. Dependency rules:
+   - `implementation review` depends on the last implementation milestone/checkpoint
+   - use normal `blocks` dependencies unless `plans.md` makes a true merge-gated
+     dependency explicit
+
+## Bead Contract
+
+Each execution bead description should be concise and execution-oriented:
+- milestone goal
+- planned changes
+- acceptance criteria
+- validation commands / proof expectations
+- stop conditions, if any
+- pointers back to `spec.md` and `plans.md`
+
+For the `implementation review` bead specifically:
+- direct the executor to run `$review-implementation` in preflight mode
+- use both `gpt` and `claude` reviewer lanes with `--categories all`
+- treat `gpt` as a required dedicated Codex reviewer lane, not as a parent
+  session self-review fallback
+- scope review against `docs/plans/{{feature}}/spec.md` and the current branch's
+  implementation changes for this delivery
+- require a return to fix work if the review is blocking
+
+Do not copy the entire milestone text verbatim into bead descriptions.
+Beads are execution contracts, not markdown mirrors.
+
+## Output
+
+Produce a brief bead graph summary:
+- milestone bead count
+- checkpoint bead count
+- local review gate beads
+- confirmation that `implementation review` is the final expected gate
+- notable dependency edges
+"""
+
+[[template]]
+id = "{target}.create-beads"
+title = "Create execution beads and dependencies"
+needs = ["{target}.design-graph"]
+description = """
+Create the execution bead graph under the execution convoy.
+
+## Rules
+
+- Reuse existing matching child beads when the graph is already present.
+- Avoid duplicates by checking existing children under the execution convoy first.
+- Create new beads only for missing milestones/checkpoints/gates.
+- Add or repair dependencies to match the graph designed in the previous step.
+
+## Commands
+
+Use `bd list --parent "$CONVOY_ID" --json` to inspect existing tracked beads.
+Use `bd create ... --parent "$CONVOY_ID"` for missing beads.
+Use `bd dep add <blocked> <blocker>` to repair missing edges.
+
+## Root Epic Note
+
+Append a concise note to the convoy and tracking bead:
+- `plans.md` path
+- execution bead count
+- any review-stop checkpoints created
+- whether the graph was reused, repaired, or created fresh
+
+## Output
+
+Report:
+- created beads
+- reused beads
+- repaired deps
+- any planning ambiguity that still leaked into execution
+"""

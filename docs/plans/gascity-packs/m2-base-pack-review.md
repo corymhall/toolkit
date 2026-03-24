@@ -5,13 +5,13 @@ This note supports the M2 human stop for
 
 ## Local Artifacts To Review
 
-- `gastown/packs/base/owner-session-surface.md`
-- `gastown/packs/base/prompts/shared/owner-common.md.tmpl`
+- `gascity/packs/base/owner-session-surface.md`
+- `gascity/packs/base/prompts/shared/owner-common.md.tmpl`
 - `docs/plans/gascity-packs/m2-owner-prompt-comparison.md`
-- `gastown/packs/base/prompts/shared/README.md`
-- `gastown/packs/base/formulas/README.md`
-- `gastown/packs/base/scripts/README.md`
-- `gastown/cities/local/base-policy.md`
+- `gascity/packs/base/prompts/shared/README.md`
+- `gascity/packs/base/formulas/README.md`
+- `gascity/packs/base/scripts/README.md`
+- `gascity/cities/local/base-policy.md`
 
 ## Current M2 Position
 

@@ -1,0 +1,8 @@
+[pack]
+name = "base"
+version = "0.1.0"
+schema = 1
+
+# Shared owner-session defaults and neutral shared surfaces.
+[formulas]
+dir = "formulas"

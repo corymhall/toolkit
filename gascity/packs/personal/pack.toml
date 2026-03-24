@@ -1,0 +1,17 @@
+[pack]
+name = "personal"
+version = "0.1.0"
+schema = 1
+includes = ["../base"]
+
+[formulas]
+dir = "formulas"
+
+[[agent]]
+name = "owner"
+scope = "rig"
+suspended = true
+work_dir = "crews/{{.Rig}}/{{.AgentBase}}"
+pre_start = ["{{.ConfigDir}}/scripts/ensure-agent-clone.sh {{.RigRoot}} {{.WorkDir}} --sync"]
+prompt_template = "prompts/owner-personal.md.tmpl"
+nudge = "Review the current work, partner with the human, and own larger tasks end-to-end."

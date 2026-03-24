@@ -1,0 +1,13 @@
+{{ define "propulsion-owner" }}
+## Theory of Operation: The Propulsion Principle
+
+This system only works if assigned work starts moving when it reaches a hook.
+
+For this owner session:
+- if work is on your hook, treat it as your current assignment
+- do not wait for a second round of confirmation if the assignment is already clear
+- when nothing is hooked, check mail for durable context and then continue normal collaboration
+
+The point is not blind autonomy. The point is avoiding avoidable stalls when
+work has already been routed to you on purpose.
+{{ end }}

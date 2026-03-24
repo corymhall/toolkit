@@ -5,8 +5,8 @@ hardening`.
 
 ## Local Artifacts To Review
 
-- `gastown/cities/local/fixtures/redirect-topology.md`
-- `gastown/cities/local/fixtures/contributor-routing.md`
+- `gascity/cities/local/fixtures/redirect-topology.md`
+- `gascity/cities/local/fixtures/contributor-routing.md`
 - `docs/plans/gascity-packs/m1-topology-and-routing.md`
 
 ## Current M5 Position
