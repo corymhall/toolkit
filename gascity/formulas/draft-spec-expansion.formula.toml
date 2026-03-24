@@ -12,7 +12,7 @@
 #   3. Commit
 #
 # Usage:
-#   gt sling draft-spec <crew> \
+#   gc sling draft-spec <crew> \
 #     --var feature="ipv6-support" \
 #     --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 
@@ -32,39 +32,15 @@ propose approaches before writing. For a fully autonomous draft,
 provide a detailed brief that answers likely questions upfront.
 
 After drafting:
-- Run `gt sling enrich` for gap analysis and refinement (optional)
-- Run `gt sling beadify` to create execution beads
+- Run `enrich-expansion` for gap analysis and refinement (optional)
+- Then continue into either `delivery-workflow-quick` or
+  `delivery-workflow-planned` depending on complexity
 
-## Step Lifecycle (Molecule Work Loop)
+## Graph-First Execution Contract
 
-This formula runs as a molecule — each step is a wisp bead. Use the
-standard molecule work loop to advance through steps:
-
-```bash
-bd mol current <molecule-id>
-# execute the step
-bd close <step-id>
-bd mol current <molecule-id>
-# repeat until complete
-```
-
-`bd mol current <molecule-id>` is the sole source of truth for what to do next.
-Execute exactly that current wisp and nothing beyond it.
-
-After closing a wisp, stop and re-run `bd mol current <molecule-id>` before
-starting anything else. Do not begin the next stage from memory, expected
-sequence, prior banner text, or "workflow intent" alone.
-
-Re-running `bd mol current <molecule-id>` is a refresh step, not a stop-and-wait
-boundary. If it returns another actionable wisp, execute it immediately. Do not
-pause for apologies, hand-holding, or workflow-boundary summaries unless the
-current wisp explicitly says `STOP` or requires `request_user_input`.
-
-Status updates are not pause points. If a wisp tells you to report findings,
-state, or completion, do so and then continue the molecule loop immediately
-unless the wisp explicitly requires `request_user_input` or says `STOP`.
-
-Do NOT batch-close steps or work ahead.
+When this expansion is used inside a graph.v2 workflow, workers execute ready
+beads directly. Do not rely on `bd mol current` or other molecule-only
+positioning semantics in the canonical Gas City path.
 """
 formula = "draft-spec-expansion"
 type = "expansion"
@@ -393,7 +369,7 @@ git push -u origin "$(git branch --show-current)" || git push
 **Spec:** docs/plans/{{feature}}/spec.md
 
 ### Next Steps
-- `gt sling enrich --var feature={{feature}}` — find gaps and refine (optional)
-- `gt sling beadify --var feature={{feature}}` — create execution beads
+- Run `enrich-expansion` — find gaps and refine (optional)
+- Then continue into `delivery-workflow-quick` or `delivery-workflow-planned`
 ```
 """

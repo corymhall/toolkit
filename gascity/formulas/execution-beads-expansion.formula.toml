@@ -84,7 +84,7 @@ bd show "$EPIC_ID"
 Report:
 - plan path
 - execution convoy ID
-- root epic ID
+- tracking bead ID
 - whether the plan is ready to become execution beads
 """
 
@@ -170,7 +170,7 @@ Use `bd list --parent "$CONVOY_ID" --json` to inspect existing tracked beads.
 Use `bd create ... --parent "$CONVOY_ID"` for missing beads.
 Use `bd dep add <blocked> <blocker>` to repair missing edges.
 
-## Root Epic Note
+## Tracking Notes
 
 Append a concise note to the convoy and tracking bead:
 - `plans.md` path

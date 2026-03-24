@@ -1,8 +1,8 @@
 # Delivery Workflow Planned
 #
 # Canonical graph.v2 two-session delivery workflow:
-#   session 1: bootstrap -> draft-spec -> enrich -> handoff
-#   session 2: execution-setup -> plan -> execution beads -> finalize convoy
+#   session 1 body: bootstrap -> draft-spec -> enrich -> handoff
+#   session 2 body: execution-setup -> plan -> execution beads -> finalize convoy
 #
 # This workflow keeps noisy exploration out of the build session, then hands
 # execution to a bead graph plus an owned execution convoy while the current
@@ -10,7 +10,7 @@
 # remains the owner.
 #
 # Usage:
-#   gt sling delivery-workflow-planned <crew> \
+#   gc sling delivery-workflow-planned <crew> \
 #     --var feature="ipv6-support" \
 #     --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
 #     [--var epic_id="abc123"] \
@@ -19,13 +19,13 @@
 description = """
 Canonical graph.v2 two-session delivery workflow.
 
-Session 1 is for discovery and convergence:
+Session 1 is for discovery and convergence inside an explicit graph.v2 scope:
 1. **Bootstrap**
 2. **Draft Spec**
 3. **Enrich**
 4. **Handoff Boundary**
 
-Session 2 is for planning and execution setup:
+Session 2 is for planning and execution setup inside a second explicit scope:
 5. **Execution Setup**
 6. **Plan**
 7. **Create Execution Beads**
@@ -48,17 +48,15 @@ convoy ready for same-session delivery
 - `docs/plans/{{feature}}/session-context.md`
 - execution convoy tracking the execution beads
 
-## Graph-First Execution Contract
+## Graph.v2 Mechanics
 
-This workflow compiles as a graph.v2 formula. Workers execute ready beads
-directly; they do not advance the workflow with `bd mol current`.
+This workflow now uses two explicit phase latches:
+- `discovery-body` for session-1 convergence
+- `planning-body` for session-2 execution setup
 
-Practical consequences:
-- work exactly the ready bead currently routed to you
-- close successful work beads directly
-- let workflow-control handle `gc.kind=check|fanout|scope-check|workflow-finalize`
-- use the normal hook/ready-bead flow after handoff instead of a molecule-only
-  resume model
+The scoped phases are complemented by graph-native review fanout inside the
+retained expansions, so compilation produces real control beads rather than a
+purely linear stage list.
 """
 formula = "delivery-workflow-planned"
 type = "workflow"
@@ -133,6 +131,22 @@ description = """
 
 Output this banner to the user, then close this step to begin.
 """
+
+# ============================================================================
+# SESSION 1 PHASE LATCH
+# ============================================================================
+
+[[steps]]
+id = "discovery-body"
+title = "Session 1 discovery scope"
+needs = ["stage-bootstrap", "stage-draft-spec", "stage-enrich", "checkpoint-handoff-ready"]
+description = """
+Terminal latch for the discovery/convergence phase.
+
+When this scope closes, `spec.md` should be strong enough to act as the
+session-boundary contract for the planning/build phase.
+"""
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "discovery", "gc.scope_role" = "body" }
 
 # ============================================================================
 # STAGE 1: BOOTSTRAP
@@ -213,6 +227,23 @@ Only continue in the same session if you are intentionally bypassing the
 recommended boundary for testing or expedience. If you do, state that clearly
 in your status update.
 """
+
+# ============================================================================
+# SESSION 2 PHASE LATCH
+# ============================================================================
+
+[[steps]]
+id = "planning-body"
+title = "Session 2 planning scope"
+needs = ["stage-execution-setup", "stage-plan", "stage-create-execution-beads", "stage-stage-convoy"]
+description = """
+Terminal latch for the planning/execution-setup phase.
+
+When this scope closes, the convoy-backed execution graph should be ready for
+same-session implementation from the tracked beads rather than from the
+workflow root.
+"""
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "planning", "gc.scope_role" = "body" }
 
 # ============================================================================
 # STAGE 4: EXECUTION SETUP
@@ -346,36 +377,6 @@ Also append notes including:
 
 Do not dispatch from this workflow. The execution convoy is the primary
 execution container for the current-session delivery path.
-"""
-
-# ============================================================================
-# COMPLETE
-# ============================================================================
-
-[[steps]]
-id = "complete"
-title = "Workflow Complete"
-needs = ["stage-stage-convoy"]
-description = """
-Two-session planned workflow complete.
-
-**Artifacts:**
-- docs/plans/{{feature}}/spec.md
-- docs/plans/{{feature}}/plans.md
-- docs/plans/{{feature}}/session-context.md
-- convoy-owned execution beads
-- execution convoy tracking those execution beads
-
-**Next Step:**
-- execute the execution convoy in the current session using `$epic-delivery`
-- use the convoy ID as the primary skill input
-
-**Modeling note:**
-This workflow treats convergence/planning and implementation as different
-phases on purpose. Session 1 distills noisy exploration into `spec.md`;
-session 2 produces `plans.md`, execution beads, and a convoy-owned execution
-graph so implementation can run from the convoy container rather than from the
-formula.
 """
 
 # ============================================================================
