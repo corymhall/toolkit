@@ -75,11 +75,23 @@ needs = ["load-context"]
 description = """
 Create or resume the local workspace for investigation.
 
-**Config: base_branch = {{base_branch}}**
+**Config: requested base_branch = {{base_branch}}**
 
-**1. Fetch the latest base branch:**
+**1. Resolve a usable remote base branch:**
 ```bash
-git -C "$GC_RIG_ROOT" fetch --prune origin {{base_branch}}
+REQUESTED_BASE="{{base_branch}}"
+BASE_BRANCH="$REQUESTED_BASE"
+git -C "$GC_RIG_ROOT" fetch --prune origin
+if ! git -C "$GC_RIG_ROOT" rev-parse --verify --quiet "refs/remotes/origin/$BASE_BRANCH" >/dev/null; then
+  FALLBACK_BASE=$(git -C "$GC_RIG_ROOT" remote show origin | awk '/HEAD branch/ {print $NF; exit}')
+  if [ -z "$FALLBACK_BASE" ]; then
+    FALLBACK_BASE=$(git -C "$GC_RIG_ROOT" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's#^refs/remotes/origin/##')
+  fi
+  if [ -n "$FALLBACK_BASE" ]; then
+    BASE_BRANCH="$FALLBACK_BASE"
+  fi
+fi
+git -C "$GC_RIG_ROOT" fetch --prune origin "$BASE_BRANCH"
 ```
 
 **2. Resolve the durable triage worktree path:**
@@ -96,11 +108,11 @@ Reuse an existing worktree when present:
 if [ -d "$WORKTREE/.git" ] || git -C "$WORKTREE" rev-parse --show-toplevel >/dev/null 2>&1; then
   cd "$WORKTREE"
 else
-  git -C "$GC_RIG_ROOT" worktree add "$WORKTREE" --detach "origin/{{base_branch}}"
+  git -C "$GC_RIG_ROOT" worktree add "$WORKTREE" --detach "origin/$BASE_BRANCH"
   cd "$WORKTREE"
 fi
 bd update {{issue}} --set-metadata triage_work_dir="$WORKTREE"
-bd update {{issue}} --set-metadata triage_base_branch="{{base_branch}}"
+bd update {{issue}} --set-metadata triage_base_branch="$BASE_BRANCH"
 ```
 
 **3. Resolve the local-only triage branch:**
@@ -112,7 +124,7 @@ fi
 if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
   git checkout "$BRANCH"
 else
-  git checkout -B "$BRANCH" "origin/{{base_branch}}"
+  git checkout -B "$BRANCH" "origin/$BASE_BRANCH"
 fi
 bd update {{issue}} --set-metadata triage_branch="$BRANCH"
 ```
@@ -210,13 +222,14 @@ Close the triage bead at the investigation boundary.
 ```bash
 WORKTREE=$(pwd)
 BRANCH=$(git branch --show-current)
+BASE_BRANCH=$(bd show {{issue}} --json | jq -r '.[0].metadata.triage_base_branch // "{{base_branch}}"')
 STATE="clean"
 if [ -n "$(git status --porcelain)" ]; then
   STATE="dirty"
 fi
 bd update {{issue}} --set-metadata triage_work_dir="$WORKTREE"
 bd update {{issue}} --set-metadata triage_branch="$BRANCH"
-bd update {{issue}} --set-metadata triage_base_branch="{{base_branch}}"
+bd update {{issue}} --set-metadata triage_base_branch="$BASE_BRANCH"
 bd update {{issue}} --set-metadata triage_state="$STATE"
 ```
 

@@ -81,11 +81,23 @@ needs = ["load-context"]
 description = """
 Create or resume the durable workspace recorded on the bead.
 
-**Config: base_branch = {{base_branch}}**
+**Config: requested base_branch = {{base_branch}}**
 
-**1. Fetch the latest base branch:**
+**1. Resolve a usable remote base branch:**
 ```bash
-git -C "$GC_RIG_ROOT" fetch --prune origin {{base_branch}}
+REQUESTED_BASE="{{base_branch}}"
+BASE_BRANCH="$REQUESTED_BASE"
+git -C "$GC_RIG_ROOT" fetch --prune origin
+if ! git -C "$GC_RIG_ROOT" rev-parse --verify --quiet "refs/remotes/origin/$BASE_BRANCH" >/dev/null; then
+  FALLBACK_BASE=$(git -C "$GC_RIG_ROOT" remote show origin | awk '/HEAD branch/ {print $NF; exit}')
+  if [ -z "$FALLBACK_BASE" ]; then
+    FALLBACK_BASE=$(git -C "$GC_RIG_ROOT" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's#^refs/remotes/origin/##')
+  fi
+  if [ -n "$FALLBACK_BASE" ]; then
+    BASE_BRANCH="$FALLBACK_BASE"
+  fi
+fi
+git -C "$GC_RIG_ROOT" fetch --prune origin "$BASE_BRANCH"
 ```
 
 **2. Resolve the durable worktree path:**
@@ -102,12 +114,12 @@ If the recorded worktree exists, reuse it:
 if [ -d "$WORKTREE/.git" ] || git -C "$WORKTREE" rev-parse --show-toplevel >/dev/null 2>&1; then
   cd "$WORKTREE"
 else
-  git -C "$GC_RIG_ROOT" worktree add "$WORKTREE" --detach "origin/{{base_branch}}"
+  git -C "$GC_RIG_ROOT" worktree add "$WORKTREE" --detach "origin/$BASE_BRANCH"
   cd "$WORKTREE"
 fi
 bd update {{issue}} --set-metadata work_dir="$WORKTREE"
-bd update {{issue}} --set-metadata base_branch="{{base_branch}}"
-bd update {{issue}} --set-metadata target="{{base_branch}}"
+bd update {{issue}} --set-metadata base_branch="$BASE_BRANCH"
+bd update {{issue}} --set-metadata target="$BASE_BRANCH"
 ```
 
 **3. Resolve the feature branch:**
@@ -125,7 +137,7 @@ if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
 elif git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
   git checkout -b "$BRANCH" "origin/$BRANCH"
 else
-  git checkout -B "$BRANCH" "origin/{{base_branch}}"
+  git checkout -B "$BRANCH" "origin/$BASE_BRANCH"
 fi
 bd update {{issue}} --set-metadata branch="$BRANCH"
 ```
@@ -197,7 +209,7 @@ id = "self-review"
 title = "Review the branch and run quality checks"
 needs = ["implement"]
 description = """
-Review the branch against `{{base_branch}}` and run the configured quality
+Review the branch against the recorded base branch and run the configured quality
 checks.
 
 Use the repo's own instructions (`AGENTS.md`, `CLAUDE.md`, README, package
@@ -206,8 +218,9 @@ repo.
 
 **1. Review the branch diff:**
 ```bash
-git diff --stat "origin/{{base_branch}}...HEAD"
-git log --oneline "origin/{{base_branch}}..HEAD"
+BASE_BRANCH=$(bd show {{issue}} --json | jq -r '.[0].metadata.base_branch // "{{base_branch}}"')
+git diff --stat "origin/$BASE_BRANCH...HEAD"
+git log --oneline "origin/$BASE_BRANCH..HEAD"
 ```
 
 **2. Run repo-appropriate verification:**
@@ -242,10 +255,11 @@ This step always pushes the feature branch to `origin`, but it never pushes to
 ```bash
 BRANCH=$(git branch --show-current)
 WORKTREE=$(pwd)
+BASE_BRANCH=$(bd show {{issue}} --json | jq -r '.[0].metadata.base_branch // "{{base_branch}}"')
 bd update {{issue}} --set-metadata branch="$BRANCH"
 bd update {{issue}} --set-metadata work_dir="$WORKTREE"
-bd update {{issue}} --set-metadata target="{{base_branch}}"
-bd update {{issue}} --set-metadata base_branch="{{base_branch}}"
+bd update {{issue}} --set-metadata target="$BASE_BRANCH"
+bd update {{issue}} --set-metadata base_branch="$BASE_BRANCH"
 ```
 
 **2. Push the feature branch to `origin`:**
@@ -256,7 +270,8 @@ bd update {{issue}} --set-metadata push_remote="origin"
 
 **3. Close the implementation bead with a handoff note:**
 ```bash
-bd update {{issue}} --notes "Prepared branch-ready handoff. Branch $BRANCH pushed to origin and targets {{base_branch}}."
+BASE_BRANCH=$(bd show {{issue}} --json | jq -r '.[0].metadata.base_branch // "{{base_branch}}"')
+bd update {{issue}} --notes "Prepared branch-ready handoff. Branch $BRANCH pushed to origin and targets $BASE_BRANCH."
 bd close {{issue}}
 ```
 
