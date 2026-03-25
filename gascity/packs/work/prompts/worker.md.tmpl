@@ -36,6 +36,34 @@ Once the formula creates or resumes that worktree:
 
 ## Work Protocol
 
+When work is available, use this exact startup flow:
+
+```bash
+# Crash recovery first
+bd list --assignee="$GC_AGENT" --status=in_progress
+
+# If nothing is already claimed, look at the pool queue
+bd ready --label "pool:$GC_TEMPLATE"
+
+# Claim the work bead
+bd update <bead-id> --claim
+
+# Read the bead and its metadata
+bd show <bead-id>
+bd show <bead-id> --json | jq '.metadata'
+```
+
+If the bead metadata includes `molecule_id`, that molecule is the execution
+contract. Do not improvise your own step order.
+
+Use:
+```bash
+bd mol current <molecule-id>
+bd show <step-id>
+```
+
+Work one ready step at a time, closing each step before moving to the next.
+
 Read the formula steps and follow them in order:
 1. load context
 2. create or reuse the bead-scoped worktree and branch
