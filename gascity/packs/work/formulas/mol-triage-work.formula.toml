@@ -1,0 +1,240 @@
+description = """
+Local work-pack triage lifecycle.
+
+This formula creates or reuses a bead-scoped triage worktree, investigates the
+assigned issue, and records a durable triage report on the bead without pushing
+code or creating a PR.
+
+Unlike the branch-ready worker flow, triage keeps any local reproduction
+artifacts strictly local. It may leave behind a local triage branch or worktree
+for later inspection, but the durable handoff surface is still the bead notes
+plus triage metadata.
+
+## Variables
+
+| Variable | Source | Description |
+|----------|--------|-------------|
+| issue | auto/caller | The triage bead ID assigned to this worker |
+| base_branch | auto/caller | Branch to branch from for local investigation |
+
+`gc sling` auto-populates `issue` and `base_branch` for attached work.
+"""
+formula = "mol-triage-work"
+version = 1
+
+[vars]
+[vars.issue]
+description = "The triage bead ID assigned to this worker"
+required = true
+
+[vars.base_branch]
+description = "The branch triage should branch from locally"
+default = "main"
+
+[[steps]]
+id = "load-context"
+title = "Load context and understand the triage ask"
+description = """
+Initialize the session and read the assignment before making any changes.
+
+**1. Prime your environment:**
+```bash
+gc prime
+bd prime
+```
+
+**2. Read the triage bead and current metadata:**
+```bash
+bd show {{issue}}
+bd show {{issue}} --json | jq '.metadata'
+```
+
+Focus on:
+- the reported bug or suspected regression
+- expected reproduction steps
+- any attachments, logs, or referenced files
+- prior triage metadata (`triage_*`) if this is a resumed investigation
+
+**3. Confirm the boundary:**
+- this workflow is investigation-only
+- local edits and tests are allowed when they improve diagnosis
+- pushing branches or opening PRs is forbidden
+
+**4. Check mail for supplemental context:**
+```bash
+gc mail inbox
+```
+
+**Exit criteria:** You understand what needs to be investigated and what would
+count as a useful triage outcome."""
+
+[[steps]]
+id = "workspace-setup"
+title = "Create or reuse the durable triage worktree"
+needs = ["load-context"]
+description = """
+Create or resume the local workspace for investigation.
+
+**Config: base_branch = {{base_branch}}**
+
+**1. Fetch the latest base branch:**
+```bash
+git -C "$GC_RIG_ROOT" fetch --prune origin {{base_branch}}
+```
+
+**2. Resolve the durable triage worktree path:**
+```bash
+WORKTREE=$(bd show {{issue}} --json | jq -r '.metadata.triage_work_dir // empty')
+if [ -z "$WORKTREE" ]; then
+  WORKTREE="$GC_RIG_ROOT/.gc/triage/{{issue}}"
+fi
+mkdir -p "$(dirname "$WORKTREE")"
+```
+
+Reuse an existing worktree when present:
+```bash
+if [ -d "$WORKTREE/.git" ] || git -C "$WORKTREE" rev-parse --show-toplevel >/dev/null 2>&1; then
+  cd "$WORKTREE"
+else
+  git -C "$GC_RIG_ROOT" worktree add "$WORKTREE" --detach "origin/{{base_branch}}"
+  cd "$WORKTREE"
+fi
+bd update {{issue}} --set-metadata triage_work_dir="$WORKTREE"
+bd update {{issue}} --set-metadata triage_base_branch="{{base_branch}}"
+```
+
+**3. Resolve the local-only triage branch:**
+```bash
+BRANCH=$(bd show {{issue}} --json | jq -r '.metadata.triage_branch // empty')
+if [ -z "$BRANCH" ]; then
+  BRANCH="corymhall/triage-{{issue}}"
+fi
+if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
+  git checkout "$BRANCH"
+else
+  git checkout -B "$BRANCH" "origin/{{base_branch}}"
+fi
+bd update {{issue}} --set-metadata triage_branch="$BRANCH"
+```
+
+**Exit criteria:** You are inside the triage worktree on the local triage
+branch, and the bead records where that workspace lives."""
+
+[[steps]]
+id = "investigate"
+title = "Reproduce, falsify, or narrow the issue"
+needs = ["workspace-setup"]
+description = """
+Investigate the assigned issue using the repo's own guidance.
+
+Use `AGENTS.md`, `CLAUDE.md`, README files, scripts, Makefiles, package
+scripts, and existing tests to decide how to reproduce or narrow the problem.
+
+Working rules:
+- start read-only when possible
+- make local edits only when they materially improve reproduction or diagnosis
+- local tests or debug patches are allowed
+- local commits are allowed if they preserve useful evidence
+- do not push anything
+
+Useful checkpoints:
+```bash
+git status
+git diff --stat
+```
+
+Capture the important evidence as you go so the final report is specific:
+- exact commands run
+- whether the issue reproduced
+- logs, outputs, or failing tests that prove the result
+- any files you changed locally to investigate
+
+If the issue cannot be reproduced, explain what you tried and why the result is
+still informative.
+
+**Exit criteria:** You have enough evidence to classify the issue as reproduced,
+not reproduced, blocked, or narrowed to a likely root cause."""
+
+[[steps]]
+id = "record-findings"
+title = "Write the durable triage report onto the bead"
+needs = ["investigate"]
+description = """
+Store the triage outcome on the bead itself.
+
+**1. Classify the result and record it in metadata:**
+```bash
+RESULT=<reproduced|not-reproduced|blocked|narrowed>
+bd update {{issue}} --set-metadata triage_result="$RESULT"
+```
+
+**2. Write a full markdown report to the bead notes:**
+```bash
+bd update {{issue}} --append-notes "$(cat <<'EOF'
+## Triage Report
+
+### Outcome
+- Result: <reproduced|not-reproduced|blocked|narrowed>
+
+### What I Ran
+- <command and why>
+
+### Evidence
+- <failing test, log snippet, observed behavior, or why repro did not occur>
+
+### Local Investigation State
+- Worktree: <path>
+- Branch: <branch>
+- Files touched locally: <none or list>
+
+### Likely Next Step
+- <owner follow-up, implementation bead, missing info, or cleanup note>
+EOF
+)"
+```
+
+The notes are the durable handoff surface. Do not leave the real findings only
+in transient terminal output.
+
+**Exit criteria:** The bead notes contain a complete triage report and
+`triage_result` is set."""
+
+[[steps]]
+id = "close-and-drain"
+title = "Record final local state, close the bead, and drain"
+needs = ["record-findings"]
+description = """
+Close the triage bead at the investigation boundary.
+
+**1. Record final local state:**
+```bash
+WORKTREE=$(pwd)
+BRANCH=$(git branch --show-current)
+STATE="clean"
+if [ -n "$(git status --porcelain)" ]; then
+  STATE="dirty"
+fi
+bd update {{issue}} --set-metadata triage_work_dir="$WORKTREE"
+bd update {{issue}} --set-metadata triage_branch="$BRANCH"
+bd update {{issue}} --set-metadata triage_base_branch="{{base_branch}}"
+bd update {{issue}} --set-metadata triage_state="$STATE"
+```
+
+If the worktree is dirty because you left behind useful repro code or tests,
+that is acceptable — just make sure the bead notes say so clearly. Do not push
+that branch.
+
+**2. Close the bead:**
+```bash
+bd close {{issue}}
+```
+
+**3. Drain and exit:**
+```bash
+gc runtime drain-ack
+```
+
+Run the drain command and nothing else.
+
+**Exit criteria:** The triage bead is closed, the local triage state is
+recorded, and the session is drained."""

@@ -12,4 +12,5 @@ Intended contents:
 Current runnable surface:
 
 - branch-only `worker` agent + `mol-work-branch-ready`
+- investigation-only `triage` agent + `mol-triage-work`
 - `owner-work.md.tmpl` prompt override for the shared `owner` agent

@@ -29,6 +29,17 @@ It should not come from:
 - a permanently running worker session
 - hidden local state outside the recorded worktree/metadata
 
+For investigation-only triage work, use a separate metadata lane so later
+implementation work does not accidentally reuse triage scratch state:
+
+- `triage_work_dir`
+- `triage_branch`
+- `triage_base_branch`
+- `triage_result`
+- `triage_state`
+
+Triage never records `push_remote`, because it must not push.
+
 ## Current M3 Direction
 
 - the implementation bead closes at the branch-ready handoff boundary

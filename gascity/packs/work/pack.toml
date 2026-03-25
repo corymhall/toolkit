@@ -28,3 +28,15 @@ default_sling_formula = "mol-work-branch-ready"
 [agent.pool]
 min = 0
 max = 2
+
+[[agent]]
+name = "triage"
+scope = "rig"
+work_dir = ".gc/agents/{{.Rig}}/triagers/{{.AgentBase}}"
+prompt_template = "prompts/triage.md.tmpl"
+nudge = "Check your hook, investigate the assigned issue, record a durable triage report, and stop without pushing."
+idle_timeout = "90m"
+default_sling_formula = "mol-triage-work"
+[agent.pool]
+min = 0
+max = 2

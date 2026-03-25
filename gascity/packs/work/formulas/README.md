@@ -12,6 +12,15 @@ The first runnable local work-pack formula is:
   - relies on the target repo's own docs (`AGENTS.md`, `CLAUDE.md`, README,
     scripts) for setup and verification commands
 
+- `mol-triage-work.formula.toml`
+  - creates or reuses a bead-scoped triage worktree
+  - creates or reuses a local-only `corymhall/triage-<issue>` branch
+  - records durable triage metadata (`triage_work_dir`, `triage_branch`,
+    `triage_base_branch`, `triage_result`, `triage_state`)
+  - allows local repro edits or tests when useful
+  - never pushes and never creates a PR
+  - closes the triage bead after recording the report
+
 Design constraints:
 
 - direct push or merge to `main` stays forbidden
