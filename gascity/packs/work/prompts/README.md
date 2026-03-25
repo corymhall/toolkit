@@ -14,8 +14,8 @@ Current runnable local work-pack prompts are:
   - preserves the branch-oriented trust boundary for larger work kept in crew
 - `triage.md.tmpl`
   - explains the investigation-only boundary
-  - allows local repro edits while forbidding push/PR behavior
-  - makes triage notes plus `triage_*` metadata the durable output surface
+  - teaches pool startup and molecule-entry behavior
+  - leaves the ordered triage workflow details to `mol-triage-work`
 
 Policy still belongs in config and formula wiring where possible. The prompt is
 there to reinforce the intended worker behavior, not to be the only safeguard.
