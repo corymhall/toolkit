@@ -8,7 +8,7 @@ Run final verification, finalize tracking state, and summarize completion.
 formula = "verify-finalize-expansion"
 type = "expansion"
 pour = true
-version = 1
+version = 2
 
 [vars]
 [vars.feature]
@@ -16,16 +16,37 @@ description = "Feature name"
 required = true
 
 [[template]]
-id = "{target}.execute"
-title = "Verify, Finalize, and Report"
+id = "{target}.body"
+title = "Verify/finalize scope"
+needs = ["{target}.verify", "{target}.finalize"]
 description = """
-Run final verification, then finalize tracking state and summary.
+Terminal latch for the verification/finalization phase.
+
+This scope succeeds only after verification is complete and the final convoy /
+tracking summary has been written and landed successfully.
+"""
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "verify-finalize", "gc.scope_role" = "body" }
+
+[[template]]
+id = "{target}.verify"
+title = "Run final verification"
+description = """
+Run final verification and record the evidence.
 
 ## Verification
 
 - Execute relevant test/lint/build commands for changed areas.
 - If full suite is too expensive, run targeted commands and state limitations.
 - Record all verification commands + outcomes in `session-ledger.md`.
+"""
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[[template]]
+id = "{target}.finalize"
+title = "Finalize tracking and report"
+needs = ["{target}.verify"]
+description = """
+Finalize tracking state and summary after verification passes.
 
 ## Tracking Finalization
 
@@ -64,3 +85,4 @@ Provide a concise completion report including:
 - convoy land result
 - what remains (if anything)
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }

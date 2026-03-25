@@ -45,7 +45,7 @@ positioning semantics in the canonical Gas City path.
 formula = "draft-spec-expansion"
 type = "expansion"
 pour = true
-version = 1
+version = 2
 
 [vars]
 [vars.feature]
@@ -76,6 +76,20 @@ description = """
 
 Output this banner to the user, then close this step to begin.
 """
+metadata = { "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[[template]]
+id = "{target}.body"
+title = "Draft-spec scope"
+needs = ["{target}.explore", "{target}.draft", "{target}.cleanup-temp", "{target}.commit-push"]
+description = """
+Terminal latch for the draft-spec phase.
+
+This scope succeeds only after the codebase has been explored, the spec has
+been drafted, transient draft-only files have been cleaned up, and the spec has
+been committed and pushed.
+"""
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "draft-spec", "gc.scope_role" = "body" }
 
 # ============================================================================
 # STEP 1: EXPLORE CODEBASE
@@ -141,6 +155,7 @@ Write to: docs/plans/{{feature}}/codebase-context.tmp
 
 Timeout: 10 minutes.
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "setup", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 2: DRAFT SPEC (interactive)
@@ -320,23 +335,37 @@ Show the user the complete spec and confirm via `request_user_input`:
 - `Looks good (Recommended)`: proceed to commit
 - `Needs changes`: user explains what to adjust, you revise
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
-# STEP 3: CLEANUP & COMMIT
+# STEP 3: CLEANUP TEMP FILES
 # ============================================================================
 
 [[template]]
-id = "{target}.commit"
-title = "Cleanup and commit"
+id = "{target}.cleanup-temp"
+title = "Cleanup transient draft files"
 needs = ["{target}.draft"]
 description = """
-Delete transient files and commit the spec.
+Delete transient files before committing the spec.
 
 ## Cleanup
 
 ```bash
 rm -f docs/plans/{{feature}}/codebase-context.tmp
 ```
+"""
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+# ============================================================================
+# STEP 4: COMMIT & PUSH
+# ============================================================================
+
+[[template]]
+id = "{target}.commit-push"
+title = "Commit and push the drafted spec"
+needs = ["{target}.cleanup-temp"]
+description = """
+Commit the drafted spec and push the branch.
 
 ## Commit
 
@@ -373,3 +402,4 @@ git push -u origin "$(git branch --show-current)" || git push
 - Then continue into `delivery-workflow-quick` or `delivery-workflow-planned`
 ```
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }

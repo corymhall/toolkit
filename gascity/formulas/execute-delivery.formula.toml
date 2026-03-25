@@ -1,0 +1,259 @@
+description = """
+Workflow-native execution prototype for delivery work.
+
+Attach this graph.v2 workflow to a source bead after planning is complete.
+Instead of scheduling external convoy child beads, this workflow derives
+execution waves directly from `plans.md` plus a durable execution-state file.
+
+This is a prototype path for review before wiring into `quick` or `planned`.
+"""
+formula = "execute-delivery"
+type = "workflow"
+pour = true
+version = 2
+
+[vars]
+[vars.issue]
+description = "Source bead the execution workflow is attached to"
+required = true
+
+[vars.feature]
+description = "Feature name (maps to docs/plans/{{feature}})"
+required = true
+
+[vars.base_branch]
+description = "Target branch for execution work"
+required = false
+default = "main"
+
+[vars.execution_mode]
+description = "Execution mode the workflow is serving"
+required = false
+default = "planned"
+
+[vars.state_path]
+description = "Path to the durable execution-state file"
+required = false
+default = "docs/plans/{{feature}}/execution-state.json"
+
+[[steps]]
+id = "kickoff"
+title = "Execute Delivery Kickoff"
+description = """
+═══════════════════════════════════════════════════════════════
+ EXECUTE DELIVERY
+ Workflow-native execution from `plans.md`
+
+ Feature: {{feature}}
+ Source issue: {{issue}}
+ Mode: {{execution_mode}}
+ Base branch: {{base_branch}}
+
+ Artifacts:
+   - docs/plans/{{feature}}/spec.md
+   - docs/plans/{{feature}}/plans.md
+   - {{state_path}}
+═══════════════════════════════════════════════════════════════
+
+Output this banner to the user, then close this step to begin.
+"""
+metadata = { "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[[steps]]
+id = "load-context"
+title = "Load execution context"
+needs = ["kickoff"]
+description = """
+Prime the workspace and inspect the source bead and planning artifacts.
+
+```bash
+gc prime
+bd show {{issue}}
+bd show {{issue}} --json | jq '.[0].metadata // .metadata'
+test -f docs/plans/{{feature}}/spec.md
+test -f docs/plans/{{feature}}/plans.md
+test -f docs/plans/{{feature}}/session-context.md && cat docs/plans/{{feature}}/session-context.md
+gc mail inbox
+```
+
+Confirm:
+- the attached source bead is the correct execution anchor
+- `spec.md` and `plans.md` exist
+- the execution workflow should target `{{base_branch}}`
+"""
+metadata = { "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[[steps]]
+id = "body"
+title = "Execute-delivery scope"
+needs = ["prepare-state", "execution-loop", "finalize"]
+description = """
+Terminal latch for the workflow-native execution phase.
+
+This scope succeeds only after execution state is prepared, the wave loop
+reaches a terminal done state, and the final summary is written.
+"""
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "execute-delivery", "gc.scope_role" = "body" }
+
+[[steps]]
+id = "prepare-state"
+title = "Prepare durable execution state"
+needs = ["load-context"]
+description = """
+Create or validate the durable execution-state file.
+
+If `{{state_path}}` does not exist, initialize it from `plans.md` with a shape
+like:
+
+```json
+{
+  "feature": "{{feature}}",
+  "execution_mode": "{{execution_mode}}",
+  "base_branch": "{{base_branch}}",
+  "workflow_status": "in_progress",
+  "items": []
+}
+```
+
+At minimum, the state file should eventually track:
+- item id
+- title
+- wave
+- kind
+- status
+- branch / work_dir if relevant
+- evidence summary
+
+If the file already exists, validate that it is still consistent with
+`plans.md` and the current source bead.
+"""
+metadata = { "gc.scope_ref" = "body", "gc.scope_role" = "setup", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[[steps]]
+id = "execution-loop"
+title = "Execute one wave at a time"
+needs = ["prepare-state"]
+description = """
+Ralph container for wave-by-wave execution.
+
+Each attempt should:
+1. compute the next ready wave from `plans.md` + `{{state_path}}`
+2. fan out one workflow-native execution fragment per ready item
+3. reconcile the results back into `{{state_path}}`
+
+The loop ends when `{{state_path}}` records `workflow_status=done`.
+"""
+metadata = { "gc.scope_ref" = "body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require", "execution.state_path" = "{{state_path}}", "execution.feature" = "{{feature}}" }
+
+[steps.ralph]
+max_attempts = 20
+
+[steps.ralph.check]
+mode = "exec"
+path = "gascity/packs/base/scripts/check-execution-loop.sh"
+timeout = "30s"
+
+[[steps.children]]
+id = "build-wave"
+title = "Build the next execution wave"
+description = """
+Read `docs/plans/{{feature}}/plans.md` and `{{state_path}}`.
+
+Determine the next ready execution wave and write the wave manifest to
+`gc.output_json` on this bead. The manifest should look like:
+
+```json
+{
+  "items": [
+    {
+      "item_id": "M1",
+      "title": "Shape Validation",
+      "item_kind": "implement",
+      "objective": "...",
+      "planned_changes": "...",
+      "acceptance": "...",
+      "proof": "...",
+      "review_stop": "yes",
+      "base_branch": "{{base_branch}}",
+      "state_path": "{{state_path}}",
+      "feature": "{{feature}}"
+    }
+  ]
+}
+```
+
+If no work remains, emit an empty `items` array and ensure the state file says
+`workflow_status=done`.
+"""
+
+[steps.children.on_complete]
+for_each = "output.items"
+bond = "execution-wave-item-expansion"
+parallel = true
+
+[steps.children.on_complete.vars]
+item_id = "{item.item_id}"
+title = "{item.title}"
+item_kind = "{item.item_kind}"
+objective = "{item.objective}"
+planned_changes = "{item.planned_changes}"
+acceptance = "{item.acceptance}"
+proof = "{item.proof}"
+review_stop = "{item.review_stop}"
+base_branch = "{item.base_branch}"
+state_path = "{item.state_path}"
+feature = "{item.feature}"
+
+[[steps.children]]
+id = "reconcile-wave"
+title = "Reconcile the current execution wave"
+needs = ["build-wave"]
+waits_for = "children-of(build-wave)"
+description = """
+Read the spawned execution item beads for the current wave and reconcile their
+results back into `{{state_path}}`.
+
+Resolve the current workflow root and inspect the spawned item-result beads:
+
+```bash
+ROOT_ID=$(bd show "$GC_BEAD_ID" --json | jq -r '.[0].metadata["gc.root_bead_id"]')
+ITEM_RESULT_IDS=$(bd list --all --limit 0 --json --metadata-field gc.root_bead_id="$ROOT_ID" | jq -r '
+  .[] |
+  select(((.metadata["gc.step_ref"] // "") | contains(".build-wave.item.")) and ((.metadata["gc.step_ref"] // "") | endswith(".record-item-result"))) |
+  .id
+')
+for ITEM_ID in $ITEM_RESULT_IDS; do
+  bd show "$ITEM_ID"
+done
+```
+
+Use those results to update `{{state_path}}`:
+- mark completed items as done
+- record blocked/failed items with reasons
+- determine whether another wave is ready
+- set `workflow_status` to one of:
+  - `done`
+  - `in_progress`
+  - `blocked`
+
+The Ralph check script reads that state file after this step closes.
+"""
+
+[[steps]]
+id = "finalize"
+title = "Finalize workflow-native execution"
+needs = ["execution-loop"]
+description = """
+Write the final summary after workflow-native execution completes.
+
+Append a concise summary to the source bead and to any tracked planning notes:
+- state path
+- waves executed
+- completed items
+- blocked/deferred items, if any
+- verification summary
+
+This step is intentionally reporting-oriented. It should not schedule more
+work; execution should already be terminal by the time this step runs.
+"""
+metadata = { "gc.scope_ref" = "body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }

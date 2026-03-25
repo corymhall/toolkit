@@ -10,7 +10,7 @@ or execution artifacts.
 formula = "bootstrap-expansion"
 type = "expansion"
 pour = true
-version = 1
+version = 2
 
 [vars]
 [vars.feature]
@@ -40,6 +40,18 @@ default = "Tracked delivery epic for {{feature}}."
 description = "Session-context delivery mode value"
 required = false
 default = "single-session"
+
+[[template]]
+id = "{target}.body"
+title = "Bootstrap scope"
+needs = ["{target}.execute"]
+description = """
+Terminal latch for the bootstrap phase.
+
+Bootstrap succeeds only after tracking context, convoy context, target-branch
+context, and session-context artifacts have all been written successfully.
+"""
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "bootstrap", "gc.scope_role" = "body" }
 
 [[template]]
 id = "{target}.execute"
@@ -173,3 +185,4 @@ Report:
 - target branch
 - working branch
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "setup", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }

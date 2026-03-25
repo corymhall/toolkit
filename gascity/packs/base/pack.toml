@@ -6,3 +6,15 @@ schema = 1
 # Shared owner-session defaults and neutral shared surfaces.
 [formulas]
 dir = "formulas"
+
+[[agent]]
+name = "reviewer"
+scope = "rig"
+work_dir = ".gc/agents/{{.Rig}}/reviewers/{{.AgentBase}}"
+prompt_template = "prompts/reviewer.md.tmpl"
+nudge = "Review the assigned artifact, write the report onto the review bead, and avoid editing product files."
+idle_timeout = "2h"
+
+[agent.pool]
+min = 0
+max = 2

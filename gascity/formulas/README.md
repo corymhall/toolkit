@@ -10,6 +10,10 @@ Workflows:
 - `delivery-workflow-planned` — two-session convoy-first delivery
 - `delivery-workflow-quick` — one-session convoy-first delivery
 
+Experimental workflows:
+
+- `execute-delivery` — workflow-native execution prototype derived from `plans.md`
+
 Shared expansions:
 
 - `bootstrap-expansion`
@@ -17,6 +21,7 @@ Shared expansions:
 - `enrich-expansion`
 - `plan-expansion`
 - `execution-beads-expansion`
+- `execution-wave-item-expansion`
 - `review-lane-expansion`
 - `verify-finalize-expansion`
 
@@ -53,7 +58,13 @@ discovery scope -> planning scope -> execution beads -> owned execution convoy
 Quick delivery:
 
 ```text
-spec -> enrich -> one-session implementation -> convoy-aware finalize
+spec -> enrich -> one-session implementation -> graph-native review checkpoint -> convoy-aware finalize
+```
+
+Experimental workflow-native execution:
+
+```text
+attached source bead -> execute-delivery -> execution waves from plans.md
 ```
 
 ## Templates
@@ -74,5 +85,6 @@ mkdir -p "$TMP/.beads"
 ln -s "$PWD/gascity/formulas" "$TMP/.beads/formulas"
 (cd "$TMP" && gc formula show delivery-workflow-planned --var feature=test --var brief='test')
 (cd "$TMP" && gc formula show delivery-workflow-quick --var feature=test --var brief='test')
+(cd "$TMP" && gc formula show execute-delivery --var issue=demo-1 --var feature=test)
 rm -rf "$TMP"
 ```

@@ -59,8 +59,8 @@ session owns synthesis, auto-fixes, and decision handling.
 - Prioritize outcome, constraints, inputs, and artifacts.
 - Materialize review inputs into a shared `.runtime` directory before slinging
   fresh review lanes.
-- Require reviewers to write durable markdown reports instead of editing the
-  spec directly.
+- Require reviewers to write durable markdown reports onto their review beads
+  instead of editing the spec directly.
 - When a required decision is missing, call `request_user_input` instead of
   asking multiple-choice questions in plain text.
 - Ask 1 concise question at a time (max 3 per call), provide mutually
@@ -86,12 +86,12 @@ required = true
 [vars.review_target_a]
 description = "Optional explicit reviewer target for lane A"
 required = false
-default = ""
+default = "reviewer"
 
 [vars.review_target_b]
 description = "Optional explicit reviewer target for lane B"
 required = false
-default = ""
+default = "reviewer"
 
 # ============================================================================
 # KICKOFF
@@ -111,6 +111,20 @@ description = """
 
 Output this banner to the user, then close this step to begin.
 """
+metadata = { "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[[template]]
+id = "{target}.body"
+title = "Enrich scope"
+needs = ["{target}.validate-spec", "{target}.codebase-exploration", "{target}.analyze-survey", "{target}.analyze-synthesis", "{target}.auto-fix", "{target}.human-decisions", "{target}.fold-answers", "{target}.cleanup-temp", "{target}.commit-push"]
+description = """
+Terminal latch for the enrich phase.
+
+This scope succeeds only after the spec has been validated, reviewed for gaps,
+updated with fixes/decisions, transient files cleaned up, and the enriched spec
+committed and pushed.
+"""
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "enrich", "gc.scope_role" = "body" }
 
 # ============================================================================
 # STEP 1: VALIDATE SPEC
@@ -176,6 +190,7 @@ Planning sections to add or strengthen: [list]
 Proceeding to codebase exploration...
 ```
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "setup", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 2: CODEBASE EXPLORATION
@@ -239,6 +254,7 @@ Write to: docs/plans/{{feature}}/codebase-context.tmp
 Timeout: 10 minutes. If the agent fails, continue — the analysis will be
 less grounded but still useful.
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "setup", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 3: ANALYZE FANOUT PREP
@@ -343,14 +359,12 @@ cat > "$REVIEW_DIR/enrich-manifest.json" <<EOF
     {
       "title": "Enrich review A: {{feature}}",
       "reviewer_target": "{{review_target_a}}",
-      "prompt_path": "$REVIEW_DIR/enrich-a.md",
-      "report_path": "$REVIEW_DIR/report-a.md"
+      "prompt_path": "$REVIEW_DIR/enrich-a.md"
     },
     {
       "title": "Enrich review B: {{feature}}",
       "reviewer_target": "{{review_target_b}}",
-      "prompt_path": "$REVIEW_DIR/enrich-b.md",
-      "report_path": "$REVIEW_DIR/report-b.md"
+      "prompt_path": "$REVIEW_DIR/enrich-b.md"
     }
   ]
 }
@@ -362,6 +376,7 @@ bd update "$GC_BEAD_ID" --set-metadata gc.output_json="$MANIFEST_JSON"
 After this step closes, graph.v2 fanout will spawn one review lane per item
 using `review-lane-expansion`.
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 [template.on_complete]
 for_each = "output.items"
@@ -372,7 +387,6 @@ parallel = true
 title = "{item.title}"
 reviewer_target = "{item.reviewer_target}"
 prompt_path = "{item.prompt_path}"
-report_path = "{item.report_path}"
 
 # ============================================================================
 # STEP 3B: ANALYZE SYNTHESIS
@@ -382,8 +396,9 @@ report_path = "{item.report_path}"
 id = "{target}.analyze-synthesis"
 title = "Synthesize enrichment lane reports"
 needs = ["{target}.analyze-survey"]
+waits_for = "children-of({target}.analyze-survey)"
 description = """
-Wait for the fanout control to close, then read the lane reports and
+Wait for the fanout control to close, then read the spawned reviewer beads and
 synthesize them into one findings file where each item is classified as
 auto-fix or decision.
 
@@ -400,7 +415,21 @@ rewriting or deleting prior intent.
 
 ## Synthesis And Classification
 
-Read both lane reports and synthesize them into one findings file. For EACH
+Resolve the workflow root and locate the spawned review beads:
+
+```bash
+ROOT_ID=$(bd show "$GC_BEAD_ID" --json | jq -r '.[0].metadata["gc.root_bead_id"]')
+REVIEW_IDS=$(bd list --all --limit 0 --json --metadata-field gc.root_bead_id="$ROOT_ID" | jq -r '
+  .[] |
+  select(((.metadata["gc.step_ref"] // "") | contains(".analyze-survey.item.")) and ((.metadata["gc.step_ref"] // "") | endswith(".review"))) |
+  .id
+')
+for REVIEW_ID in $REVIEW_IDS; do
+  bd show "$REVIEW_ID"
+done
+```
+
+Read both review beads and synthesize them into one findings file. For EACH
 finding in the synthesis, classify:
 
 **Auto-fix** — apply silently if ALL of these are true:
@@ -482,6 +511,7 @@ Before completing this step, verify:
 - [ ] Findings reference actual codebase evidence where applicable
 - [ ] Obvious best practices are NOT listed as findings
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 4: AUTO-FIX
@@ -530,6 +560,7 @@ Proceeding to human decisions...
 
 If there are no auto-fix items, report "No auto-fixes needed" and proceed.
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 5: HUMAN DECISIONS
@@ -602,6 +633,7 @@ Report:
 Proceeding to fold answers into spec...
 ```
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 6: FOLD INTO SPEC
@@ -650,17 +682,18 @@ Spec is now enriched. Proceeding to cleanup...
 If no decisions were made (all auto-fix or no findings), report
 "No changes needed" and proceed.
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
-# STEP 7: CLEANUP
+# STEP 7: CLEANUP TEMP FILES
 # ============================================================================
 
 [[template]]
-id = "{target}.cleanup"
-title = "Cleanup and commit"
+id = "{target}.cleanup-temp"
+title = "Cleanup transient enrich files"
 needs = ["{target}.fold-answers"]
 description = """
-Delete transient files and commit the enriched spec.
+Delete transient files before committing the enriched spec.
 
 ## Delete Transient Files
 
@@ -668,6 +701,19 @@ Delete transient files and commit the enriched spec.
 rm -f docs/plans/{{feature}}/codebase-context.tmp
 rm -f docs/plans/{{feature}}/enrichment-findings.tmp
 ```
+"""
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+# ============================================================================
+# STEP 8: COMMIT & PUSH
+# ============================================================================
+
+[[template]]
+id = "{target}.commit-push"
+title = "Commit and push the enriched spec"
+needs = ["{target}.cleanup-temp"]
+description = """
+Commit and push the enriched spec.
 
 ## Commit
 
@@ -728,3 +774,4 @@ git push -u origin "$(git branch --show-current)" || git push
 - Then continue into the appropriate delivery workflow
 ```
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }

@@ -20,12 +20,25 @@ reviewed milestone plan into execution beads.
 formula = "execution-beads-expansion"
 type = "expansion"
 pour = true
-version = 1
+version = 2
 
 [vars]
 [vars.feature]
 description = "Feature name (maps to docs/plans/{{feature}}/plans.md)"
 required = true
+
+[[template]]
+id = "{target}.body"
+title = "Execution-beads scope"
+needs = ["{target}.validate-inputs", "{target}.design-graph", "{target}.create-beads"]
+description = """
+Terminal latch for the execution-beads phase.
+
+This scope succeeds only after the planning artifacts are validated, the
+execution graph shape is designed, and the convoy-owned execution bead graph
+has been created or repaired successfully.
+"""
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "execution-beads", "gc.scope_role" = "body" }
 
 [[template]]
 id = "{target}.kickoff"
@@ -46,6 +59,7 @@ description = """
 
 Output this banner to the user, then close this step to begin.
 """
+metadata = { "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 [[template]]
 id = "{target}.validate-inputs"
@@ -87,6 +101,7 @@ Report:
 - tracking bead ID
 - whether the plan is ready to become execution beads
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "setup", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 [[template]]
 id = "{target}.design-graph"
@@ -149,6 +164,7 @@ Produce a brief bead graph summary:
 - confirmation that `implementation review` is the final expected gate
 - notable dependency edges
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 [[template]]
 id = "{target}.create-beads"
@@ -186,3 +202,4 @@ Report:
 - repaired deps
 - any planning ambiguity that still leaked into execution
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }

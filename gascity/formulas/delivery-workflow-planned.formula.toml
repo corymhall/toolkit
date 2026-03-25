@@ -131,6 +131,7 @@ description = """
 
 Output this banner to the user, then close this step to begin.
 """
+metadata = { "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # SESSION 1 PHASE LATCH
@@ -227,6 +228,7 @@ Only continue in the same session if you are intentionally bypassing the
 recommended boundary for testing or expedience. If you do, state that clearly
 in your status update.
 """
+metadata = { "gc.scope_ref" = "discovery-body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # SESSION 2 PHASE LATCH
@@ -277,6 +279,7 @@ bd update "$CONVOY_ID" --append-notes "Session 2 start:\n- spec: docs/plans/{{fe
 bd update "$EPIC_ID" --append-notes "Session 2 start:\n- spec: docs/plans/{{feature}}/spec.md\n- status: planning complete, creating execution beads next"
 ```
 """
+metadata = { "gc.scope_ref" = "planning-body", "gc.scope_role" = "setup", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STAGE 5: PLAN (expansion)
@@ -378,6 +381,7 @@ Also append notes including:
 Do not dispatch from this workflow. The execution convoy is the primary
 execution container for the current-session delivery path.
 """
+metadata = { "gc.scope_ref" = "planning-body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # COMPOSITION

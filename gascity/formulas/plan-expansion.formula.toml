@@ -15,7 +15,7 @@
 
 description = """
 Read a cleaned `spec.md`, generate `plans.md`, run two slung plan review
-passes with graph.v2 review fanout lanes writing durable reports, and leave behind a
+passes with graph.v2 review fanout lanes writing durable reports onto review beads, and leave behind a
 build-ready milestone plan.
 
 **Input:** `docs/plans/{{feature}}/spec.md`
@@ -33,7 +33,8 @@ By default this formula runs two explicit plan review passes. Each pass:
 - writes lane-specific prompt files plus a compact review manifest
 - emits that manifest as `gc.output_json`
 - lets graph.v2 fanout materialize 2 review lanes
-- waits on the generated fanout control before synthesizing fixes
+- waits on the generated fanout control before synthesizing fixes from the
+  reviewer beads
 
 1. **Completeness + scope/constraints**
 2. **Sequencing + testability/risk**
@@ -71,12 +72,12 @@ required = true
 [vars.review_target_a]
 description = "Optional explicit reviewer target for lane A"
 required = false
-default = ""
+default = "reviewer"
 
 [vars.review_target_b]
 description = "Optional explicit reviewer target for lane B"
 required = false
-default = ""
+default = "reviewer"
 
 # ============================================================================
 # KICKOFF
@@ -96,6 +97,20 @@ description = """
 
 Output this banner to the user, then close this step to begin.
 """
+metadata = { "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[[template]]
+id = "{target}.body"
+title = "Plan scope"
+needs = ["{target}.validate-spec", "{target}.draft-plan", "{target}.review-pass-1-survey", "{target}.review-pass-1-synthesize", "{target}.review-pass-2-survey", "{target}.review-pass-2-synthesize", "{target}.finalize-plan"]
+description = """
+Terminal latch for the planning phase.
+
+This scope succeeds only after the spec is validated for planning, the
+milestone plan is drafted, both review passes complete, and the final `plans.md`
+handoff artifact is ready.
+"""
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "plan", "gc.scope_role" = "body" }
 
 # ============================================================================
 # STEP 1: VALIDATE SPEC
@@ -147,6 +162,7 @@ Open questions acceptable for planning: [yes/no]
 Proceeding to milestone plan generation...
 ```
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "setup", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 2: DRAFT PLAN
@@ -197,6 +213,7 @@ Report:
 - whether milestone 1 is a shape-validation milestone
 - any areas still likely to cause late rework
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 3: REVIEW PASS 1 FANOUT PREP
@@ -298,14 +315,12 @@ cat > "$REVIEW_DIR/review-pass-1.json" <<EOF
     {
       "title": "Plan review 1A: {{feature}} completeness",
       "reviewer_target": "{{review_target_a}}",
-      "prompt_path": "$REVIEW_DIR/review-1a.md",
-      "report_path": "$REVIEW_DIR/report-1a.md"
+      "prompt_path": "$REVIEW_DIR/review-1a.md"
     },
     {
       "title": "Plan review 1B: {{feature}} scope and constraints",
       "reviewer_target": "{{review_target_b}}",
-      "prompt_path": "$REVIEW_DIR/review-1b.md",
-      "report_path": "$REVIEW_DIR/report-1b.md"
+      "prompt_path": "$REVIEW_DIR/review-1b.md"
     }
   ]
 }
@@ -317,6 +332,7 @@ bd update "$GC_BEAD_ID" --set-metadata gc.output_json="$MANIFEST_JSON"
 After this step closes, graph.v2 fanout will spawn one review lane per item
 using `review-lane-expansion`.
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 [template.on_complete]
 for_each = "output.items"
@@ -327,7 +343,6 @@ parallel = true
 title = "{item.title}"
 reviewer_target = "{item.reviewer_target}"
 prompt_path = "{item.prompt_path}"
-report_path = "{item.report_path}"
 
 # ============================================================================
 # STEP 3B: REVIEW PASS 1 SYNTHESIS
@@ -337,8 +352,9 @@ report_path = "{item.report_path}"
 id = "{target}.review-pass-1-synthesize"
 title = "Review pass 1: synthesize lane reports"
 needs = ["{target}.review-pass-1-survey"]
+waits_for = "children-of({target}.review-pass-1-survey)"
 description = """
-Wait for the fanout control to close, then review the lane reports and apply
+Wait for the fanout control to close, then read the spawned reviewer beads and apply
 fixes to `plans.md`.
 
 ## Inputs
@@ -349,27 +365,36 @@ fixes to `plans.md`.
 
 ## Apply Fixes
 
-Read both report files. Apply all must-fix items and any should-fix items that make
+Resolve the workflow root and locate the spawned review beads:
+
+```bash
+ROOT_ID=$(bd show "$GC_BEAD_ID" --json | jq -r '.[0].metadata["gc.root_bead_id"]')
+REVIEW_IDS=$(bd list --all --limit 0 --json --metadata-field gc.root_bead_id="$ROOT_ID" | jq -r '
+  .[] |
+  select(((.metadata["gc.step_ref"] // "") | contains(".review-pass-1-survey.item.")) and ((.metadata["gc.step_ref"] // "") | endswith(".review"))) |
+  .id
+')
+for REVIEW_ID in $REVIEW_IDS; do
+  bd show "$REVIEW_ID"
+done
+```
+
+Read both review beads. Apply all must-fix items and any should-fix items that make
 the plan materially better.
 
 - update `docs/plans/{{feature}}/plans.md`
 - update `docs/plans/{{feature}}/spec.md` only if the review reveals a real
   spec gap or contradiction
 
-Expected reports:
-
-```bash
-find "$RIG_ROOT/.runtime/reviews/{{feature}}" -name 'report-1*.md' -print
-```
-
 ## Output
 
 Report:
-- which lane reports arrived
+- which review beads arrived
 - issues found
 - fixes applied
 - whether the spec also needed revision
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 4: REVIEW PASS 2 FANOUT PREP
@@ -465,14 +490,12 @@ cat > "$REVIEW_DIR/review-pass-2.json" <<EOF
     {
       "title": "Plan review 2A: {{feature}} sequencing",
       "reviewer_target": "{{review_target_a}}",
-      "prompt_path": "$REVIEW_DIR/review-2a.md",
-      "report_path": "$REVIEW_DIR/report-2a.md"
+      "prompt_path": "$REVIEW_DIR/review-2a.md"
     },
     {
       "title": "Plan review 2B: {{feature}} testability and risk",
       "reviewer_target": "{{review_target_b}}",
-      "prompt_path": "$REVIEW_DIR/review-2b.md",
-      "report_path": "$REVIEW_DIR/report-2b.md"
+      "prompt_path": "$REVIEW_DIR/review-2b.md"
     }
   ]
 }
@@ -484,6 +507,7 @@ bd update "$GC_BEAD_ID" --set-metadata gc.output_json="$MANIFEST_JSON"
 After this step closes, graph.v2 fanout will spawn one review lane per item
 using `review-lane-expansion`.
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 [template.on_complete]
 for_each = "output.items"
@@ -494,7 +518,6 @@ parallel = true
 title = "{item.title}"
 reviewer_target = "{item.reviewer_target}"
 prompt_path = "{item.prompt_path}"
-report_path = "{item.report_path}"
 
 # ============================================================================
 # STEP 4B: REVIEW PASS 2 SYNTHESIS
@@ -504,13 +527,28 @@ report_path = "{item.report_path}"
 id = "{target}.review-pass-2-synthesize"
 title = "Review pass 2: synthesize lane reports"
 needs = ["{target}.review-pass-2-survey"]
+waits_for = "children-of({target}.review-pass-2-survey)"
 description = """
-Wait for the fanout control to close, then review the lane reports and apply
+Wait for the fanout control to close, then read the spawned reviewer beads and apply
 the sequencing/testability fixes.
 
 ## Apply Fixes
 
-Read both report files. Apply all must-fix items and any should-fix items that make
+Resolve the workflow root and locate the spawned review beads:
+
+```bash
+ROOT_ID=$(bd show "$GC_BEAD_ID" --json | jq -r '.[0].metadata["gc.root_bead_id"]')
+REVIEW_IDS=$(bd list --all --limit 0 --json --metadata-field gc.root_bead_id="$ROOT_ID" | jq -r '
+  .[] |
+  select(((.metadata["gc.step_ref"] // "") | contains(".review-pass-2-survey.item.")) and ((.metadata["gc.step_ref"] // "") | endswith(".review"))) |
+  .id
+')
+for REVIEW_ID in $REVIEW_IDS; do
+  bd show "$REVIEW_ID"
+done
+```
+
+Read both review beads. Apply all must-fix items and any should-fix items that make
 the plan materially safer to execute.
 
 - update `docs/plans/{{feature}}/plans.md`
@@ -520,11 +558,12 @@ the plan materially safer to execute.
 ## Output
 
 Report:
-- which lane reports arrived
+- which review beads arrived
 - sequencing issues fixed
 - validation gaps fixed
 - late-rework risks that remain, if any
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 5: FINALIZE PLAN
@@ -560,3 +599,4 @@ Report:
 
 This is the handoff artifact for the build session.
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
