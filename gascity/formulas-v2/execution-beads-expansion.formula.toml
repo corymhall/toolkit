@@ -155,8 +155,15 @@ For the `implementation review` bead specifically:
 - if named reviewer agents are unavailable, report missing lanes and fall back
   to equivalent normal Codex reviewer subagents only when the intended lens
   stays clear
-- add an independent `mol-review-implementation` sidecar lane only when an
-  extra fresh-worker or alternate-runtime perspective is warranted
+- only if an extra fresh-worker or alternate-runtime perspective is warranted,
+  sling `mol-review-implementation` to a reviewer target with:
+  - `feature="{{feature}}"`
+  - `reviewer_label` for the sidecar lane, such as `codex` or `claude`
+  - `spec_scope="docs/plans/{{feature}}/spec.md"`
+  - `impl_scope="origin/$(git branch --show-current)"`
+  - `categories="all"`
+  - `review_profile="general"` unless a stronger domain lens is needed
+  - `output_path` under rig-root `.runtime/reviews/...`
 - scope review against `docs/plans/{{feature}}/spec.md` and the current branch's
   implementation changes for this delivery
 - synthesize the reviewer results in the parent session and separate blocking

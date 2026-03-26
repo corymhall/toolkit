@@ -65,13 +65,22 @@ Optional but expected:
 - Launch reviewer lanes in parallel:
   - `general_reviewer` is required
   - `spec_alignment_reviewer` is required when `spec.md` exists
-  - `test_reviewer` is required when behavior changes, tests changed, or
-    verification strength is the main uncertainty
+- `test_reviewer` is required when behavior changes, tests changed, or
+  verification strength is the main uncertainty
 - If named reviewer agents are unavailable, report missing lanes and fall back
   to equivalent normal Codex reviewer subagents only when the intended lens
   stays clear.
-- Add an independent `mol-review-implementation` sidecar lane only when an
-  extra fresh-worker or alternate-runtime perspective is worth the latency.
+- Only if an extra fresh-worker or alternate-runtime perspective is worth the
+  latency, sling `mol-review-implementation` to a reviewer target and pass:
+  - `feature="{{feature}}"`
+  - `reviewer_label` for the sidecar lane, such as `codex` or `claude`
+  - `spec_scope="docs/plans/{{feature}}/spec.md"`
+  - `impl_scope="origin/$(git branch --show-current)"`
+  - `categories="all"`
+  - `review_profile="general"` unless a stronger domain lens is needed
+  - `output_path` under rig-root `.runtime/reviews/...`
+- If no reviewer target is available, skip the sidecar lane and continue with
+  the Codex-native reviewer lanes.
 - Synthesize the reviewer findings in the current session and separate blocking
   findings from residual risks.
 - Work it to completion in the current session.

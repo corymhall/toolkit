@@ -330,7 +330,7 @@ Do this review in the current session using this recipe:
 2. Launch Codex-native reviewer lanes in parallel:
 - `general_reviewer` is required
 - `spec_alignment_reviewer` is required when `spec.md` exists; in this workflow
-  it should
+  it should usually run
 - `test_reviewer` is required when behavior changes, tests changed, or the main
   uncertainty is verification strength
 
@@ -341,8 +341,18 @@ Do this review in the current session using this recipe:
   stays clear
 
 4. Optional independent review lane:
-- add one `mol-review-implementation` sidecar lane only when an extra
-  fresh-worker or alternate-runtime perspective is worth the latency
+- only if an extra fresh-worker or alternate-runtime perspective is worth the
+  latency, sling `mol-review-implementation` to a reviewer target
+- pass:
+  - `feature="{{feature}}"`
+  - `reviewer_label` for the sidecar lane, such as `codex` or `claude`
+  - `spec_scope="docs/plans/{{feature}}/spec.md"`
+  - `impl_scope="origin/$(git branch --show-current)"`
+  - `categories="all"`
+  - `review_profile="general"` unless a stronger domain lens is needed
+  - `output_path` under rig-root `.runtime/reviews/...`
+- if no reviewer target is available, skip this sidecar lane and continue with
+  the Codex-native reviewer lanes
 
 5. Synthesize the results in the parent session:
 - group blocking findings, important findings, and residual risks
