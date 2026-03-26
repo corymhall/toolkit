@@ -133,6 +133,10 @@ Examples include:
 - [gastown/skills/gastown-epic-delivery/](/Users/chall/gt/toolkit/crew/quick/gastown/skills/gastown-epic-delivery)
 - [gastown/beads/formulas/](/Users/chall/gt/toolkit/crew/quick/gastown/beads/formulas)
 
+Some neutral interactive skills currently remain mirrored under both
+`gascity/` and `gastown/` for compatibility while the canonical path stays in
+Gas City. Today that includes `brainstorming` and `review-implementation`.
+
 ## What's here
 
 | Directory | Contents |

@@ -1,6 +1,8 @@
 ---
 name: review-implementation
 description: Use when implementation work is done (or in progress) and you need to verify it matches the original spec, PRD, beads epic, or task list - checks completeness, acceptance criteria, edge cases, and scope creep
+metadata:
+  local_notes: Intentionally mirrored in gascity/ and gastown/ because the current review flow is namespace-neutral. Keep the copies identical until a real command-surface or workflow divergence appears.
 ---
 
 # Review Implementation
@@ -116,7 +118,7 @@ When args are provided:
 4. **Pre-flight checks** - Only run if `--run-preflight-checks` flag present
 5. **Proceed directly** to Step 2 (explorer path discovery)
 
-**Use case:** Automation from other skills (e.g., implementing-beads-epic) that already know the review parameters.
+**Use case:** Automation from other delivery/review skills that already know the review parameters.
 
 ## Workflow
 
