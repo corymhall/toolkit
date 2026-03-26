@@ -318,11 +318,12 @@ id = "stage-review-implementation"
 title = "Stage 6: Run Implementation Review"
 needs = ["stage-implement"]
 description = """
-Run the workflow-owned implementation review checkpoint before final
-verification.
+Review the implementation against `spec.md` and the current delivery changes
+before final verification.
 
 This stage owns:
-- launching Codex-native reviewer lanes for the spec-vs-implementation audit
+- launching Codex-native reviewer lanes such as general, spec-alignment, and
+  test review as needed for the current change
 - optionally adding one independent `mol-review-implementation` sidecar lane
 - synthesizing the review result
 - returning to fix work if the review finds blocking issues
