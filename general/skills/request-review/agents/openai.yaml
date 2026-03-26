@@ -1,0 +1,4 @@
+interface:
+  display_name: "Request Review"
+  short_description: "Manual review launcher for diffs, branches, files, or spec-vs-implementation scopes"
+  default_prompt: "Use $request-review to run a small manual review with the repo's custom reviewer agents, synthesize the findings, and stop after reporting."

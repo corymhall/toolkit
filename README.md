@@ -19,6 +19,7 @@ Language-specific development skills, review tools, and multi-model evaluation. 
 
 | Skill | Description |
 |-------|-------------|
+| [request-review](general/skills/request-review/) | Launch a manual code or implementation review using Codex-native reviewer agents and synthesize the findings. |
 | [multi-model-evaluate](general/skills/multi-model-evaluate/) | Dispatch the same question to multiple AI models, synthesize consensus and disagreements. |
 | [review-pr](general/skills/review-pr/) | Review a teammate's PR and produce draft comments for your approval before posting to GitHub. |
 | [go-development](general/skills/go-development/) | Implement, refactor, and review production Go code using Google-style conventions. |
