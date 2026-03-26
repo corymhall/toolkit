@@ -34,11 +34,13 @@ then land the owned convoy explicitly.
 
 ## 3. Run final validation
 
-Always align to the target branch first:
+Resolve the target branch for comparison/reporting. Stay on the current
+execution branch or worktree unless the repo's final validation flow explicitly
+requires switching context:
 
 ```bash
-git checkout <target-branch>
-git pull
+git branch --show-current
+git diff <target-branch>...HEAD --stat
 ```
 
 Then run the repo-configured quality gates that still make sense for the final
@@ -95,4 +97,4 @@ This skill ends after convoy land + validation + reporting.
 
 Do not run:
 - any daemon-dispatch convoy launch path
-- `gt mq integration land <epic-id>`
+- old integration-land commands from the pre-convoy workflow model

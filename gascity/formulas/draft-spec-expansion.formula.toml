@@ -12,7 +12,7 @@
 #   3. Commit
 #
 # Usage:
-#   gt sling draft-spec <crew> \
+#   gc sling <target> draft-spec-expansion --formula \
 #     --var feature="ipv6-support" \
 #     --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 
@@ -32,8 +32,8 @@ propose approaches before writing. For a fully autonomous draft,
 provide a detailed brief that answers likely questions upfront.
 
 After drafting:
-- Run `gt sling enrich` for gap analysis and refinement (optional)
-- Run `gt sling beadify` to create execution beads
+- Run `enrich-expansion` for gap analysis and refinement (optional)
+- Then continue into `delivery-workflow-quick` or `delivery-workflow-planned`
 
 ## Step Lifecycle (Molecule Work Loop)
 
@@ -393,7 +393,8 @@ git push -u origin "$(git branch --show-current)" || git push
 **Spec:** docs/plans/{{feature}}/spec.md
 
 ### Next Steps
-- `gt sling enrich --var feature={{feature}}` — find gaps and refine (optional)
-- `gt sling beadify --var feature={{feature}}` — create execution beads
+- `gc sling <target> enrich-expansion --formula --var feature={{feature}}` — find gaps and refine (optional)
+- `gc sling <target> delivery-workflow-quick --formula --var feature={{feature}} --var brief=\"...\"` — continue with single-session delivery
+- `gc sling <target> delivery-workflow-planned --formula --var feature={{feature}} --var brief=\"...\"` — continue with two-session delivery
 ```
 """

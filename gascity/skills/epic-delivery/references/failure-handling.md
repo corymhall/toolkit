@@ -18,7 +18,7 @@ gc convoy create "<feature> execution" <execution-bead-ids...> --owned --target 
 
 Action:
 - Report the exact failing command and the first actionable error line.
-- Fix the execution bead graph or epic modeling issue.
+- Fix the execution bead graph or tracking/convoy modeling issue.
 - Recreate the convoy after the fix.
 
 ## 2. No ready tracked bead
@@ -69,6 +69,6 @@ Before closing:
 ## 5. Never-do list
 
 - Never dispatch from convoy creation in this skill.
-- Never fall back to `gt sling` loops for execution leaves.
+- Never fall back to ad-hoc sling loops for execution leaves.
 - Never treat convoy existence as proof that execution is complete.
-- Never run `gt mq integration land <epic-id>` here.
+- Never fall back to old integration-land commands here.

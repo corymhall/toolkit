@@ -29,14 +29,17 @@ Run final verification, then finalize tracking state and summary.
 
 ## Tracking Finalization
 
+Resolve tracking context and append the final execution summary to the owned
+convoy. If a tracking bead exists, mirror the same summary there.
+
+## Resolve Context
+
 ```bash
+CONVOY_ID=$(awk -F': ' '/^convoy_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
 EPIC_ID=$(awk -F': ' '/^epic_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
 ```
 
-Append the final execution summary to the root epic. Do not create or close
-lightweight milestone tracker beads from this shared stage.
-
-## Final Epic Note
+## Final Notes
 
 Append:
 - spec path
@@ -47,10 +50,18 @@ Append:
 - unresolved risks (if any)
 - completion status
 
+Then finalize the owned convoy:
+
+```bash
+gc convoy status "$CONVOY_ID"
+gc convoy land "$CONVOY_ID"
+```
+
 ## Output
 
 Provide a concise completion report including:
 - what was implemented
 - what was verified
+- convoy land result
 - what remains (if anything)
 """

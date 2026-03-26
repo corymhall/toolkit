@@ -1,21 +1,22 @@
 # Decomposition Plan Expansion
 #
 # Read an enriched umbrella spec, generate `plan-draft.md`, review it twice,
-# and leave behind a decomposition plan for beadify.
+# and leave behind a decomposition plan for manual umbrella decomposition.
 #
 # Usage:
-#   gt sling decomposition-plan-expansion <crew> --var feature="ipv6-support"
+#   gc sling <target> decomposition-plan-expansion --formula --var feature="ipv6-support"
 
 description = """
 Read a cleaned umbrella `spec.md`, generate `plan-draft.md`, run the default
-two decomposition-plan review passes, and leave behind a beadify-ready
+two decomposition-plan review passes, and leave behind a manual-decomposition-ready
 decomposition artifact.
 
 **Input:** `docs/plans/{{feature}}/spec.md`
 **Output:** `docs/plans/{{feature}}/plan-draft.md`
 
-This formula is intended for `delivery-workflow-epic`. It separates
-requirements/design intent from workstream decomposition and sequencing.
+This formula is intended for manual umbrella/workstream decomposition. It
+separates requirements/design intent from workstream decomposition and
+sequencing.
 
 ## Review Model
 
@@ -32,7 +33,7 @@ By default this formula runs two explicit review passes:
 - what cross-cutting work spans them
 - what planning questions still affect decomposition quality
 
-Use the standard template at `gastown/docs/templates/plan-draft.md`.
+Use the standard template at `gascity/docs/templates/plan-draft.md`.
 """
 formula = "decomposition-plan-expansion"
 type = "expansion"
@@ -99,7 +100,7 @@ Generate `docs/plans/{{feature}}/plan-draft.md` from the spec.
 ## Inputs
 
 - `docs/plans/{{feature}}/spec.md`
-- `gastown/docs/templates/plan-draft.md`
+- `gascity/docs/templates/plan-draft.md`
 
 ## Planning Rules
 
@@ -160,7 +161,7 @@ Review `plan-draft.md` for sequencing and cross-cutting work.
 1. Is the sequencing/dependency model correct and minimal?
 2. Are merge-gated vs code-order dependencies distinguished appropriately?
 3. Did we capture cross-cutting work such as testing, rollout, docs, and final validation?
-4. Is there any hidden work that will fall through the cracks during beadify?
+4. Is there any hidden work that will fall through the cracks during manual decomposition into feature/workstream beads?
 
 Apply fixes to `plan-draft.md`, and revise `spec.md` only if the plan reveals
 unresolved ambiguity.
@@ -171,7 +172,7 @@ id = "{target}.finalize-plan"
 title = "Finalize `plan-draft.md`"
 needs = ["{target}.review-pass-2"]
 description = """
-Finalize the decomposition plan and summarize the handoff to beadify.
+Finalize the decomposition plan and summarize the handoff for manual umbrella decomposition.
 
 Final checks:
 - `plan-draft.md` exists

@@ -40,7 +40,7 @@ local-only dirty changes and assume they can see them.
 Before slinging any final review workers:
 
 1. create a reviewable checkpoint commit
-2. push the integration branch
+2. push the current review branch
 3. materialize shared review inputs under the rig root `.runtime` directory
 
 Suggested shared directory:
@@ -48,6 +48,7 @@ Suggested shared directory:
 ```bash
 TOP=$(git rev-parse --show-toplevel)
 RIG_ROOT=$(printf '%s\n' "$TOP" | sed -E 's#/crew/[^/]+$##; s#/polecats/[^/]+/[^/]+$##')
+RIG_NAME=$(basename "$RIG_ROOT")
 REVIEW_RUN_ID=$(date +%Y%m%d-%H%M%S)
 REVIEW_DIR="$RIG_ROOT/.runtime/reviews/{{feature}}/$REVIEW_RUN_ID"
 mkdir -p "$REVIEW_DIR"
@@ -65,14 +66,14 @@ review workers should inspect.
 
 ## Review Inputs
 
-- pushed integration-branch state
+- pushed branch state
 - shared review input files under `$REVIEW_DIR`
 
 ## Required Review Runs
 
 Always run:
-- one general review with `--agent codex`
-- one general review with `--agent claude`
+- one general review through the rig's `reviewer` pool
+- one general review through the rig's `reviewer-claude` pool
 
 Optionally run:
 - one specialist review if `review_profiles_selected` contains a strong
@@ -89,7 +90,7 @@ Write reports under:
 Use the review worker formula:
 
 ```bash
-gt sling mol-review-implementation <target> --agent codex \
+gc sling "$RIG_NAME/reviewer" mol-review-implementation --formula --nudge \
   --var feature="{{feature}}" \
   --var reviewer_label="codex" \
   --var spec_scope="$REVIEW_DIR/spec.md" \
@@ -98,7 +99,7 @@ gt sling mol-review-implementation <target> --agent codex \
   --var review_profile="general" \
   --var output_path="$REVIEW_DIR/codex-review.md"
 
-gt sling mol-review-implementation <target> --agent claude \
+gc sling "$RIG_NAME/reviewer-claude" mol-review-implementation --formula --nudge \
   --var feature="{{feature}}" \
   --var reviewer_label="claude" \
   --var spec_scope="$REVIEW_DIR/spec.md" \
@@ -114,7 +115,7 @@ For example:
 ```bash
 REVIEW_PROFILE=$(awk -F': ' '/^review_profiles_selected:/{print $2}' docs/plans/{{feature}}/session-context.md | cut -d',' -f1)
 if [ -n "$REVIEW_PROFILE" ] && [ "$REVIEW_PROFILE" != "general" ]; then
-  gt sling mol-review-implementation <target> --agent codex \
+  gc sling "$RIG_NAME/reviewer" mol-review-implementation --formula --nudge \
     --var feature="{{feature}}" \
     --var reviewer_label="$REVIEW_PROFILE" \
     --var spec_scope="$REVIEW_DIR/spec.md" \
@@ -127,25 +128,20 @@ fi
 
 ## Launch Discipline
 
-Do not blindly fire multiple slings at the same rig target in parallel when an
-idle polecat may be reused. Two concurrent slings can race and attach different
-review wisps to the same worker.
-
-Preferred approaches:
-- use explicit distinct polecat targets, or
-- launch the first reviewer, confirm it is working, then launch the second
+Do not assume the same reviewer instance will pick up every review. Pool-based
+reviewers claim work via pool labels, so think in terms of review beads and
+session aliases rather than one fixed worker identity.
 
 ## Monitoring
 
 Use multiple signals, but treat them differently:
 
-- `gt peek <rig>/<polecat>` is the primary monitoring tool
-  - best for seeing whether the worker is actually progressing or just sitting
-    at the initial assigned prompt
-- `gt polecat status <rig>/<polecat>` is secondary
-  - good for lifecycle state, last activity, and clone path
-- `gt hook show <rig>/<polecat>` is secondary
-  - good for confirming which wisp is currently attached
+- `bd show <review-bead-id>` is the primary completion signal
+  - use it to confirm the review bead is closed and contains notes
+- `gc status --json` is the primary session discovery surface
+  - use it to find running `reviewer-*` and `reviewer-claude-*` session aliases
+- `gc session peek <session-alias>` is the primary live-progress tool
+  - use it to see whether the reviewer is actively reading files or writing a report
 - `find "$REVIEW_DIR" -type f` is the completion signal
   - use it to detect when review artifacts actually exist
 
@@ -156,18 +152,18 @@ reviewer as "stuck" after a few seconds or a single fast poll.
 Minimum patience rules:
 - after launch, give the worker roughly 2 minutes before the first real
   progress judgment unless you already have a hard failure signal
-- if the worker has started reviewing, keep waiting while `gt peek` shows file
+- if the worker has started reviewing, keep waiting while `gc session peek` shows file
   reads, tool use, or report-writing progress
 - only classify a started worker as stalled after at least 10 minutes with no
   visible progress, or after an explicit hard failure
 - if the worker is merely sitting at the initial assigned prompt, use the
   explicit nudge below before considering failure
 
-If `gt peek` shows the worker still sitting at the initial assigned prompt,
+If `gc session peek` shows the worker still sitting at the initial assigned prompt,
 nudge it explicitly:
 
 ```bash
-gt nudge <rig>/<polecat> "Run gt hook and execute the hooked mol-review-implementation now. This is a report-only task writing to the shared .runtime review directory; do not commit the report."
+gc session nudge <session-alias> "Run gc hook and execute the assigned mol-review-implementation now. This is a report-only task writing to the shared .runtime review directory; do not commit the report."
 ```
 
 Do not synthesize review results until the expected shared report files exist

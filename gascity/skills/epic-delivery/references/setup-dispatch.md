@@ -25,15 +25,16 @@ awk -F': ' '/^target_branch:/{print $2}' docs/plans/<feature>/session-context.md
 
 Record the target branch for later reporting and convoy alignment.
 
-### 1.3 Resolve optional tracking epic
+### 1.3 Resolve optional tracking bead
 
-If session context still records a tracking epic:
+If session context still records a tracking bead:
 
 ```bash
 awk -F': ' '/^epic_id:/{print $2}' docs/plans/<feature>/session-context.md
 ```
 
-Treat it as a reporting surface only, not as the execution container.
+Treat it as a reporting surface only, not as the execution container or convoy
+child.
 
 ## 2. Validate convoy ownership
 
@@ -58,7 +59,7 @@ Confirm the tracked graph contains the expected execution units:
 - explicit checkpoint beads for review-stop / shape-review points
 - `implementation review`
 
-If the convoy still contains only a tracking epic and not the execution beads,
+If the convoy still contains only a tracking bead and not the execution beads,
 stop and repair the parentage first.
 
 If the graph is still lightweight status tracking instead of real execution

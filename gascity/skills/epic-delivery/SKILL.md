@@ -25,7 +25,7 @@ Auto-detected:
 - Rig from current workspace
 
 Optional but useful:
-- Tracking epic ID, if one still exists
+- Tracking bead ID, if one still exists
 - `docs/plans/<feature>/spec.md`
 - `docs/plans/<feature>/plans.md`
 - execution convoy already exists as the initiative container
@@ -34,17 +34,17 @@ Optional but useful:
 
 1. Keep ownership in the current session.
 2. Do not use any daemon-dispatch convoy launch path here.
-3. Do not `gt sling` individual execution leaves from this skill.
+3. Do not route individual execution leaves with ad-hoc sling loops from this skill.
 4. Treat the convoy as a tracking surface, not a dispatcher.
 5. Recreate the convoy if the execution bead graph changes materially.
-6. Never run `gt mq integration land <epic-id>` in this skill.
+6. Never fall back to old integration-land flows here; finalization is `gc convoy land` after tracked beads are closed.
 
 ## Workflow
 
 1. Setup convoy context.
 - Confirm the input bead is a convoy.
 - Resolve the target branch from session context.
-- Resolve the optional tracking epic only for notes/reporting.
+- Resolve the optional tracking bead only for notes/reporting.
 - See [references/setup-dispatch.md](references/setup-dispatch.md).
 
 2. Validate the execution graph.
@@ -80,13 +80,13 @@ Report each major transition clearly:
 
 1. Setup complete:
 - Convoy ID
-- Optional tracking epic ID
+- Optional tracking bead ID
 - Target branch
 
 2. Execution status:
 - Open tracked beads
 - Ready tracked beads
-- Capstone validation bead, if present
+- Implementation-review or checkpoint bead, if present
 - Next bead selected
 
 3. Blocked state, if any:

@@ -8,7 +8,7 @@
 # the appropriate downstream workflow based on complexity, ambiguity, and scope.
 #
 # Usage:
-#   gt sling delivery-workflow <crew> \
+#   gc sling <target> delivery-workflow --formula \
 #     --var feature="ipv6-support" \
 #     --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
 #     [--var epic_id="abc123"]
@@ -27,7 +27,7 @@ second workflow from inside an active router molecule is operationally awkward.
 Instead, this workflow gives you:
 - a visible, durable mode decision
 - a short rationale
-- the exact `gt sling ...` command for the next workflow
+- the exact `gc sling ... --formula` command for the next workflow
 
 ## Modes
 
@@ -36,9 +36,6 @@ Instead, this workflow gives you:
 
 - `delivery-workflow-planned`:
   use for medium or noisy feature work where discovery and build should be split
-
-- `delivery-workflow-epic`:
-  use for umbrella initiatives that need decomposition into feature/workstream beads
 
 ## Decision Principle
 
@@ -82,7 +79,7 @@ description = "Feature brief - 1-3 sentences describing what to build"
 required = true
 
 [vars.epic_id]
-description = "Optional existing root epic ID to reuse downstream"
+description = "Optional existing tracking bead ID to reuse downstream"
 required = false
 default = ""
 
@@ -105,7 +102,6 @@ description = """
  Candidate downstream workflows:
    - delivery-workflow-quick
    - delivery-workflow-planned
-   - delivery-workflow-epic
 ═══════════════════════════════════════════════════════════════
 
 Output this banner to the user, then close this step to begin.
@@ -175,16 +171,16 @@ Choose `delivery-workflow-planned` when:
 - there was substantial brainstorming, web research, or prototyping
 - a fresh planning/build session would reduce confusion
 
-Choose `delivery-workflow-epic` when:
-- the problem is clearly larger than one feature
-- it should decompose into feature/workstream beads first
-- ownership/dependencies across multiple execution units matter
+If the problem is clearly larger than one feature or needs umbrella-style
+decomposition, do not invent a third active workflow here. Bias toward
+`delivery-workflow-planned` only after narrowing the next delivery slice to one
+coherent feature.
 
 ## Required output
 
 Decide and record:
-- `delivery_mode`: `spec-only` | `milestone-plan` | `umbrella-decomposition`
-- `workflow_formula`: one of the three downstream workflows
+- `delivery_mode`: `single-session` | `two-session`
+- `workflow_formula`: `delivery-workflow-quick` | `delivery-workflow-planned`
 - `risk_level`: `low` | `medium` | `high`
 - `reason`: short concrete rationale
 
@@ -214,7 +210,7 @@ Feature: {{feature}}
 Brief: {{brief}}
 
 - delivery_mode: <spec-only | milestone-plan | umbrella-decomposition>
-- workflow_formula: <delivery-workflow-quick | delivery-workflow-planned | delivery-workflow-epic>
+- workflow_formula: <delivery-workflow-quick | delivery-workflow-planned>
 - risk_level: <low | medium | high>
 - reason: <short rationale>
 
@@ -253,7 +249,7 @@ Report:
 Construct the next command in this form:
 
 ```bash
-gt sling <workflow_formula> <current-crew> \
+gc sling <current-crew> <workflow_formula> --formula \
   --var feature="{{feature}}" \
   --var brief="{{brief}}" \
   [--var epic_id="{{epic_id}}"]

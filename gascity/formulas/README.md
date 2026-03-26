@@ -11,6 +11,16 @@ is currently parked in:
 
 Use this directory for the formulas `malaz` should actually resolve today.
 
+## Invocation Surface
+
+For the active local Gas City path, instantiate formulas with:
+
+```bash
+gc sling <target> <formula> --formula --var key=value
+```
+
+The examples below use that `gc sling` shape for the canonical local surface.
+
 ## Why The Rollback
 
 The graph.v2 formula line produced correct workflow graphs, but rig-scoped
@@ -25,9 +35,8 @@ Composable expansion formulas and workflow orchestrators support different
 delivery modes:
 
 - agent-driven routing into the right delivery mode
-- delegation-safe umbrella decomposition (`spec -> enrich -> decomposition plan -> beadify`)
 - lean single-session delivery (`spec -> enrich -> implement`)
-- two-session planned delivery (`spec -> enrich || plans -> execution beads -> staged convoy`)
+- two-session planned delivery (`spec -> enrich || plans -> execution beads -> owned execution convoy`)
 
 ## Architecture
 
@@ -39,15 +48,15 @@ The formulas follow an **expansion/workflow pattern**:
 
 **Spec-first, adaptable execution systems:**
 - `spec.md` — the durable requirements and design record
-- `plan-draft.md` — decomposition plan for `delivery-workflow-epic`
+- `plan-draft.md` — decomposition plan for manual umbrella/workstream decomposition
 - `plans.md` — milestone plan for `delivery-workflow-planned`
-- Beads — either umbrella decomposition (`beadify`) or planned execution beads
+- Beads — planned execution beads for the active convoy-based path
 - `session-ledger.md` — execution evidence for `delivery-workflow-quick`
-- staged convoy — execution tracking artifact for `delivery-workflow-planned`
+- owned convoy — execution tracking artifact for `delivery-workflow-planned`
 
 ## The Pipeline
 
-Six primary entry expansions, plus shared workflow support for final
+Five primary entry expansions, plus shared workflow support for final
 verification and implementation review:
 
 ```
@@ -61,7 +70,7 @@ verification and implementation review:
 ```
 
 Any entry point works. Already have a spec? Skip to `plan-expansion` or
-`decomposition-plan-expansion` or `beadify`. Want more rigor? Run `enrich` multiple times. Wrote the spec
+`decomposition-plan-expansion`. Want more rigor? Run `enrich` multiple times. Wrote the spec
 yourself? Go straight to the downstream expansion you need.
 
 ## Workflow Map
@@ -74,7 +83,6 @@ flowchart TD
         DP["decomposition-plan-expansion"]
         PL["plan-expansion"]
         EB["execution-beads-expansion"]
-        BD["beadify-expansion"]
 
         VF["verify-finalize"]
         RS["review-implementation skill"]
@@ -84,17 +92,8 @@ flowchart TD
         PLANS["plans.md"]
         EXEC_BEADS["execution beads"]
         BEADS["beads graph"]
-        CONVOY["staged convoy"]
+        CONVOY["owned convoy"]
         LEDGER["session-ledger.md"]
-    end
-
-    subgraph EPIC["delivery-workflow-epic"]
-        EDW_START["start"]
-        EDW_BOOT["bootstrap"]
-        EDW_C1["checkpoint-after-draft"]
-        EDW_C2["checkpoint-after-enrich"]
-        EDW_C3["checkpoint-after-plan"]
-        EDW_DONE["complete"]
     end
 
     subgraph DELIV1["delivery-workflow-quick"]
@@ -128,19 +127,8 @@ flowchart TD
     DR_INSPECT --> DR_SELECT
     DR_SELECT --> DR_RECORD
     DR_RECORD --> DR_DONE
-    DR_DONE -. routes to .-> EDW_START
     DR_DONE -. routes to .-> DW_START
     DR_DONE -. routes to .-> DW2_START
-
-    EDW_START --> EDW_BOOT
-    EDW_BOOT --> DS
-    DS --> EDW_C1
-    EDW_C1 --> EN
-    EN --> EDW_C2
-    EDW_C2 --> DP
-    DP --> EDW_C3
-    EDW_C3 --> BD
-    BD --> EDW_DONE
 
     DW_START --> DW_BOOT
     DW_BOOT --> DS
@@ -205,7 +193,7 @@ Turns a brief into a first-draft spec through codebase exploration and interacti
 
 **Usage:**
 ```bash
-gt sling draft-spec-expansion <crew> \
+gc sling <target> draft-spec-expansion --formula \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```
@@ -233,7 +221,7 @@ multiple times — each pass finds what the previous missed.
 1. Validate spec exists with the core serialized sections and identify any missing planning sections to strengthen
 2. Explore codebase — ground analysis in real code, not assumptions
 3. Materialize a shared review bundle and sling 2 separate reviewers
-4. Synthesize mailed review reports into `enrichment-findings.tmp`
+4. Synthesize review-bead notes into `enrichment-findings.tmp`
 5. Apply auto-fixes silently
 6. Present decisions to human — one at a time, with options and recommendations
 7. Fold answers into spec as design statements
@@ -242,7 +230,7 @@ multiple times — each pass finds what the previous missed.
 **Review model:**
 - reviewer A: completeness + ambiguity + scope
 - reviewer B: feasibility + risks + consistency
-- reviewers mail full reports back; the parent session applies fixes
+- reviewers record full reports on their review beads; the parent session applies fixes
 
 **Findings are classified as:**
 - **Auto-fix** — one clearly correct answer (best practice, codebase convention) → applied silently
@@ -258,7 +246,7 @@ multiple times — each pass finds what the previous missed.
 | `feature` | yes | Feature name |
 **Usage:**
 ```bash
-gt sling enrich-expansion <crew> \
+gc sling <target> enrich-expansion --formula \
   --var feature="ipv6-support"
 ```
 
@@ -269,8 +257,8 @@ gt sling enrich-expansion <crew> \
 **Formula:** `decomposition-plan-expansion`
 
 Reads a cleaned umbrella spec, generates `plan-draft.md`, runs the default two
-decomposition-plan review passes, and leaves behind a beadify-ready
-workstream/sequencing artifact for `delivery-workflow-epic`.
+decomposition-plan review passes, and leaves behind a manual-decomposition-ready
+workstream/sequencing artifact for manual umbrella decomposition.
 
 **Steps:**
 1. Validate spec for decomposition planning
@@ -296,7 +284,7 @@ workstream/sequencing artifact for `delivery-workflow-epic`.
 
 **Usage:**
 ```bash
-gt sling decomposition-plan-expansion <crew> \
+gc sling <target> decomposition-plan-expansion --formula \
   --var feature="ipv6-support"
 ```
 
@@ -319,7 +307,7 @@ review passes, and leaves behind a build-ready milestone plan for
 
 **Review model:**
 - each pass slings 2 separate reviewers
-- reviewers mail full reports back
+- reviewers record full reports on their review beads
 - the parent session applies fixes between passes
 
 **Planning principles:**
@@ -340,7 +328,7 @@ review passes, and leaves behind a build-ready milestone plan for
 
 **Usage:**
 ```bash
-gt sling plan-expansion <crew> \
+gc sling <target> plan-expansion --formula \
   --var feature="ipv6-support"
 ```
 
@@ -355,21 +343,20 @@ and creates the bead graph that a same-session execution skill will work
 through.
 
 **Steps:**
-1. Validate `spec.md`, `plans.md`, and root epic context
+1. Validate `spec.md`, `plans.md`, and convoy/tracking context
 2. Design execution bead graph from milestone plan
-3. Create/reuse execution beads under the root epic
+3. Create/reuse execution beads under the owned convoy
 4. Repair dependencies and summarize the graph
 
 **Execution-bead principles:**
 - one execution bead per milestone
 - explicit checkpoint beads for review-stop / shape-review milestones
 - one local implementation review gate bead as the final expected execution gate
-- convoy staging should use `--no-validate` for new planned-delivery runs
 - bead descriptions stay concise and point back to `spec.md` / `plans.md`
 - use beads for execution ownership and dependencies, not as a markdown mirror
 
-**Input:** `docs/plans/{feature}/spec.md`, `docs/plans/{feature}/plans.md`, root epic from `session-context.md`
-**Output:** Root epic child execution beads with dependency graph
+**Input:** `docs/plans/{feature}/spec.md`, `docs/plans/{feature}/plans.md`, convoy/tracking context from `session-context.md`
+**Output:** Owned-convoy child execution beads with dependency graph
 
 **Vars:**
 
@@ -379,49 +366,7 @@ through.
 
 **Usage:**
 ```bash
-gt sling execution-beads-expansion <crew> \
-  --var feature="ipv6-support"
-```
-
----
-
-### Beadify
-
-**Formula:** `beadify-expansion`
-
-The execution entry point. Reads a spec (any depth), optionally uses
-`plan-draft.md`, explores the codebase, decomposes into tasks, runs 3 review
-passes, and creates beads with validated dependencies.
-
-**Steps:**
-1. Validate spec exists
-2. Codebase exploration — 3 parallel agents (architecture, integration surface, patterns & conventions)
-3. Task decomposition — spec + optional decomposition plan + codebase analysis → `beads-draft.md` (transient)
-4. Review pass 1: Completeness — every spec Design element has a task
-5. Review pass 2: Dependencies — only true blockers, maximize parallelism
-6. Review pass 3: Clarity — each task implementable from description alone
-7. Human preview — show proposed structure, allow edits
-8. Execute — create beads via `bd create` with deps
-9. Cleanup transient files
-
-**Task decomposition principles:**
-- Tasks must be self-contained (implementable with zero prior context)
-- Be specific, not generic (real file paths, real function signatures)
-- Maximize parallelism (only add true blocking dependencies)
-- Acceptance criteria must be verifiable
-
-**Input:** `docs/plans/{feature}/spec.md` (required) and optional `docs/plans/{feature}/plan-draft.md`
-**Output:** Beads epic with tasks and dependency graph
-
-**Vars:**
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `feature` | yes | Feature name |
-
-**Usage:**
-```bash
-gt sling beadify-expansion <crew> \
+gc sling <target> execution-beads-expansion --formula \
   --var feature="ipv6-support"
 ```
 
@@ -445,7 +390,7 @@ See [docs/templates/plans.md](../docs/templates/plans.md) for the milestone plan
 
 Related design exploration:
 - [Hybrid PRD/Plan Pipeline](../../docs/plans/hybrid-prd-plan-pipeline/spec.md) — selective two-artifact model for umbrella decomposition while keeping single-spec delivery lean
-- [Hybrid Formula Sketch](../../docs/plans/hybrid-prd-plan-pipeline/formula-sketch.md) — concrete stage sketch for `plan-expansion` and `delivery-workflow v2`
+- [Hybrid Formula Sketch](../../docs/plans/hybrid-prd-plan-pipeline/formula-sketch.md) — concrete stage sketch for `plan-expansion` and later workflow-native delivery exploration
 
 ## Workflow Formula
 
@@ -459,7 +404,7 @@ This workflow:
 1. inspects the brief, repo, and existing artifacts
 2. chooses a delivery mode
 3. records the rationale in `routing-decision.md`
-4. outputs the exact downstream `gt sling ...` command to run next
+4. outputs the exact downstream `gc sling ... --formula` command to run next
 
 It intentionally does not try to self-launch another workflow from inside the
 active router molecule; instead it finishes cleanly and tells you which
@@ -468,44 +413,6 @@ workflow to run next.
 **Modes it can select:**
 - `delivery-workflow-quick`
 - `delivery-workflow-planned`
-- `delivery-workflow-epic`
-
-**Usage:**
-```bash
-gt sling delivery-workflow <crew> \
-  --var feature="ipv6-support" \
-  --var brief="Add IPv6 CIDR block and subnet support to VPC components"
-```
-
----
-
-### Epic Delivery
-
-**Formula:** `delivery-workflow-epic`
-
-Composes the umbrella-side expansion formulas into the full pipeline with
-checkpoints between stages. Use this for initiatives that need to be broken
-into feature/workstream beads, not for normal single-feature delivery.
-
-```
-Kickoff → Draft Spec → [checkpoint] → Enrich → [checkpoint] → Decomposition Plan → [checkpoint] → Beadify → Complete
-```
-
-Checkpoints support crash recovery and session handoffs — if a session ends mid-workflow, the next session picks up at the last checkpoint.
-
-The intended output granularity is:
-- one bead per coherent feature or workstream
-- one integration/final-validation bead where needed
-- not implementation-ready microtasks
-
-Artifacts produced:
-- `docs/plans/{feature}/spec.md`
-- `docs/plans/{feature}/plan-draft.md`
-- beads epic with feature/workstream beads and dependency graph
-
-Those resulting beads are expected to kick off `delivery-workflow` (the router)
-or one of the concrete delivery workflows rather than be coded directly from the
-umbrella workflow.
 
 **Vars:**
 
@@ -515,7 +422,7 @@ umbrella workflow.
 | `brief` | yes | 1-3 sentence description |
 **Usage:**
 ```bash
-gt sling delivery-workflow-epic <crew> \
+gc sling <target> delivery-workflow --formula \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```
@@ -528,7 +435,8 @@ gt sling delivery-workflow-epic <crew> \
 
 Single uninterrupted Codex session from plan through implementation, shared
 implementation review, and verification.
-No polecat delegation. Keeps Gastown visibility through the root epic only.
+No polecat delegation. Keeps visibility through an owned convoy plus tracking
+notes.
 
 ```
  Kickoff -> Bootstrap -> Draft Spec -> Enrich -> Tracking Setup -> Implement -> Implementation Review -> Verify + Finalize
@@ -547,11 +455,12 @@ the expected stage order.
 |----------|----------|-------------|
 | `feature` | yes | Feature name |
 | `brief` | yes | 1-3 sentence description |
-| `epic_id` | no | Existing root epic to reuse |
+| `epic_id` | no | Existing tracking bead to reuse |
+| `target_branch` | no | Explicit target branch for downstream work |
 
 **Usage:**
 ```bash
-gt sling delivery-workflow-quick <crew> \
+gc sling <target> delivery-workflow-quick --formula \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```
@@ -564,7 +473,7 @@ gt sling delivery-workflow-quick <crew> \
 
 Recommended default delivery workflow when discovery is noisy and you want the
 build session to start fresh from committed artifacts, but want execution to
-move into beads plus staged convoy tracking instead of staying inside the
+move into beads plus owned convoy tracking instead of staying inside the
 formula.
 
 Session 1:
@@ -577,11 +486,11 @@ Session 2:
 - Execution Setup
 - Plan (`plans.md`)
 - Create execution beads
-- Stage execution convoy
+- Finalize execution convoy
 - Hand off to `$epic-delivery` in the same session
 
 ```
- Kickoff -> Bootstrap -> Draft Spec -> Enrich -> [handoff] -> Execution Setup -> Plan -> Execution Beads -> Stage Convoy -> Complete
+ Kickoff -> Bootstrap -> Draft Spec -> Enrich -> [handoff] -> Execution Setup -> Plan -> Execution Beads -> Finalize Convoy -> Complete
 ```
 
 Use this when:
@@ -597,11 +506,12 @@ Use this when:
 |----------|----------|-------------|
 | `feature` | yes | Feature name |
 | `brief` | yes | 1-3 sentence description |
-| `epic_id` | no | Existing root epic to reuse |
+| `epic_id` | no | Existing tracking bead to reuse |
+| `target_branch` | no | Explicit target branch for downstream work |
 
 **Usage:**
 ```bash
-gt sling delivery-workflow-planned <crew> \
+gc sling <target> delivery-workflow-planned --formula \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```
@@ -615,21 +525,20 @@ Session 1:
 2. Run through bootstrap, draft-spec, and enrich.
 3. At `checkpoint-handoff-ready`, verify the spec is ready to hand off.
 4. Close that checkpoint step.
-5. Run `gt handoff` to end the session.
+5. Run `gc handoff <subject>` to end the session cleanly.
 
 Session 2:
 1. Start a fresh crew session as normal.
-2. Run `gt prime`.
-3. Check the hooked molecule with `gt mol status`.
-4. Run `bd mol current <molecule-id>`.
-5. Continue from the next step, which should be `stage-execution-setup`.
+2. Check the hook with `gc hook` if you need to confirm the pending assignment manually.
+3. Run `bd mol current <molecule-id>`.
+4. Continue from the next step, which should be `stage-execution-setup`.
 
 This is an operational boundary, not a special workflow pause primitive. The
 resume behavior relies on the normal hooked molecule flow: close the current
 step, hand off, then let the next session resume the next current step.
 
 When the workflow completes, execution no longer lives in the formula. The next
-step is to use `$epic-delivery` to work the staged convoy and close the
+step is to use `$epic-delivery` to work the owned convoy and close the
 execution beads in the current session.
 
 ---
@@ -660,7 +569,7 @@ structured review artifact without a human-interactive skill session.
 
 **Typical usage:**
 ```bash
-gt sling mol-review-implementation <target> --agent codex \
+gc sling <target> mol-review-implementation --formula \
   --var feature="ipv6-support" \
   --var reviewer_label="codex" \
   --var spec_scope="/Users/chall/gt/toolkit/.runtime/reviews/ipv6-support/run-001/spec.md" \
@@ -711,5 +620,5 @@ the build session starts from committed artifacts rather than exploratory chat
 history or prototype code.
 
 **Flexible entry points:** Have a brief? Run `draft-spec`. Already have a spec?
-Skip to `plan-expansion` or `beadify`. Want more rigor? Run `enrich` again.
+Skip to `plan-expansion` or `decomposition-plan-expansion`. Want more rigor? Run `enrich` again.
 Any entry, any exit.

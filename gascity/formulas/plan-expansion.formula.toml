@@ -11,7 +11,7 @@
 #   5. Finalize plan
 #
 # Usage:
-#   gt sling plan-expansion <crew> --var feature="ipv6-support"
+#   gc sling <target> plan-expansion --formula --var feature="ipv6-support"
 
 description = """
 Read a cleaned `spec.md`, generate `plans.md`, run two slung plan review
@@ -22,8 +22,8 @@ build-ready milestone plan.
 **Output:** `docs/plans/{{feature}}/plans.md`
 
 This formula is intended for the planning/build handoff in
-`delivery-workflow-planned`. It is not a replacement for `beadify` and it does not
-implement code.
+`delivery-workflow-planned`. It is not a replacement for manual umbrella
+decomposition and it does not implement code.
 
 ## Review Model
 
@@ -49,7 +49,7 @@ ambiguous, or expensive to rework late.
 - at least one early shape-validation milestone for medium/large work
 - stop conditions that trigger plan revision before continuing
 
-Use the standard template at `gastown/docs/templates/plans.md`.
+Use the standard template at `gascity/docs/templates/plans.md`.
 
 ## Step Lifecycle (Molecule Work Loop)
 
@@ -169,7 +169,7 @@ Generate `docs/plans/{{feature}}/plans.md` from the spec.
 ## Inputs
 
 - `docs/plans/{{feature}}/spec.md`
-- `gastown/docs/templates/plans.md`
+- `gascity/docs/templates/plans.md`
 
 ## Planning Rules
 
@@ -230,7 +230,6 @@ shared directory:
 TOP=$(git rev-parse --show-toplevel)
 RIG_ROOT=$(printf '%s\n' "$TOP" | sed -E 's#/crew/[^/]+$##; s#/polecats/[^/]+/[^/]+$##')
 RIG_NAME=$(basename "$RIG_ROOT")
-REPORT_TO="${BD_ACTOR}"
 REVIEW_DIR="$RIG_ROOT/.runtime/reviews/{{feature}}/plan-pass-1-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$REVIEW_DIR"
 cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
@@ -240,8 +239,8 @@ cp docs/plans/{{feature}}/plans.md "$REVIEW_DIR/plans.md"
 ## Launch 2 Separate Reviewers
 
 Create ephemeral review beads with the prompt embedded in the bead
-description, then sling them raw so the sidecar reviewers work independently
-and mail their full reports back.
+description, then route them to the reviewer pools so sidecar reviewers work
+independently and record their reports on the beads themselves.
 
 Reviewer A: completeness
 
@@ -263,22 +262,16 @@ Report format:
 - Why it matters
 - Suggested plan change
 
-Send your full markdown report back by mail:
-
-gt mail send $REPORT_TO -s \"Plan review 1A report: {{feature}}\" --stdin <<'BODY'
-<full markdown report>
-BODY
+Write your full markdown report onto this review bead's notes.
 
 Rules:
 - Do not edit files
 - Do not create issues
-- After mailing the report, close this bead
+- After recording the report on the bead, close this bead
 EOF
 )")
 
-gt sling "$COMPLETE_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
-  --agent codex \
-  --args "Read the hooked review bead, mail the full report to $REPORT_TO, then close the bead."
+gc sling "$RIG_NAME/reviewer" "$COMPLETE_ID" --no-formula --nudge
 ```
 
 Reviewer B: scope + constraints
@@ -302,48 +295,42 @@ Report format:
 - Why it matters
 - Suggested plan or spec change
 
-Send your full markdown report back by mail:
-
-gt mail send $REPORT_TO -s \"Plan review 1B report: {{feature}}\" --stdin <<'BODY'
-<full markdown report>
-BODY
+Write your full markdown report onto this review bead's notes.
 
 Rules:
 - Do not edit files
 - Do not create issues
-- After mailing the report, close this bead
+- After recording the report on the bead, close this bead
 EOF
 )")
 
-gt sling "$SCOPE_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
-  --agent claude \
-  --args "Read the hooked review bead, mail the full report to $REPORT_TO, then close the bead."
+gc sling "$RIG_NAME/reviewer-claude" "$SCOPE_ID" --no-formula --nudge
 ```
 
 ## Await Both Reports
 
-Monitor your inbox until both subjects arrive:
+Wait until both review beads are closed, then inspect their notes directly.
 
-- `Plan review 1A report: {{feature}}`
-- `Plan review 1B report: {{feature}}`
+Primary completion signal:
+- `Plan review 1A: {{feature}} completeness` bead is `closed`
+- `Plan review 1B: {{feature}} scope and constraints` bead is `closed`
 
 Use:
 
 ```bash
-gt mail inbox
-gt mail read <mail-id>
+bd show "$COMPLETE_ID"
+bd show "$SCOPE_ID"
 ```
 
-Do not nudge reviewers for a report immediately after sling. First use
-`gt peek <rig>/<polecat>` to see whether they are still reviewing. If a
-reviewer says it mailed the report but you do not see it yet, re-check the
-inbox, inspect `gt peek` and `gt hook show`, then nudge the reviewer to resend
-the report. Do not move on without both reports or an explicit failure
-classification.
+If you need live progress, use `gc status --json` to find the running reviewer
+session aliases for this rig and `gc session peek <session-alias>` to inspect
+them. Use `gc session nudge <session-alias> "..."` only if a reviewer appears
+stuck at the initial prompt. Do not move on without both closed review beads
+or an explicit failure classification.
 
 ## Apply Fixes
 
-Read both reports. Apply all must-fix items and any should-fix items that make
+Read both review beads. Apply all must-fix items and any should-fix items that make
 the plan materially better.
 
 - update `docs/plans/{{feature}}/plans.md`
@@ -353,7 +340,7 @@ the plan materially better.
 ## Output
 
 Report:
-- which reports arrived
+- which review beads arrived
 - issues found
 - fixes applied
 - whether the spec also needed revision
@@ -381,7 +368,6 @@ Review `plans.md` for sequencing quality, testability, and late-rework risk.
 TOP=$(git rev-parse --show-toplevel)
 RIG_ROOT=$(printf '%s\n' "$TOP" | sed -E 's#/crew/[^/]+$##; s#/polecats/[^/]+/[^/]+$##')
 RIG_NAME=$(basename "$RIG_ROOT")
-REPORT_TO="${BD_ACTOR}"
 REVIEW_DIR="$RIG_ROOT/.runtime/reviews/{{feature}}/plan-pass-2-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$REVIEW_DIR"
 cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
@@ -410,22 +396,16 @@ Report format:
 - Why it matters
 - Suggested reorder or dependency change
 
-Send your full markdown report back by mail:
-
-gt mail send $REPORT_TO -s \"Plan review 2A report: {{feature}}\" --stdin <<'BODY'
-<full markdown report>
-BODY
+Write your full markdown report onto this review bead's notes.
 
 Rules:
 - Do not edit files
 - Do not create issues
-- After mailing the report, close this bead
+- After recording the report on the bead, close this bead
 EOF
 )")
 
-gt sling "$SEQ_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
-  --agent codex \
-  --args "Read the hooked review bead, mail the full report to $REPORT_TO, then close the bead."
+gc sling "$RIG_NAME/reviewer" "$SEQ_ID" --no-formula --nudge
 ```
 
 Reviewer B: testability + risk
@@ -449,48 +429,42 @@ Report format:
 - Why it matters
 - Suggested validation or risk-mitigation change
 
-Send your full markdown report back by mail:
-
-gt mail send $REPORT_TO -s \"Plan review 2B report: {{feature}}\" --stdin <<'BODY'
-<full markdown report>
-BODY
+Write your full markdown report onto this review bead's notes.
 
 Rules:
 - Do not edit files
 - Do not create issues
-- After mailing the report, close this bead
+- After recording the report on the bead, close this bead
 EOF
 )")
 
-gt sling "$TEST_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
-  --agent claude \
-  --args "Read the hooked review bead, mail the full report to $REPORT_TO, then close the bead."
+gc sling "$RIG_NAME/reviewer-claude" "$TEST_ID" --no-formula --nudge
 ```
 
 ## Await Both Reports
 
-Monitor your inbox until both subjects arrive:
+Wait until both review beads are closed, then inspect their notes directly.
 
-- `Plan review 2A report: {{feature}}`
-- `Plan review 2B report: {{feature}}`
+Primary completion signal:
+- `Plan review 2A: {{feature}} sequencing` bead is `closed`
+- `Plan review 2B: {{feature}} testability and risk` bead is `closed`
 
 Use:
 
 ```bash
-gt mail inbox
-gt mail read <mail-id>
+bd show "$SEQ_ID"
+bd show "$TEST_ID"
 ```
 
-Do not nudge reviewers for a report immediately after sling. First use
-`gt peek <rig>/<polecat>` to see whether they are still reviewing. If a
-reviewer says it mailed the report but you do not see it yet, re-check the
-inbox, inspect `gt peek` and `gt hook show`, then nudge the reviewer to resend
-the report. Do not move on without both reports or an explicit failure
-classification.
+If you need live progress, use `gc status --json` to find the running reviewer
+session aliases for this rig and `gc session peek <session-alias>` to inspect
+them. Use `gc session nudge <session-alias> "..."` only if a reviewer appears
+stuck at the initial prompt. Do not move on without both closed review beads
+or an explicit failure classification.
 
 ## Apply Fixes
 
-Read both reports. Apply all must-fix items and any should-fix items that make
+Read both review beads. Apply all must-fix items and any should-fix items that make
 the plan materially safer to execute.
 
 - update `docs/plans/{{feature}}/plans.md`
@@ -500,7 +474,7 @@ the plan materially safer to execute.
 ## Output
 
 Report:
-- which reports arrived
+- which review beads arrived
 - sequencing issues fixed
 - validation gaps fixed
 - late-rework risks that remain, if any

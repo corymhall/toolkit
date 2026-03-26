@@ -3,6 +3,14 @@ name = "base"
 version = "0.1.0"
 schema = 1
 
+[providers.claude]
+command = "claude"
+args = ["--dangerously-skip-permissions"]
+prompt_mode = "arg"
+ready_delay_ms = 0
+resume_flag = "--resume"
+session_id_flag = "--session-id"
+
 # Shared owner-session defaults and neutral shared surfaces.
 [formulas]
 dir = "formulas"
@@ -14,6 +22,20 @@ work_dir = ".gc/agents/{{.Rig}}/reviewers/{{.AgentBase}}"
 prompt_template = "prompts/reviewer.md.tmpl"
 nudge = "Review the assigned artifact, write the report onto the review bead, and avoid editing product files."
 idle_timeout = "2h"
+
+[agent.pool]
+min = 0
+max = 2
+
+[[agent]]
+name = "reviewer-claude"
+scope = "rig"
+provider = "claude"
+work_dir = ".gc/agents/{{.Rig}}/reviewers-claude/{{.AgentBase}}"
+prompt_template = "prompts/reviewer.md.tmpl"
+nudge = "Review the assigned artifact, write the report onto the review bead, and avoid editing product files."
+idle_timeout = "2h"
+install_agent_hooks = ["claude"]
 
 [agent.pool]
 min = 0

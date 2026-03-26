@@ -14,7 +14,7 @@
 #   7. Cleanup transient files
 #
 # Usage:
-#   gt sling enrich <crew> --var feature="ipv6-support"
+#   gc sling <target> enrich-expansion --formula --var feature="ipv6-support"
 #
 # Run it once for a quick pass, or multiple times to iteratively
 # deepen a thin spec into a thorough one.
@@ -59,8 +59,8 @@ session owns synthesis, auto-fixes, and decision handling.
 - Prioritize outcome, constraints, inputs, and artifacts.
 - Materialize review inputs into a shared `.runtime` directory before slinging
   fresh reviewers.
-- Require reviewers to mail full reports back instead of editing the spec
-  directly.
+- Require reviewers to record full reports on their review beads instead of
+  editing the spec directly.
 - When a required decision is missing, call `request_user_input` instead of
   asking multiple-choice questions in plain text.
 - Ask 1 concise question at a time (max 3 per call), provide mutually
@@ -280,7 +280,6 @@ decision.
 TOP=$(git rev-parse --show-toplevel)
 RIG_ROOT=$(printf '%s\n' "$TOP" | sed -E 's#/crew/[^/]+$##; s#/polecats/[^/]+/[^/]+$##')
 RIG_NAME=$(basename "$RIG_ROOT")
-REPORT_TO="${BD_ACTOR}"
 REVIEW_DIR="$RIG_ROOT/.runtime/reviews/{{feature}}/enrich-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$REVIEW_DIR"
 cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
@@ -312,22 +311,16 @@ For each finding:
 
 If a reviewed dimension is clean, say so explicitly.
 
-Send your full markdown report back by mail:
-
-gt mail send $REPORT_TO -s \"Enrich review A report: {{feature}}\" --stdin <<'BODY'
-<full markdown report>
-BODY
+Write your full markdown report onto this review bead's notes.
 
 Rules:
 - Do not edit files
 - Do not create issues
-- After mailing the report, close this bead
+- After recording the report on the bead, close this bead
 EOF
 )")
 
-gt sling "$ENRICH_A_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
-  --agent codex \
-  --args "Read the hooked enrich-review bead, mail the full report to $REPORT_TO, then close the bead."
+gc sling "$RIG_NAME/reviewer" "$ENRICH_A_ID" --no-formula --nudge
 ```
 
 Reviewer B: feasibility + risks + consistency
@@ -353,45 +346,39 @@ For each finding:
 
 If a reviewed dimension is clean, say so explicitly.
 
-Send your full markdown report back by mail:
-
-gt mail send $REPORT_TO -s \"Enrich review B report: {{feature}}\" --stdin <<'BODY'
-<full markdown report>
-BODY
+Write your full markdown report onto this review bead's notes.
 
 Rules:
 - Do not edit files
 - Do not create issues
 - Quote concrete codebase evidence where applicable
-- After mailing the report, close this bead
+- After recording the report on the bead, close this bead
 EOF
 )")
 
-gt sling "$ENRICH_B_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
-  --agent claude \
-  --args "Read the hooked enrich-review bead, mail the full report to $REPORT_TO, then close the bead."
+gc sling "$RIG_NAME/reviewer-claude" "$ENRICH_B_ID" --no-formula --nudge
 ```
 
 ## Await Both Reports
 
-Monitor your inbox until both subjects arrive:
+Wait until both review beads are closed, then inspect their notes directly.
 
-- `Enrich review A report: {{feature}}`
-- `Enrich review B report: {{feature}}`
+Primary completion signal:
+- `Enrich review A: {{feature}}` bead is `closed`
+- `Enrich review B: {{feature}}` bead is `closed`
 
 Use:
 
 ```bash
-gt mail inbox
-gt mail read <mail-id>
+bd show "$ENRICH_A_ID"
+bd show "$ENRICH_B_ID"
 ```
 
-Do not nudge reviewers for a report immediately after sling. First use
-`gt peek <rig>/<polecat>` to see whether they are still reviewing. If a
-reviewer says it mailed the report but you do not see it yet, re-check the
-inbox, inspect `gt peek` and `gt hook show`, then nudge the reviewer to resend
-the report. Do not move on without both reports or an explicit failure
-classification.
+If you need live progress, use `gc status --json` to find the running reviewer
+session aliases for this rig and `gc session peek <session-alias>` to inspect
+them. Use `gc session nudge <session-alias> "..."` only if a reviewer appears
+stuck at the initial prompt. Do not move on without both closed review beads
+or an explicit failure classification.
 
 ### Fidelity Preservation Check (run before classification)
 
@@ -406,7 +393,7 @@ rewriting or deleting prior intent.
 
 ## Synthesis And Classification
 
-Read both mailed reports and synthesize them into one findings file. For EACH
+Read both review beads and synthesize them into one findings file. For EACH
 finding in the synthesis, classify:
 
 **Auto-fix** — apply silently if ALL of these are true:
@@ -731,6 +718,6 @@ git push -u origin "$(git branch --show-current)" || git push
 
 ### Next Steps
 - Run enrich again for another pass (optional)
-- Run beadify to create execution beads
+- Then continue into the active delivery workflow that fits the feature
 ```
 """

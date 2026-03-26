@@ -2,7 +2,7 @@
 #
 # Single-reviewer implementation-vs-spec audit.
 # Intended to be slung once per runtime, for example:
-#   gt sling mol-review-implementation <target> --agent codex \
+#   gc sling <target> mol-review-implementation --formula \
 #     --var feature="ipv6-support" \
 #     --var reviewer_label="codex" \
 #     --var spec_scope="/Users/chall/gt/toolkit/.runtime/reviews/ipv6-support/run-001/spec.md" \
@@ -31,7 +31,7 @@ Use this as the autonomous review worker in larger workflows such as
 - Apply the selected `review_profile` lens if present
 - Write one structured report to `output_path`
 - Treat this as report-only work: do not commit the report as feature code
-- Finish with `gt done --cleanup-status clean`
+- Finish cleanly after writing the report; do not leave extra local review artifacts behind
 
 ## Category Model
 

@@ -2,14 +2,14 @@
 #
 # Two-session delivery:
 #   session 1: bootstrap -> draft-spec -> enrich -> handoff
-#   session 2: execution-setup -> plan -> execution beads -> stage convoy
+#   session 2: execution-setup -> plan -> execution beads -> finalize convoy
 #
 # This workflow keeps noisy exploration out of the build session, then hands
-# execution to a bead graph plus staged convoy while the current crew session
-# remains the owner.
+# execution to a bead graph plus an owned execution convoy while the current
+# crew session remains the owner.
 #
 # Usage:
-#   gt sling delivery-workflow-planned <crew> \
+#   gc sling <target> delivery-workflow-planned --formula \
 #     --var feature="ipv6-support" \
 #     --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
 #     [--var epic_id="abc123"]
@@ -27,7 +27,7 @@ Session 2 is for planning and execution setup:
 5. **Execution Setup**
 6. **Plan**
 7. **Create Execution Beads**
-8. **Stage Execution Convoy**
+8. **Finalize Execution Convoy**
 9. **Execution Handoff Complete**
 
 Use this when exploratory design work is noisy and you want the build session
@@ -36,15 +36,15 @@ current crew session to own execution through a bead graph rather than through
 the formula itself.
 
 **Input:** Feature name + brief description
-**Output:** `spec.md` + `plans.md` + execution beads + staged convoy ready for
-same-session delivery
+**Output:** `spec.md` + `plans.md` + execution beads under an owned convoy
+ready for same-session delivery
 
 ## Artifacts
 
 - `docs/plans/{{feature}}/spec.md`
 - `docs/plans/{{feature}}/plans.md`
 - `docs/plans/{{feature}}/session-context.md`
-- staged convoy tracking the execution beads
+- owned execution convoy tracking the execution beads
 
 ## Step Lifecycle (Molecule Work Loop)
 
@@ -93,7 +93,12 @@ description = "Feature brief - 1-3 sentences describing what to build"
 required = true
 
 [vars.epic_id]
-description = "Optional existing root epic ID to reuse"
+description = "Optional existing tracking bead ID to reuse"
+required = false
+default = ""
+
+[vars.target_branch]
+description = "Optional explicit target branch for downstream work; defaults to the repo default branch when omitted"
 required = false
 default = ""
 
@@ -134,14 +139,14 @@ description = """
    5. Execution Setup
    6. Plan (`plans.md`)
    7. Create Execution Beads
-   8. Stage Execution Convoy
+   8. Finalize Execution Convoy
    9. Execution Handoff Complete
 
  Artifacts:
    - docs/plans/{{feature}}/spec.md
    - docs/plans/{{feature}}/plans.md
    - docs/plans/{{feature}}/session-context.md
-   - staged convoy metadata in epic notes + session context
+   - execution convoy metadata in tracking notes + session context
 ═══════════════════════════════════════════════════════════════
 
 Output this banner to the user, then close this step to begin.
@@ -153,7 +158,7 @@ Output this banner to the user, then close this step to begin.
 
 [[steps]]
 id = "stage-bootstrap"
-title = "Stage 1: Bootstrap Epic + Integration Branch"
+title = "Stage 1: Resolve Tracking Bead + Execution Convoy"
 needs = ["kickoff"]
 description = """
 Placeholder expanded by `bootstrap-expansion`.
@@ -246,14 +251,16 @@ Set up the execution handoff for session 2.
 ## Resolve Context
 
 ```bash
+CONVOY_ID=$(awk -F': ' '/^convoy_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
 EPIC_ID=$(awk -F': ' '/^epic_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
 ```
 
-## Always Update Root Epic
+## Always Update Tracking Surfaces
 
 Append a planning/execution-setup note:
 
 ```bash
+bd update "$CONVOY_ID" --append-notes "Session 2 start:\n- spec: docs/plans/{{feature}}/spec.md\n- status: planning complete, creating execution beads next"
 bd update "$EPIC_ID" --append-notes "Session 2 start:\n- spec: docs/plans/{{feature}}/spec.md\n- status: planning complete, creating execution beads next"
 ```
 """
@@ -285,69 +292,77 @@ Placeholder expanded by `execution-beads-expansion`.
 """
 
 # ============================================================================
-# STAGE 7: STAGE EXECUTION CONVOY
+# STAGE 7: FINALIZE EXECUTION CONVOY
 # ============================================================================
 
 [[steps]]
 id = "stage-stage-convoy"
-title = "Stage 7: Stage Execution Convoy"
+title = "Stage 7: Finalize Execution Convoy"
 needs = ["stage-create-execution-beads"]
 description = """
-Create or refresh the staged convoy that will track the execution beads.
+Confirm the execution convoy is the primary container for the execution graph.
 
 ## Inputs
 
-- root epic from `session-context.md`
+- execution convoy from `session-context.md`
 - execution beads created from `plans.md`
+- `target_branch` from `session-context.md`
 
-## Stage
+## Resolve Context
 
 Run:
 
 ```bash
-EXISTING_CONVOY_ID=$(awk -F': ' '/^convoy_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
-if [ -n "$EXISTING_CONVOY_ID" ]; then
-  STAGE_JSON=$(gt convoy stage "$EXISTING_CONVOY_ID" --json --no-validate)
-else
-  STAGE_JSON=$(gt convoy stage "$EPIC_ID" --json --no-validate)
-fi
-CONVOY_ID=$(printf '%s\n' "$STAGE_JSON" | jq -r '.convoy_id')
-CONVOY_STATUS=$(printf '%s\n' "$STAGE_JSON" | jq -r '.status')
+EPIC_ID=$(awk -F': ' '/^epic_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
+TARGET_BRANCH=$(awk -F': ' '/^target_branch:/{print $2}' docs/plans/{{feature}}/session-context.md)
+CONVOY_ID=$(awk -F': ' '/^convoy_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
 ```
+
+## Verify Convoy Ownership
+
+The convoy should already exist from bootstrap. Confirm it is present and still
+points at the intended target branch:
+
+```bash
+gc convoy target "$CONVOY_ID" "$TARGET_BRANCH"
+gc convoy status "$CONVOY_ID"
+```
+
+## Verify Tracked Execution Beads
+
+The execution beads should now be direct children of the convoy, not of the
+tracking bead:
+
+```bash
+bd list --parent "$CONVOY_ID" --all --limit 0 --json
+```
+
+If expected execution beads are missing from the convoy, stop and repair the
+execution bead graph before continuing.
 
 ## Persist
 
-Capture the staged convoy metadata and write it into `docs/plans/{{feature}}/session-context.md`.
+Refresh the convoy metadata recorded in `docs/plans/{{feature}}/session-context.md`.
 
-Important:
-- stage with `--no-validate` so the convoy tracks only the local execution
-  graph
-- `implementation review` is the final expected gate for new planned-delivery
-  runs
-- later re-stage from the convoy ID so you refresh the tracked graph instead of
-  creating a duplicate staged convoy
-
-For example:
-
-```bash
 TMP_CONTEXT=$(mktemp)
 grep -Ev '^convoy_id:|^convoy_status:' docs/plans/{{feature}}/session-context.md > "$TMP_CONTEXT"
 {
   cat "$TMP_CONTEXT"
   printf 'convoy_id: %s\n' "$CONVOY_ID"
-  printf 'convoy_status: %s\n' "$CONVOY_STATUS"
+  printf 'convoy_status: %s\n' "open"
 } > docs/plans/{{feature}}/session-context.md
 rm -f "$TMP_CONTEXT"
 ```
 
-Also append a root epic note including:
+Also append notes including:
 - `plans.md` path
-- staged convoy ID
-- staged convoy status
+- execution convoy ID
+- execution convoy target branch
+- confirmation that the convoy, not the epic, is the execution container
 - next command to begin same-session execution with `$epic-delivery`
 
-Do not launch the convoy from this workflow. The staged convoy is a tracking
-artifact for the execution session, not a daemon-dispatch handoff.
+Do not dispatch from this workflow. The execution convoy is a tracking artifact
+for the current-session delivery path, not a daemon-dispatch handoff.
 """
 
 # ============================================================================
@@ -365,18 +380,18 @@ Two-session planned workflow complete.
 - docs/plans/{{feature}}/spec.md
 - docs/plans/{{feature}}/plans.md
 - docs/plans/{{feature}}/session-context.md
-- root epic child execution beads
-- staged convoy tracking those execution beads
+- execution-convoy child execution beads
+- owned execution convoy tracking those execution beads
 
 **Next Step:**
-- execute the staged convoy in the current session using `$epic-delivery`
-- use the root epic ID as the skill input
+- execute the convoy in the current session using `$epic-delivery`
+- use the convoy ID as the skill input
 
 **Modeling note:**
 This workflow treats convergence/planning and implementation as different
 phases on purpose. Session 1 distills noisy exploration into `spec.md`;
-session 2 produces `plans.md`, execution beads, and a staged convoy so
-implementation can run from beads rather than from the formula.
+session 2 produces `plans.md`, execution beads, and an owned convoy so
+implementation can run from tracked beads rather than from the formula.
 """
 
 # ============================================================================
@@ -388,6 +403,7 @@ implementation can run from beads rather than from the formula.
 [[compose.expand]]
 target = "stage-bootstrap"
 with = "bootstrap-expansion"
+vars = { target_branch = "{target_branch}", bootstrap_epic_description = "{bootstrap_epic_description}", delivery_mode_context = "{delivery_mode_context}" }
 
 [[compose.expand]]
 target = "stage-draft-spec"

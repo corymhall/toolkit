@@ -83,8 +83,8 @@ Only include optional sections when they carry real content.
 
 - Commit the spec to git (on a feature branch, not main)
 - Next steps:
-  - `gt sling enrich` — optional: find gaps, auto-fix, ask decisions
-  - `gt sling beadify` — create execution beads from the spec
+  - `enrich-expansion` — optional: find gaps, auto-fix, ask decisions
+  - `delivery-workflow-quick` or `delivery-workflow-planned` — continue through the active delivery workflows
 
 ## Key Principles
 
