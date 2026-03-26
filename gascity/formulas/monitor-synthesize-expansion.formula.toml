@@ -32,14 +32,14 @@ at the initial assigned prompt?
 Secondary signals:
 - `gt polecat status <rig>/<polecat>` for lifecycle state and last activity
 - `gt hook show <rig>/<polecat>` for current hooked wisp
-- `find "$REVIEW_DIR" -type f` for actual review artifact existence
+- `bd show <review-bead-id> --json` for actual review-note existence
 
 ## Terminal Conditions
 
 Do not stop monitoring until every required reviewer reaches one of these
 terminal conditions:
 
-- the expected report file exists in `$REVIEW_DIR`
+- the expected review bead is closed with notes + `review.report_status=written`
 - the reviewer wisp is closed
 - the reviewer polecat is idle with no hook
 - or the reviewer is explicitly classified as stalled/failed after retry policy
@@ -53,7 +53,7 @@ Keep polling until terminal conditions are met. A typical pass should:
 gt peek <rig>/<polecat>
 gt polecat status <rig>/<polecat>
 gt hook show <rig>/<polecat>
-find "$REVIEW_DIR" -type f | sort
+bd show <review-bead-id>
 ```
 
 Then decide whether to continue waiting, retry, or classify failure.
@@ -66,7 +66,7 @@ Then decide whether to continue waiting, retry, or classify failure.
   first wait window, send one explicit nudge
 - If it still has not started after the second wait window, classify startup as
   failed and record that in `session-ledger.md`
-- If the hook clears but the expected report is missing, inspect the worker
+- If the hook clears but the expected bead notes are missing, inspect the worker
   notes and clone before deciding whether the run failed
 - If the worker is clearly making progress, keep monitoring and do not
   summarize yet
@@ -84,17 +84,17 @@ gt nudge <rig>/<polecat> "Run gt hook and execute the hooked mol-review-implemen
 ## Anti-Patterns
 
 Do NOT:
-- stop monitoring just because no report exists yet
+- stop monitoring just because no notes exist yet
 - summarize intermediate state as final state
-- synthesize before reports exist or failures are explicitly classified
+- synthesize before review bead notes exist or failures are explicitly classified
 - ask the human whether to keep monitoring unless retry policy is exhausted
 - replace a missing Codex review lane with an informal parent-session
   "self review"
 
 ## Synthesis
 
-After the required reports exist:
-- read reports from `$REVIEW_DIR`
+After the required sidecar reports exist on their review beads:
+- read the review bead notes
 - compare findings across reviewers
 - deduplicate overlaps
 - classify blocking vs non-blocking issues

@@ -45,7 +45,7 @@ Append:
 - spec path
 - if `plans.md` exists, include plans path
 - ledger path
-- review artifact paths
+- review bead IDs
 - verification commands run
 - unresolved risks (if any)
 - completion status

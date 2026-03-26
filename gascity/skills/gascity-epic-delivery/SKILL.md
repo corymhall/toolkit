@@ -75,7 +75,9 @@ Optional but useful:
   - `impl_scope="origin/$(git branch --show-current)"`
   - `categories="all"`
   - `review_profile="general"` unless a stronger domain lens is needed
-  - `output_path` under rig-root `.runtime/reviews/...`
+  - `report_to="$BD_ACTOR"` when you want a completion mail back to the owner
+- Record the review bead ID printed by `gc sling` and monitor the bead notes,
+  not a scratch report file.
 - If no reviewer target is available, skip the sidecar lane and continue with
   the Codex-native reviewer lanes.
 - Synthesize the reviewer findings in the current session and separate blocking

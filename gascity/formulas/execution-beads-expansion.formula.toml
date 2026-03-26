@@ -130,27 +130,36 @@ Each execution bead description should be concise and execution-oriented:
 
 For the `implementation review` bead specifically:
 - direct the executor to review the implementation against
-  `docs/plans/{{feature}}/spec.md` and the current delivery changes, not to use
-  a manual review skill
+  `docs/plans/{{feature}}/spec.md` and the current delivery changes
+- tell the executor that this checkpoint should use `$request-review` as the
+  in-session review launcher, with target = spec path plus current branch diff
 - launch Codex-native reviewer lanes in parallel:
   - `general_reviewer` is required
   - `spec_alignment_reviewer` is required when `spec.md` exists
   - `test_reviewer` is required when behavior changes, tests changed, or
     verification strength is the main uncertainty
+  - `error_handling_reviewer` is required when retries, recovery, fallbacks, or
+    operational risk are materially in scope
 - if named reviewer agents are unavailable, report missing lanes and fall back
   to equivalent normal Codex reviewer subagents only when the intended lens
   stays clear
+- prepare a shared review directory under rig-root `.runtime/reviews/...` with
+  `spec.md`, `diff.patch`, and `diffstat.txt` before launching any sidecar lane
 - only if an extra fresh-worker or alternate-runtime perspective is warranted,
-  sling `mol-review-implementation` to a reviewer target with:
-  - `feature="{{feature}}"`
-  - `reviewer_label` for the sidecar lane, such as `codex` or `claude`
-  - `spec_scope="docs/plans/{{feature}}/spec.md"`
-  - `impl_scope="origin/$(git branch --show-current)"`
-  - `categories="all"`
-  - `review_profile="general"` unless a stronger domain lens is needed
-  - `output_path` under rig-root `.runtime/reviews/...`
+  sling `mol-review-implementation` with an explicit pool command:
+  - `gc sling "$RIG_NAME/reviewer" mol-review-implementation --formula --nudge ... --var reviewer_label="codex" --var report_to="$BD_ACTOR"`
+  - `gc sling "$RIG_NAME/reviewer-claude" mol-review-implementation --formula --nudge ... --var reviewer_label="claude" --var report_to="$BD_ACTOR"`
+  - pass `feature`, `spec_scope="$REVIEW_DIR/spec.md"`, `impl_scope="origin/$(git branch --show-current)"`, `categories="all"`, and `review_profile="general"` unless a stronger domain lens is needed
+  - capture the review bead ID from `gc sling` output and record it for monitoring
 - scope review against `docs/plans/{{feature}}/spec.md` and the current branch's
   implementation changes for this delivery
+- monitor any sidecar lane with `bd show <review-bead-id>`, `gc status --json`,
+  `gc session peek <session-alias>`, and bead-note / metadata checks
+- give a started sidecar roughly 2 minutes before the first progress judgment
+  and at least 10 minutes of no visible progress before calling it stalled
+- if the sidecar is stuck at the initial prompt, nudge it once; on hard failure
+  retry the launch once, then record the lane as skipped/incomplete if it still
+  does not append its report to the review bead
 - synthesize the reviewer results in the parent session and separate blocking
   findings from residual risks
 - require a return to fix work if the review is blocking

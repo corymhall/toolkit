@@ -9,10 +9,10 @@
 #     --var impl_scope="origin/integration/ipv6-support" \
 #     --var categories="all" \
 #     --var review_profile="general" \
-#     --var output_path="/Users/chall/gt/toolkit/.runtime/reviews/ipv6-support/run-001/codex-review.md"
+#     --var report_to="$BD_ACTOR"
 #
 # The parent workflow owns multi-model synthesis. This formula writes exactly
-# one structured review report.
+# one structured review report onto its own review bead.
 
 description = """
 Single-reviewer implementation audit for spec alignment and delivery quality.
@@ -29,9 +29,13 @@ Use this as the autonomous review worker in larger workflows such as
   - scope
   - standards
 - Apply the selected `review_profile` lens if present
-- Write one structured report to `output_path`
+- Append one structured report to the current review bead's notes
+- Mirror concise review metadata onto the current bead so parent synthesis can
+  discover status without reading pane output
+- Optionally send a short completion mail to `report_to`
 - Treat this as report-only work: do not commit the report as feature code
-- Finish cleanly after writing the report; do not leave extra local review artifacts behind
+- Finish cleanly after writing the report; do not leave scratch review files
+  behind as the delivery artifact
 
 ## Category Model
 
@@ -89,9 +93,13 @@ description = "Domain review lens, e.g. general, go-development, neovim-plugin-d
 required = false
 default = "general"
 
+[vars.report_to]
+description = "Optional mail recipient for a short completion notice, e.g. $BD_ACTOR"
+required = false
+
 [vars.output_path]
-description = "Absolute shared path for the markdown review report, typically under rig-root .runtime/reviews/"
-required = true
+description = "Deprecated. Former shared output path for the review report; bead notes are now the canonical report surface."
+required = false
 
 
 # ============================================================================
@@ -111,11 +119,12 @@ description = """
  Impl Scope:      {{impl_scope}}
  Categories:      {{categories}}
  Review Profile:  {{review_profile}}
- Output:          {{output_path}}
+ Report To:       {{report_to}}
 
  Contract:
    - one reviewer run
    - one structured report
+   - report is appended to the current review bead
    - no fixes, no issue filing, no synthesis
    - report-only task: do not commit the report
 ═══════════════════════════════════════════════════════════════
@@ -297,15 +306,9 @@ id = "write-report"
 title = "Write structured review report"
 needs = ["perform-review"]
 description = """
-Write the final review report to `{{output_path}}`.
+Write the final review report onto the current review bead.
 
-## 1. Create the output directory
-
-```bash
-mkdir -p "$(dirname "{{output_path}}")"
-```
-
-## 2. Write the report in this exact structure
+## 1. Write the report in this exact structure
 
 ```markdown
 # Implementation Review: {{feature}}
@@ -354,24 +357,67 @@ PASS / PASS WITH NOTES / FAIL
 
 If a section has no findings, write `- None.`
 
+## 2. Persist the report on the current review bead
+
+Append the full markdown report to this bead's notes:
+
+```bash
+bd update "$GC_BEAD_ID" --append-notes "$(cat <<'EOF'
+<full markdown review>
+EOF
+)"
+```
+
+Then mirror a compact machine-readable status onto metadata:
+
+```bash
+bd update "$GC_BEAD_ID" \
+  --set-metadata review.report_mode=bead_notes \
+  --set-metadata review.report_status=written \
+  --set-metadata review.reviewer_label="{{reviewer_label}}" \
+  --set-metadata review.verdict="<PASS|PASS_WITH_NOTES|FAIL>"
+```
+
+Use `PASS_WITH_NOTES` for `PASS WITH NOTES`.
+
 ## 3. Final check
 
 Before finishing, verify:
-- the file exists at `{{output_path}}`
+- the current bead now contains the full report in its notes
 - the structure is complete
 - findings are actionable and scoped
 
 ## Exit criteria
 
-The review report is written, complete, and ready for parent-side synthesis.
+The review report is written onto the review bead, complete, and ready for
+parent-side synthesis.
 
-## 4. Report-only completion
+## 4. Optional completion mail
+
+If `report_to` is non-empty, send a short completion note that points back to
+the review bead:
+
+```bash
+if [ -n "{{report_to}}" ]; then
+  gc mail send "{{report_to}}" -s "Implementation review {{feature}} {{reviewer_label}} complete" --stdin <<EOF
+Implementation review complete.
+
+Feature: {{feature}}
+Reviewer: {{reviewer_label}}
+Review bead: $GC_BEAD_ID
+
+Read the bead notes for the full report.
+EOF
+fi
+```
+
+## 5. Report-only completion
 
 This is a report-only task. Do not commit the report as feature code.
 
-After verifying the report exists, complete the polecat lifecycle with:
+After verifying the report is on the bead, complete the workflow cleanly with:
 
 ```bash
-gt done --cleanup-status clean
+gc runtime drain-ack
 ```
 """

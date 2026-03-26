@@ -562,9 +562,8 @@ structured review artifact without a human-interactive skill session.
 - Core categories stay fixed: completeness, quality, scope, standards
 - `categories` should usually stay `all`
 - Domain expertise is applied through `review_profile`, not new categories
-- One run writes one shared report artifact
-- Report artifacts belong under rig-root `.runtime/reviews/...`, not in the
-  polecat's repo clone
+- One run appends one durable report to its own review bead
+- Optional completion mail can point the owner back to that bead
 - Review workers are report-only tasks and should not commit review artifacts
 
 **Typical usage:**
@@ -576,7 +575,7 @@ gc sling <target> mol-review-implementation --formula \
   --var impl_scope="integration/ipv6-support" \
   --var categories="all" \
   --var review_profile="general" \
-  --var output_path="/Users/chall/gt/toolkit/.runtime/reviews/ipv6-support/run-001/codex-review.md"
+  --var report_to="$BD_ACTOR"
 ```
 
 **Vars:**
@@ -589,7 +588,8 @@ gc sling <target> mol-review-implementation --formula \
 | `impl_scope` | yes | Implementation scope to review |
 | `categories` | no | Review dimensions; defaults to `all` |
 | `review_profile` | no | Domain lens; defaults to `general` |
-| `output_path` | yes | Shared absolute output path for the review report |
+| `report_to` | no | Optional completion-mail recipient |
+| `output_path` | no | Deprecated compatibility var; review beads are now canonical |
 
 The intended default final-review stack is:
 - general Codex review

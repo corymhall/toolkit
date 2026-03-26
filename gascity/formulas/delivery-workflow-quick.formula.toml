@@ -321,44 +321,162 @@ description = """
 Review the implementation against `spec.md` and the current delivery changes
 before final verification.
 
-Do this review in the current session using this recipe:
+This checkpoint owns the review recipe. Do not assume the next agent can infer
+missing review mechanics from repo context.
 
-1. Review scope:
-- `docs/plans/{{feature}}/spec.md`
-- the current branch's implementation changes for this delivery
+## 1. Prepare shared review inputs
 
-2. Launch Codex-native reviewer lanes in parallel:
-- `general_reviewer` is required
-- `spec_alignment_reviewer` is required when `spec.md` exists; in this workflow
-  it should usually run
-- `test_reviewer` is required when behavior changes, tests changed, or the main
-  uncertainty is verification strength
+```bash
+TOP=$(git rev-parse --show-toplevel)
+RIG_ROOT=$(printf '%s\n' "$TOP" | sed -E 's#/crew/[^/]+$##; s#/polecats/[^/]+/[^/]+$##')
+RIG_NAME=$(basename "$RIG_ROOT")
+REVIEW_RUN_ID="quick-review-$(date +%Y%m%d-%H%M%S)"
+REVIEW_DIR="$RIG_ROOT/.runtime/reviews/{{feature}}/$REVIEW_RUN_ID"
+BASE_REF=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's#^refs/remotes/##')
+[ -n "$BASE_REF" ] || BASE_REF="origin/main"
+BASE_COMMIT=$(git merge-base "$BASE_REF" HEAD 2>/dev/null || true)
+mkdir -p "$REVIEW_DIR"
+cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
+if [ -n "$BASE_COMMIT" ]; then
+  git diff --stat "$BASE_COMMIT"...HEAD > "$REVIEW_DIR/diffstat.txt"
+  git diff "$BASE_COMMIT"...HEAD > "$REVIEW_DIR/diff.patch"
+else
+  git diff --stat > "$REVIEW_DIR/diffstat.txt"
+  git diff > "$REVIEW_DIR/diff.patch"
+fi
+test -f docs/plans/{{feature}}/plans.md && cp docs/plans/{{feature}}/plans.md "$REVIEW_DIR/plans.md"
+test -f docs/plans/{{feature}}/session-context.md && cp docs/plans/{{feature}}/session-context.md "$REVIEW_DIR/session-context.md"
+```
 
-3. If the named reviewer agents are unavailable in the current Codex session:
+Review scope for this stage is:
+- `$REVIEW_DIR/spec.md`
+- the current branch's delivery diff from merge-base with `$BASE_REF`
+  (`$REVIEW_DIR/diff.patch`, `diffstat.txt`, and direct reads from changed
+  files as needed)
+
+## 2. Run the in-session review via `$request-review`
+
+Use `$request-review` as the in-session launcher for Codex-native reviewer
+lanes. Treat this as the default path, not an optional extra.
+
+Required review lenses:
+- `general_reviewer`
+- `spec_alignment_reviewer` because this workflow reviews against `spec.md`
+- `test_reviewer` when behavior changed, tests changed, or verification
+  strength is the main uncertainty
+- `error_handling_reviewer` when retries, recovery, fallbacks, or operational
+  risk are materially in scope
+
+Tell `$request-review` the review target is:
+- spec path: `$REVIEW_DIR/spec.md`
+- implementation scope: the current branch's delivery diff plus directly-read
+  changed files
+
+If named reviewer agents are unavailable in the current Codex session:
 - report which intended lanes are unavailable
-- continue with the reviewer lanes you do have when coverage is still useful
+- continue with the lanes you do have when coverage is still useful
 - fall back to equivalent normal Codex reviewer subagents only when the lens
   stays clear
 
-4. Optional independent review lane:
-- only if an extra fresh-worker or alternate-runtime perspective is worth the
-  latency, sling `mol-review-implementation` to a reviewer target
-- pass:
-  - `feature="{{feature}}"`
-  - `reviewer_label` for the sidecar lane, such as `codex` or `claude`
-  - `spec_scope="docs/plans/{{feature}}/spec.md"`
-  - `impl_scope="origin/$(git branch --show-current)"`
-  - `categories="all"`
-  - `review_profile="general"` unless a stronger domain lens is needed
-  - `output_path` under rig-root `.runtime/reviews/...`
-- if no reviewer target is available, skip this sidecar lane and continue with
-  the Codex-native reviewer lanes
-
-5. Synthesize the results in the parent session:
-- group blocking findings, important findings, and residual risks
+Parent session responsibilities after `$request-review` returns:
+- separate blocking findings from important non-blocking findings
 - call out disagreements or ambiguities across lanes
+- state explicitly when no meaningful findings were found
 
-6. If review finds blocking issues:
+## 3. Optional independent sidecar lane
+
+Only add a sidecar when an extra fresh-worker or alternate-runtime perspective
+is worth the latency. Prefer at most one sidecar lane unless the change is
+especially risky.
+
+Use these exact commands:
+
+```bash
+gc sling "$RIG_NAME/reviewer" mol-review-implementation --formula --nudge \
+  --var feature="{{feature}}" \
+  --var reviewer_label="codex" \
+  --var spec_scope="$REVIEW_DIR/spec.md" \
+  --var impl_scope="origin/$(git branch --show-current)" \
+  --var categories="all" \
+  --var review_profile="general" \
+  --var report_to="$BD_ACTOR"
+```
+
+```bash
+gc sling "$RIG_NAME/reviewer-claude" mol-review-implementation --formula --nudge \
+  --var feature="{{feature}}" \
+  --var reviewer_label="claude" \
+  --var spec_scope="$REVIEW_DIR/spec.md" \
+  --var impl_scope="origin/$(git branch --show-current)" \
+  --var categories="all" \
+  --var review_profile="general" \
+  --var report_to="$BD_ACTOR"
+```
+
+Capture the review bead ID that `gc sling` prints (`Started workflow <id> ...`)
+and record it in your notes or `session-ledger.md`. Example:
+
+```bash
+CODEX_LAUNCH=$(gc sling "$RIG_NAME/reviewer" mol-review-implementation --formula --nudge \
+  --var feature="{{feature}}" \
+  --var reviewer_label="codex" \
+  --var spec_scope="$REVIEW_DIR/spec.md" \
+  --var impl_scope="origin/$(git branch --show-current)" \
+  --var categories="all" \
+  --var review_profile="general" \
+  --var report_to="$BD_ACTOR")
+CODEX_REVIEW_ID=$(printf '%s\n' "$CODEX_LAUNCH" | awk '/Started workflow/{print $3; exit}')
+printf '%s\n' "$CODEX_LAUNCH"
+```
+
+Pool choice:
+- use `"$RIG_NAME/reviewer"` for a Codex sidecar
+- use `"$RIG_NAME/reviewer-claude"` for a Claude sidecar
+- if neither pool is available, record that the sidecar lane was skipped and
+  continue with the in-session review
+
+## 4. Monitor sidecar completion and handle failures
+
+Primary signals:
+- `bd show <review-bead-id>` to confirm the review bead closed cleanly
+- `gc status --json` to discover the claimed reviewer session alias
+- `gc session peek <session-alias>` to inspect live progress
+- `bd show <review-bead-id> --json` to confirm notes and `review.*` metadata
+  were written
+
+Patience rules:
+- wait about 2 minutes before the first real progress judgment unless you
+  already have a hard failure signal
+- a started review lane may spend 10-20 minutes reading files and writing the
+  report
+- only classify a started reviewer as stalled after at least 10 minutes with no
+  visible progress, or after an explicit hard failure
+
+If the worker is still sitting at the initial assigned prompt, nudge it:
+
+```bash
+gc session nudge <session-alias> "Run gc hook and execute the assigned mol-review-implementation now. This is a report-only task writing to the shared .runtime review directory; do not commit the report."
+```
+
+Failure handling:
+- on hard failure or no claim after a reasonable wait, retry the same sidecar
+  launch once
+- if the retry also fails, either try the other reviewer pool when that still
+  gives useful independent coverage, or continue without the sidecar
+- record missing, skipped, or failed sidecar lanes in the synthesis instead of
+  silently dropping them
+- do not count a sidecar lane as complete until its bead notes contain the full
+  report
+
+## 5. Synthesize and gate progress
+
+Synthesize all review results in the parent session:
+- blocking findings
+- important findings
+- residual risks or test gaps
+- disagreements across lanes
+
+If review finds blocking issues:
 - return to implementation work
 - fix the issues
 - rerun this review stage before proceeding

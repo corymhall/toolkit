@@ -82,31 +82,30 @@ Optionally run:
 
 ## Review Commands
 
-Write reports under:
-- `$REVIEW_DIR/codex-review.md`
-- `$REVIEW_DIR/claude-review.md`
-- optional specialist review report if used
-
 Use the review worker formula:
 
 ```bash
-gc sling "$RIG_NAME/reviewer" mol-review-implementation --formula --nudge \
+CODEX_LAUNCH=$(gc sling "$RIG_NAME/reviewer" mol-review-implementation --formula --nudge \
   --var feature="{{feature}}" \
   --var reviewer_label="codex" \
   --var spec_scope="$REVIEW_DIR/spec.md" \
   --var impl_scope="origin/$(git branch --show-current)" \
   --var categories="all" \
   --var review_profile="general" \
-  --var output_path="$REVIEW_DIR/codex-review.md"
+  --var report_to="$BD_ACTOR")
+CODEX_REVIEW_ID=$(printf '%s\n' "$CODEX_LAUNCH" | awk '/Started workflow/{print $3; exit}')
+printf '%s\n' "$CODEX_LAUNCH"
 
-gc sling "$RIG_NAME/reviewer-claude" mol-review-implementation --formula --nudge \
+CLAUDE_LAUNCH=$(gc sling "$RIG_NAME/reviewer-claude" mol-review-implementation --formula --nudge \
   --var feature="{{feature}}" \
   --var reviewer_label="claude" \
   --var spec_scope="$REVIEW_DIR/spec.md" \
   --var impl_scope="origin/$(git branch --show-current)" \
   --var categories="all" \
   --var review_profile="general" \
-  --var output_path="$REVIEW_DIR/claude-review.md"
+  --var report_to="$BD_ACTOR")
+CLAUDE_REVIEW_ID=$(printf '%s\n' "$CLAUDE_LAUNCH" | awk '/Started workflow/{print $3; exit}')
+printf '%s\n' "$CLAUDE_LAUNCH"
 ```
 
 If a specialist profile is selected, add one more review run with that profile.
@@ -115,16 +114,22 @@ For example:
 ```bash
 REVIEW_PROFILE=$(awk -F': ' '/^review_profiles_selected:/{print $2}' docs/plans/{{feature}}/session-context.md | cut -d',' -f1)
 if [ -n "$REVIEW_PROFILE" ] && [ "$REVIEW_PROFILE" != "general" ]; then
-  gc sling "$RIG_NAME/reviewer" mol-review-implementation --formula --nudge \
+  SPECIALIST_LAUNCH=$(gc sling "$RIG_NAME/reviewer" mol-review-implementation --formula --nudge \
     --var feature="{{feature}}" \
     --var reviewer_label="$REVIEW_PROFILE" \
     --var spec_scope="$REVIEW_DIR/spec.md" \
     --var impl_scope="origin/$(git branch --show-current)" \
     --var categories="all" \
     --var review_profile="$REVIEW_PROFILE" \
-    --var output_path="$REVIEW_DIR/$REVIEW_PROFILE-review.md"
+    --var report_to="$BD_ACTOR")
+  SPECIALIST_REVIEW_ID=$(printf '%s\n' "$SPECIALIST_LAUNCH" | awk '/Started workflow/{print $3; exit}')
+  printf '%s\n' "$SPECIALIST_LAUNCH"
 fi
 ```
+
+The `Started workflow <id> ...` line gives you the review bead ID. Record those
+IDs in `session-ledger.md`; parent-side monitoring should key off the bead IDs,
+not scratch output files.
 
 ## Launch Discipline
 
@@ -141,9 +146,9 @@ Use multiple signals, but treat them differently:
 - `gc status --json` is the primary session discovery surface
   - use it to find running `reviewer-*` and `reviewer-claude-*` session aliases
 - `gc session peek <session-alias>` is the primary live-progress tool
-  - use it to see whether the reviewer is actively reading files or writing a report
-- `find "$REVIEW_DIR" -type f` is the completion signal
-  - use it to detect when review artifacts actually exist
+  - use it to see whether the reviewer is actively reading files or writing notes
+- `bd show <review-bead-id> --json` is the canonical report-read signal
+  - use it to confirm `review.report_status=written` and inspect the note body
 
 Review workers are often slow because they are doing real file reads and
 comparison work. Expect a normal lane to take 10-20 minutes. Do not classify a
@@ -166,14 +171,14 @@ nudge it explicitly:
 gc session nudge <session-alias> "Run gc hook and execute the assigned mol-review-implementation now. This is a report-only task writing to the shared .runtime review directory; do not commit the report."
 ```
 
-Do not synthesize review results until the expected shared report files exist
-under `$REVIEW_DIR`.
+Do not synthesize review results until the expected reports exist on the
+corresponding review beads.
 
 Do not treat parent-session synthesis as a substitute for the required Codex
 review report. If the Codex sidecar did not produce its report, record that as
 an incomplete/failed lane.
 
 Do not synthesize review results in this step. Launch the workers, record the
-worker identities and expected report paths in `session-ledger.md`, then move to
-the monitoring step.
+worker identities and review bead IDs in `session-ledger.md`, then move to the
+monitoring step.
 """
