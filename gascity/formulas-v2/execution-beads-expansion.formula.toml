@@ -1,7 +1,7 @@
 # Execution Beads Expansion
 #
 # Turn a finalized milestone plan into execution beads plus review/verification
-# gates under the root epic.
+# gates under the execution convoy.
 
 description = """
 Read `plans.md`, derive execution beads from the milestone plan, validate the
@@ -9,8 +9,8 @@ dependency shape, and create the bead graph that the execution session will
 work through.
 
 **Input:** `docs/plans/{{feature}}/spec.md`, `docs/plans/{{feature}}/plans.md`,
-and the root epic in `session-context.md`
-**Output:** Root epic child execution beads with a dependency graph aligned to
+and the execution convoy/tracking bead in `session-context.md`
+**Output:** Execution-convoy child beads with a dependency graph aligned to
 `plans.md`
 
 This expansion is intentionally narrower than `beadify-expansion`.
@@ -20,12 +20,25 @@ reviewed milestone plan into execution beads.
 formula = "execution-beads-expansion"
 type = "expansion"
 pour = true
-version = 1
+version = 2
 
 [vars]
 [vars.feature]
 description = "Feature name (maps to docs/plans/{{feature}}/plans.md)"
 required = true
+
+[[template]]
+id = "{target}.body"
+title = "Execution-beads scope"
+needs = ["{target}.validate-inputs", "{target}.design-graph", "{target}.create-beads"]
+description = """
+Terminal latch for the execution-beads phase.
+
+This scope succeeds only after the planning artifacts are validated, the
+execution graph shape is designed, and the convoy-owned execution bead graph
+has been created or repaired successfully.
+"""
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "execution-beads", "gc.scope_role" = "body" }
 
 [[template]]
 id = "{target}.kickoff"
@@ -41,15 +54,16 @@ description = """
    - docs/plans/{{feature}}/session-context.md
 
  Output:
-   - root epic child execution beads aligned to `plans.md`
+   - execution convoy child beads aligned to `plans.md`
 ═══════════════════════════════════════════════════════════════
 
 Output this banner to the user, then close this step to begin.
 """
+metadata = { "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 [[template]]
 id = "{target}.validate-inputs"
-title = "Validate spec, plan, and epic context"
+title = "Validate spec, plan, and convoy context"
 needs = ["{target}.kickoff"]
 description = """
 Validate that execution bead creation is grounded in the finalized planning artifacts.
@@ -67,10 +81,12 @@ Validate that execution bead creation is grounded in the finalized planning arti
    - each milestone has validation commands or proof expectations
    - stop conditions are explicit where needed
 
-3. Read `session-context.md` and resolve the root epic:
+3. Read `session-context.md` and resolve the execution convoy and tracking bead:
 
 ```bash
+CONVOY_ID=$(awk -F': ' '/^convoy_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
 EPIC_ID=$(awk -F': ' '/^epic_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
+bd show "$CONVOY_ID"
 bd show "$EPIC_ID"
 ```
 
@@ -81,9 +97,11 @@ bd show "$EPIC_ID"
 
 Report:
 - plan path
-- root epic ID
+- execution convoy ID
+- tracking bead ID
 - whether the plan is ready to become execution beads
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "setup", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 [[template]]
 id = "{target}.design-graph"
@@ -110,8 +128,6 @@ Translate `plans.md` into a concrete execution bead graph.
 5. Do NOT create a separate final validation bead.
    - for planned delivery, `implementation review` is the final expected local
      gate
-   - convoy staging should use `--no-validate` so no extra capstone bead is
-     required for new runs
 6. Dependency rules:
    - `implementation review` depends on the last implementation milestone/checkpoint
    - use normal `blocks` dependencies unless `plans.md` makes a true merge-gated
@@ -148,30 +164,31 @@ Produce a brief bead graph summary:
 - confirmation that `implementation review` is the final expected gate
 - notable dependency edges
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 [[template]]
 id = "{target}.create-beads"
 title = "Create execution beads and dependencies"
 needs = ["{target}.design-graph"]
 description = """
-Create the execution bead graph under the root epic.
+Create the execution bead graph under the execution convoy.
 
 ## Rules
 
 - Reuse existing matching child beads when the graph is already present.
-- Avoid duplicates by checking existing children under the root epic first.
+- Avoid duplicates by checking existing children under the execution convoy first.
 - Create new beads only for missing milestones/checkpoints/gates.
 - Add or repair dependencies to match the graph designed in the previous step.
 
 ## Commands
 
-Use `bd list --parent "$EPIC_ID" --json` to inspect existing children.
-Use `bd create ... --parent "$EPIC_ID"` for missing beads.
+Use `bd list --parent "$CONVOY_ID" --json` to inspect existing tracked beads.
+Use `bd create ... --parent "$CONVOY_ID"` for missing beads.
 Use `bd dep add <blocked> <blocker>` to repair missing edges.
 
-## Root Epic Note
+## Tracking Notes
 
-Append a concise note to the root epic:
+Append a concise note to the convoy and tracking bead:
 - `plans.md` path
 - execution bead count
 - any review-stop checkpoints created
@@ -185,3 +202,4 @@ Report:
 - repaired deps
 - any planning ambiguity that still leaked into execution
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }

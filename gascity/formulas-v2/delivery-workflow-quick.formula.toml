@@ -1,36 +1,38 @@
 # Delivery Workflow Quick
 #
 # End-to-end delivery in ONE Codex session:
-#   bootstrap -> draft-spec -> enrich -> epic tracking -> implement
+#   bootstrap -> draft-spec -> enrich -> convoy tracking -> implement
 #   -> review-implementation -> verify/finalize
 #
 # No polecat delegation, no handoff checkpoints. Keeps ownership in one session,
 # while still recording status in beads.
 #
 # Usage:
-#   gt sling delivery-workflow-quick <crew> \
+#   gc sling delivery-workflow-quick <crew> \
 #     --var feature="ipv6-support" \
 #     --var brief="Add IPv6 CIDR block and subnet support to VPC components" \
-#     [--var epic_id="abc123"]
+#     [--var epic_id="abc123"] \
+#     [--var target_branch="release/1.2"]
 
 
 description = """
-Quick Codex-native delivery workflow with epic-level Gastown tracking.
+Quick Codex-native delivery workflow with convoy-first tracking.
 
-Composes seven stages sequentially:
-1. **Bootstrap** - ensure root epic + integration branch exist
+Composes seven stages in one scoped graph.v2 execution flow:
+1. **Bootstrap** - ensure tracking bead + execution convoy + target branch context exist
 2. **Draft Spec** - produce the standard `spec.md` design record
 3. **Enrich** - tighten spec gaps while preserving serialized intent and traceability
-4. **Tracking Setup** - record the locked plan and execution start on the root epic
+4. **Tracking Setup** - record the locked plan and execution start on the convoy
 5. **Implement** - execute all work in THIS session (subagents optional)
 6. **Implementation Review** - run the shared multi-agent review skill
-7. **Verify + Finalize** - validate, update tracking, and summarize
+7. **Verify + Finalize** - validate, update tracking, land the convoy, and summarize
 
 Use this when you want Codex continuity benefits from a single uninterrupted
-thread and only need epic-level visibility in Gastown.
+thread and only need lightweight convoy-first visibility rather than a
+full execution-bead graph.
 
 **Input:** Feature name + brief description
-**Output:** Implemented feature + updated root epic + verification summary
+**Output:** Implemented feature + updated convoy/tracking notes + verification summary
 
 ## Spec Contract
 
@@ -38,7 +40,7 @@ This workflow relies on the shared `spec.md` contract produced by
 `draft-spec-expansion` and strengthened by `enrich-expansion`.
 
 The source of truth for the exact spec shape is:
-- `gastown/docs/templates/spec.md`
+- `gascity/docs/templates/spec.md`
 - `draft-spec-expansion.formula.toml`
 - `enrich-expansion.formula.toml`
 
@@ -46,42 +48,21 @@ In practice, the spec now carries richer planning context such as goals,
 constraints, and acceptance criteria in addition to design intent, decision
 history, and traceability.
 
-## Step Lifecycle (Molecule Work Loop)
+## Graph-First Execution Contract
 
-This formula runs as a molecule - each step is a wisp bead. Use the
-standard molecule work loop to advance through steps:
+This workflow compiles as a graph.v2 formula. Workers execute ready beads
+directly; they do not advance the workflow with `bd mol current`.
 
-```bash
-bd mol current <molecule-id>
-# execute the step
-bd close <step-id>
-bd mol current <molecule-id>
-# repeat until complete
-```
-
-`bd mol current <molecule-id>` is the sole source of truth for what to do next.
-Execute exactly that current wisp and nothing beyond it.
-
-After closing a wisp, stop and re-run `bd mol current <molecule-id>` before
-starting anything else. Do not begin the next stage from memory, expected
-sequence, prior banner text, or "workflow intent" alone.
-
-Re-running `bd mol current <molecule-id>` is a refresh step, not a stop-and-wait
-boundary. If it returns another actionable wisp, execute it immediately. Do not
-pause for apologies, hand-holding, or workflow-boundary summaries unless the
-current wisp explicitly says `STOP` or requires `request_user_input`.
-
-Status updates are not pause points. If a wisp tells you to report findings,
-state, or completion, do so and then continue the molecule loop immediately
-unless the wisp explicitly requires `request_user_input` or says `STOP`.
-
-If a stage expands into more granular wisps, obey those expanded wisps
-strictly and individually. Do NOT batch-close steps or work ahead.
+Practical consequences:
+- work exactly the ready bead currently routed to you
+- close successful work beads directly
+- let workflow-control handle `gc.kind=check|fanout|scope-check|workflow-finalize`
+- keep the convoy as the primary tracking container for the one-session run
 """
 formula = "delivery-workflow-quick"
 type = "workflow"
 pour = true
-version = 1
+version = 2
 
 [vars]
 [vars.feature]
@@ -97,6 +78,11 @@ description = "Optional existing root epic ID to reuse"
 required = false
 default = ""
 
+[vars.target_branch]
+description = "Optional explicit target branch for downstream work; defaults to the repo default branch when omitted"
+required = false
+default = ""
+
 [vars.bootstrap_epic_description]
 description = "Internal bootstrap epic description"
 required = false
@@ -107,6 +93,15 @@ description = "Internal delivery mode marker"
 required = false
 default = "single-session"
 
+[vars.review_target_a]
+description = "Optional explicit reviewer target for implementation review lane A"
+required = false
+default = "reviewer"
+
+[vars.review_target_b]
+description = "Optional explicit reviewer target for implementation review lane B"
+required = false
+default = "reviewer"
 
 # ============================================================================
 # KICKOFF
@@ -124,10 +119,10 @@ description = """
  Brief:    {{brief}}
 
  Stages:
-   1. Bootstrap (epic + integration branch)
+   1. Bootstrap (tracking bead + convoy + target branch)
    2. Draft Spec (interactive)
    3. Enrich (gap analysis)
-   4. Tracking Setup (root epic notes only)
+   4. Tracking Setup (convoy notes)
    5. Implement (same session, optional subagents)
    6. Implementation Review (shared skill)
    7. Verify + Finalize
@@ -140,6 +135,20 @@ description = """
 
 Output this banner to the user, then close this step to begin.
 """
+metadata = { "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[[steps]]
+id = "quick-body"
+title = "Quick delivery scope"
+needs = ["stage-tracking-setup", "stage-implement", "stage-review-synthesis", "stage-verify-finalize"]
+description = """
+Terminal latch for the single-session quick delivery flow.
+
+This scope succeeds only after execution tracking is established, the
+implementation work is complete, the required review checkpoint passes, and the
+final verification/finalization phase completes.
+"""
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "quick-delivery", "gc.scope_role" = "body" }
 
 # ============================================================================
 # STAGE 1: BOOTSTRAP
@@ -147,7 +156,7 @@ Output this banner to the user, then close this step to begin.
 
 [[steps]]
 id = "stage-bootstrap"
-title = "Stage 1: Bootstrap Epic + Integration Branch"
+title = "Stage 1: Resolve Root Epic + Target Branch"
 needs = ["kickoff"]
 description = """
 Placeholder expanded by `bootstrap-expansion`.
@@ -194,10 +203,10 @@ Strengthen `docs/plans/{{feature}}/spec.md` while preserving:
 
 [[steps]]
 id = "stage-tracking-setup"
-title = "Stage 4: Lightweight Tracking Setup"
+title = "Stage 4: Convoy Tracking Setup"
 needs = ["stage-enrich"]
 description = """
-Lock the plan into the root epic before implementation starts.
+Lock the plan into the convoy before implementation starts.
 
 ## Inputs
 
@@ -207,12 +216,19 @@ Lock the plan into the root epic before implementation starts.
 ## Resolve Context
 
 ```bash
+CONVOY_ID=$(awk -F': ' '/^convoy_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
 EPIC_ID=$(awk -F': ' '/^epic_id:/{print $2}' docs/plans/{{feature}}/session-context.md)
 ```
 
-## Update Root Epic
+## Update Tracking Surfaces
 
-Append a planning summary to the root epic:
+Append a planning summary to the convoy:
+
+```bash
+bd update "$CONVOY_ID" --append-notes "Single-session start:\n- spec: docs/plans/{{feature}}/spec.md\n- status: plan locked, implementation starting"
+```
+
+If a tracking epic exists, mirror the note there too:
 
 ```bash
 bd update "$EPIC_ID" --append-notes "Single-session start:\n- spec: docs/plans/{{feature}}/spec.md\n- status: plan locked, implementation starting"
@@ -223,6 +239,7 @@ Also record:
 - Decision Log count
 - Non-Negotiables count
 """
+metadata = { "gc.scope_ref" = "quick-body", "gc.scope_role" = "setup", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STAGE 5: IMPLEMENT IN THIS SESSION
@@ -240,7 +257,8 @@ Implement the feature end-to-end in THIS session. No polecat delegation.
 - Stay in one session from start to finish.
 - Do not dispatch work to external crews/polecats.
 - Subagents are allowed only for bounded subtasks (exploration, focused edits,
-  targeted tests), with the parent session owning integration.
+  targeted tests), with the parent session owning the branch state and final
+  integration of the work.
 - Preserve `spec.md` intent while implementing; do not silently violate
   Non-Negotiables or Forbidden Approaches.
 
@@ -290,32 +308,176 @@ the signal is strong.
    - whether the next implementation slice still makes sense
 6. If the slice feels risky, run one bounded drift-review subagent before continuing
 7. Update `session-ledger.md`
-8. Append progress notes to the root epic at meaningful checkpoints
+8. Append progress notes to the convoy at meaningful checkpoints
+9. If a tracking epic exists, mirror only high-signal milestones there
 
 Do not treat an implementation slice as complete if the proof model is missing, vague, or
 unsupported by actual evidence.
 
 Prefer small, verified increments over one large final diff.
 """
+metadata = { "gc.scope_ref" = "quick-body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
-# STAGE 6: IMPLEMENTATION REVIEW
+# STAGE 6A: IMPLEMENTATION REVIEW FANOUT PREP
 # ============================================================================
 
 [[steps]]
-id = "stage-review-implementation"
-title = "Stage 6: Run Implementation Review"
+id = "stage-review-survey"
+title = "Stage 6A: Prepare Implementation Review Lanes"
 needs = ["stage-implement"]
 description = """
-Run `$review-implementation` before final verification.
+Prepare the graph-native implementation review checkpoint.
 
-This stage owns:
-- running the spec-vs-implementation audit with both `gpt` and `claude`
-- synthesizing the review result
-- returning to fix work if the review finds blocking issues
+## Inputs
 
-Do not proceed to final verification until the review result is clean.
+- `docs/plans/{{feature}}/spec.md`
+- the current implementation diff on this branch
+
+## Prepare Shared Review Inputs
+
+```bash
+TOP=$(git rev-parse --show-toplevel)
+RIG_ROOT=$(printf '%s\n' "$TOP" | sed -E 's#/crew/[^/]+$##; s#/polecats/[^/]+/[^/]+$##')
+REVIEW_DIR="$RIG_ROOT/.runtime/reviews/{{feature}}/quick-impl-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$REVIEW_DIR"
+cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
+git diff --stat > "$REVIEW_DIR/diffstat.txt"
+git diff > "$REVIEW_DIR/diff.patch"
+```
+
+## Write Lane Briefs
+
+Lane A: spec fidelity + completeness
+
+```bash
+cat > "$REVIEW_DIR/review-a.md" <<'EOF'
+Read:
+- $REVIEW_DIR/spec.md
+- $REVIEW_DIR/diffstat.txt
+- $REVIEW_DIR/diff.patch
+
+Review focus:
+- Does implementation satisfy the spec's goals, constraints, and acceptance criteria?
+- Is any required slice missing or only partially implemented?
+- Did the change violate any non-negotiables or forbidden approaches?
+
+Report format:
+- Finding title
+- Severity: must-fix | should-fix
+- Why it matters
+- Concrete fix or follow-up
+
+Rules:
+- Do not edit product files
+- Do not create extra beads
+EOF
+```
+
+Lane B: risk + regression + verification quality
+
+```bash
+cat > "$REVIEW_DIR/review-b.md" <<'EOF'
+Read:
+- $REVIEW_DIR/spec.md
+- $REVIEW_DIR/diffstat.txt
+- $REVIEW_DIR/diff.patch
+
+Review focus:
+- What regression or correctness risks remain?
+- Is the available verification evidence strong enough?
+- What should block finalize if left unresolved?
+
+Report format:
+- Finding title
+- Severity: must-fix | should-fix
+- Why it matters
+- Concrete fix or follow-up
+
+Rules:
+- Do not edit product files
+- Do not create extra beads
+EOF
+```
+
+## Emit Review Manifest
+
+```bash
+cat > "$REVIEW_DIR/review-manifest.json" <<EOF
+{
+  "items": [
+    {
+      "title": "Implementation review A: {{feature}} spec fidelity",
+      "reviewer_target": "{{review_target_a}}",
+      "prompt_path": "$REVIEW_DIR/review-a.md"
+    },
+    {
+      "title": "Implementation review B: {{feature}} risk and verification",
+      "reviewer_target": "{{review_target_b}}",
+      "prompt_path": "$REVIEW_DIR/review-b.md"
+    }
+  ]
+}
+EOF
+MANIFEST_JSON=$(jq -c . "$REVIEW_DIR/review-manifest.json")
+bd update "$GC_BEAD_ID" --set-metadata gc.output_json="$MANIFEST_JSON"
+```
+
+After this step closes, graph.v2 fanout will spawn one review lane per item
+using `review-lane-expansion`.
 """
+metadata = { "gc.scope_ref" = "quick-body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[steps.on_complete]
+for_each = "output.items"
+bond = "review-lane-expansion"
+parallel = true
+
+[steps.on_complete.vars]
+title = "{item.title}"
+reviewer_target = "{item.reviewer_target}"
+prompt_path = "{item.prompt_path}"
+
+# ============================================================================
+# STAGE 6B: IMPLEMENTATION REVIEW SYNTHESIS
+# ============================================================================
+
+[[steps]]
+id = "stage-review-synthesis"
+title = "Stage 6B: Synthesize Implementation Review"
+needs = ["stage-review-survey"]
+waits_for = "children-of(stage-review-survey)"
+description = """
+Read the spawned review beads and decide whether final verification may proceed.
+
+## Resolve Review Beads
+
+```bash
+ROOT_ID=$(bd show "$GC_BEAD_ID" --json | jq -r '.[0].metadata["gc.root_bead_id"]')
+REVIEW_IDS=$(bd list --all --limit 0 --json --metadata-field gc.root_bead_id="$ROOT_ID" | jq -r '
+  .[] |
+  select(((.metadata["gc.step_ref"] // "") | contains(".stage-review-survey.item.")) and ((.metadata["gc.step_ref"] // "") | endswith(".review"))) |
+  .id
+')
+for REVIEW_ID in $REVIEW_IDS; do
+  bd show "$REVIEW_ID"
+done
+```
+
+## Review Gate
+
+- If any must-fix item remains unresolved, STOP and return to implementation.
+- Only proceed when the review result is clean enough that final verification is
+  a confirmation step rather than a substitute for review.
+
+## Output
+
+Report:
+- review beads inspected
+- blocking findings, if any
+- why finalize may proceed
+"""
+metadata = { "gc.scope_ref" = "quick-body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STAGE 7: VERIFY + FINALIZE
@@ -324,34 +486,9 @@ Do not proceed to final verification until the review result is clean.
 [[steps]]
 id = "stage-verify-finalize"
 title = "Stage 7: Verify, Finalize, and Report"
-needs = ["stage-review-implementation"]
+needs = ["stage-review-synthesis"]
 description = """
 Placeholder expanded by `verify-finalize-expansion`.
-"""
-
-# ============================================================================
-# COMPLETE
-# ============================================================================
-
-[[steps]]
-id = "complete"
-title = "Workflow Complete"
-needs = ["stage-verify-finalize"]
-description = """
-Single-session quick workflow complete.
-
-**Artifacts:**
-- docs/plans/{{feature}}/spec.md
-- docs/plans/{{feature}}/session-context.md
-- docs/plans/{{feature}}/session-ledger.md
-- <rig-root>/.runtime/reviews/{{feature}}/<run-id>/*.md
-
-**Tracking:**
-- Root epic updated with progress and final summary
-
-**Modeling note:**
-This workflow optimizes for single-session continuity while keeping execution
-tracking at the epic level instead of creating lightweight milestone beads.
 """
 
 # ============================================================================
@@ -363,6 +500,7 @@ tracking at the epic level instead of creating lightweight milestone beads.
 [[compose.expand]]
 target = "stage-bootstrap"
 with = "bootstrap-expansion"
+vars = { target_branch = "{target_branch}", bootstrap_epic_description = "{bootstrap_epic_description}", delivery_mode_context = "{delivery_mode_context}" }
 
 [[compose.expand]]
 target = "stage-draft-spec"

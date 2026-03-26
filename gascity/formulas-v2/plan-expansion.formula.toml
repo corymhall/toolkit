@@ -11,11 +11,11 @@
 #   5. Finalize plan
 #
 # Usage:
-#   gt sling plan-expansion <crew> --var feature="ipv6-support"
+#   gc sling plan-expansion <crew> --var feature="ipv6-support"
 
 description = """
 Read a cleaned `spec.md`, generate `plans.md`, run two slung plan review
-passes with separate reviewer sessions mailing reports back, and leave behind a
+passes with graph.v2 review fanout lanes writing durable reports onto review beads, and leave behind a
 build-ready milestone plan.
 
 **Input:** `docs/plans/{{feature}}/spec.md`
@@ -30,9 +30,11 @@ implement code.
 By default this formula runs two explicit plan review passes. Each pass:
 
 - materializes the current review inputs into a shared `.runtime` directory
-- slings 2 separate reviewer workers
-- waits for both mailed reports
-- applies fixes in the parent session before continuing
+- writes lane-specific prompt files plus a compact review manifest
+- emits that manifest as `gc.output_json`
+- lets graph.v2 fanout materialize 2 review lanes
+- waits on the generated fanout control before synthesizing fixes from the
+  reviewer beads
 
 1. **Completeness + scope/constraints**
 2. **Sequencing + testability/risk**
@@ -49,41 +51,33 @@ ambiguous, or expensive to rework late.
 - at least one early shape-validation milestone for medium/large work
 - stop conditions that trigger plan revision before continuing
 
-Use the standard template at `gastown/docs/templates/plans.md`.
+Use the standard template at `gascity/docs/templates/plans.md`.
 
-## Step Lifecycle (Molecule Work Loop)
+## Graph-First Execution Contract
 
-This formula runs as a molecule — each step is a wisp bead. Use the
-standard molecule work loop to advance through steps:
-
-```bash
-bd mol current <molecule-id>
-# execute the step
-bd close <step-id>
-bd mol current <molecule-id>
-# repeat until complete
-```
-
-`bd mol current <molecule-id>` is the sole source of truth for what to do next.
-Execute exactly that current wisp and nothing beyond it.
-
-After closing a wisp, stop and re-run `bd mol current <molecule-id>` before
-starting anything else. Do not work ahead from memory.
-
-Re-running `bd mol current <molecule-id>` is a refresh step, not a stop-and-wait
-boundary. If it returns another actionable wisp, execute it immediately. Do not
-pause for apologies, hand-holding, or workflow-boundary summaries unless the
-current wisp explicitly says `STOP` or requires `request_user_input`.
+When this expansion is used inside a graph.v2 workflow, workers execute ready
+beads directly. Do not rely on `bd mol current` or other molecule-only
+positioning semantics in the canonical Gas City path.
 """
 formula = "plan-expansion"
 type = "expansion"
 pour = true
-version = 1
+version = 2
 
 [vars]
 [vars.feature]
 description = "Feature name (maps to docs/plans/{{feature}}/spec.md)"
 required = true
+
+[vars.review_target_a]
+description = "Optional explicit reviewer target for lane A"
+required = false
+default = "reviewer"
+
+[vars.review_target_b]
+description = "Optional explicit reviewer target for lane B"
+required = false
+default = "reviewer"
 
 # ============================================================================
 # KICKOFF
@@ -103,6 +97,20 @@ description = """
 
 Output this banner to the user, then close this step to begin.
 """
+metadata = { "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[[template]]
+id = "{target}.body"
+title = "Plan scope"
+needs = ["{target}.validate-spec", "{target}.draft-plan", "{target}.review-pass-1-survey", "{target}.review-pass-1-synthesize", "{target}.review-pass-2-survey", "{target}.review-pass-2-synthesize", "{target}.finalize-plan"]
+description = """
+Terminal latch for the planning phase.
+
+This scope succeeds only after the spec is validated for planning, the
+milestone plan is drafted, both review passes complete, and the final `plans.md`
+handoff artifact is ready.
+"""
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "plan", "gc.scope_role" = "body" }
 
 # ============================================================================
 # STEP 1: VALIDATE SPEC
@@ -154,6 +162,7 @@ Open questions acceptable for planning: [yes/no]
 Proceeding to milestone plan generation...
 ```
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "setup", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 2: DRAFT PLAN
@@ -169,7 +178,7 @@ Generate `docs/plans/{{feature}}/plans.md` from the spec.
 ## Inputs
 
 - `docs/plans/{{feature}}/spec.md`
-- `gastown/docs/templates/plans.md`
+- `gascity/docs/templates/plans.md`
 
 ## Planning Rules
 
@@ -204,17 +213,18 @@ Report:
 - whether milestone 1 is a shape-validation milestone
 - any areas still likely to cause late rework
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
-# STEP 3: REVIEW PASS 1
+# STEP 3: REVIEW PASS 1 FANOUT PREP
 # ============================================================================
 
 [[template]]
-id = "{target}.review-pass-1"
-title = "Review pass 1: completeness + scope/constraints"
+id = "{target}.review-pass-1-survey"
+title = "Review pass 1: prepare fanout lanes"
 needs = ["{target}.draft-plan"]
 description = """
-Review `plans.md` for completeness and spec alignment.
+Prepare the two graph.v2 review lanes for pass 1.
 
 ## Inputs
 
@@ -237,17 +247,15 @@ cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
 cp docs/plans/{{feature}}/plans.md "$REVIEW_DIR/plans.md"
 ```
 
-## Launch 2 Separate Reviewers
+## Write Lane Briefs
 
-Create ephemeral review beads with the prompt embedded in the bead
-description, then sling them raw so the sidecar reviewers work independently
-and mail their full reports back.
+Create one prompt file per lane. The dynamic fanout step will materialize a
+review bead for each file.
 
 Reviewer A: completeness
 
 ```bash
-COMPLETE_ID=$(bd create "Plan review 1A: {{feature}} completeness" --ephemeral -t task --wisp-type ping --silent \
-  --description "$(cat <<EOF
+cat > "$REVIEW_DIR/review-1a.md" <<'EOF'
 Read:
 - $REVIEW_DIR/spec.md
 - $REVIEW_DIR/plans.md
@@ -263,29 +271,16 @@ Report format:
 - Why it matters
 - Suggested plan change
 
-Send your full markdown report back by mail:
-
-gt mail send $REPORT_TO -s \"Plan review 1A report: {{feature}}\" --stdin <<'BODY'
-<full markdown report>
-BODY
-
 Rules:
 - Do not edit files
 - Do not create issues
-- After mailing the report, close this bead
 EOF
-)")
-
-gt sling "$COMPLETE_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
-  --agent codex \
-  --args "Read the hooked review bead, mail the full report to $REPORT_TO, then close the bead."
 ```
 
 Reviewer B: scope + constraints
 
 ```bash
-SCOPE_ID=$(bd create "Plan review 1B: {{feature}} scope and constraints" --ephemeral -t task --wisp-type ping --silent \
-  --description "$(cat <<EOF
+cat > "$REVIEW_DIR/review-1b.md" <<'EOF'
 Read:
 - $REVIEW_DIR/spec.md
 - $REVIEW_DIR/plans.md
@@ -302,48 +297,89 @@ Report format:
 - Why it matters
 - Suggested plan or spec change
 
-Send your full markdown report back by mail:
-
-gt mail send $REPORT_TO -s \"Plan review 1B report: {{feature}}\" --stdin <<'BODY'
-<full markdown report>
-BODY
-
 Rules:
 - Do not edit files
 - Do not create issues
-- After mailing the report, close this bead
 EOF
-)")
-
-gt sling "$SCOPE_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
-  --agent claude \
-  --args "Read the hooked review bead, mail the full report to $REPORT_TO, then close the bead."
 ```
 
-## Await Both Reports
+## Emit Review Manifest For Fanout
 
-Monitor your inbox until both subjects arrive:
-
-- `Plan review 1A report: {{feature}}`
-- `Plan review 1B report: {{feature}}`
-
-Use:
+Write the dynamic review manifest and copy it into `gc.output_json` before
+closing this step:
 
 ```bash
-gt mail inbox
-gt mail read <mail-id>
+cat > "$REVIEW_DIR/review-pass-1.json" <<EOF
+{
+  "items": [
+    {
+      "title": "Plan review 1A: {{feature}} completeness",
+      "reviewer_target": "{{review_target_a}}",
+      "prompt_path": "$REVIEW_DIR/review-1a.md"
+    },
+    {
+      "title": "Plan review 1B: {{feature}} scope and constraints",
+      "reviewer_target": "{{review_target_b}}",
+      "prompt_path": "$REVIEW_DIR/review-1b.md"
+    }
+  ]
+}
+EOF
+MANIFEST_JSON=$(jq -c . "$REVIEW_DIR/review-pass-1.json")
+bd update "$GC_BEAD_ID" --set-metadata gc.output_json="$MANIFEST_JSON"
 ```
 
-Do not nudge reviewers for a report immediately after sling. First use
-`gt peek <rig>/<polecat>` to see whether they are still reviewing. If a
-reviewer says it mailed the report but you do not see it yet, re-check the
-inbox, inspect `gt peek` and `gt hook show`, then nudge the reviewer to resend
-the report. Do not move on without both reports or an explicit failure
-classification.
+After this step closes, graph.v2 fanout will spawn one review lane per item
+using `review-lane-expansion`.
+"""
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[template.on_complete]
+for_each = "output.items"
+bond = "review-lane-expansion"
+parallel = true
+
+[template.on_complete.vars]
+title = "{item.title}"
+reviewer_target = "{item.reviewer_target}"
+prompt_path = "{item.prompt_path}"
+
+# ============================================================================
+# STEP 3B: REVIEW PASS 1 SYNTHESIS
+# ============================================================================
+
+[[template]]
+id = "{target}.review-pass-1-synthesize"
+title = "Review pass 1: synthesize lane reports"
+needs = ["{target}.review-pass-1-survey"]
+waits_for = "children-of({target}.review-pass-1-survey)"
+description = """
+Wait for the fanout control to close, then read the spawned reviewer beads and apply
+fixes to `plans.md`.
+
+## Inputs
+
+- `docs/plans/{{feature}}/spec.md`
+- `docs/plans/{{feature}}/plans.md`
+- the review directory created in the previous step
 
 ## Apply Fixes
 
-Read both reports. Apply all must-fix items and any should-fix items that make
+Resolve the workflow root and locate the spawned review beads:
+
+```bash
+ROOT_ID=$(bd show "$GC_BEAD_ID" --json | jq -r '.[0].metadata["gc.root_bead_id"]')
+REVIEW_IDS=$(bd list --all --limit 0 --json --metadata-field gc.root_bead_id="$ROOT_ID" | jq -r '
+  .[] |
+  select(((.metadata["gc.step_ref"] // "") | contains(".review-pass-1-survey.item.")) and ((.metadata["gc.step_ref"] // "") | endswith(".review"))) |
+  .id
+')
+for REVIEW_ID in $REVIEW_IDS; do
+  bd show "$REVIEW_ID"
+done
+```
+
+Read both review beads. Apply all must-fix items and any should-fix items that make
 the plan materially better.
 
 - update `docs/plans/{{feature}}/plans.md`
@@ -353,22 +389,23 @@ the plan materially better.
 ## Output
 
 Report:
-- which reports arrived
+- which review beads arrived
 - issues found
 - fixes applied
 - whether the spec also needed revision
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
-# STEP 4: REVIEW PASS 2
+# STEP 4: REVIEW PASS 2 FANOUT PREP
 # ============================================================================
 
 [[template]]
-id = "{target}.review-pass-2"
-title = "Review pass 2: sequencing + testability/risk"
-needs = ["{target}.review-pass-1"]
+id = "{target}.review-pass-2-survey"
+title = "Review pass 2: prepare fanout lanes"
+needs = ["{target}.review-pass-1-synthesize"]
 description = """
-Review `plans.md` for sequencing quality, testability, and late-rework risk.
+Prepare the two graph.v2 review lanes for pass 2.
 
 ## Inputs
 
@@ -388,13 +425,12 @@ cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
 cp docs/plans/{{feature}}/plans.md "$REVIEW_DIR/plans.md"
 ```
 
-## Launch 2 Separate Reviewers
+## Write Lane Briefs
 
 Reviewer A: sequencing
 
 ```bash
-SEQ_ID=$(bd create "Plan review 2A: {{feature}} sequencing" --ephemeral -t task --wisp-type ping --silent \
-  --description "$(cat <<EOF
+cat > "$REVIEW_DIR/review-2a.md" <<'EOF'
 Read:
 - $REVIEW_DIR/spec.md
 - $REVIEW_DIR/plans.md
@@ -410,29 +446,16 @@ Report format:
 - Why it matters
 - Suggested reorder or dependency change
 
-Send your full markdown report back by mail:
-
-gt mail send $REPORT_TO -s \"Plan review 2A report: {{feature}}\" --stdin <<'BODY'
-<full markdown report>
-BODY
-
 Rules:
 - Do not edit files
 - Do not create issues
-- After mailing the report, close this bead
 EOF
-)")
-
-gt sling "$SEQ_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
-  --agent codex \
-  --args "Read the hooked review bead, mail the full report to $REPORT_TO, then close the bead."
 ```
 
 Reviewer B: testability + risk
 
 ```bash
-TEST_ID=$(bd create "Plan review 2B: {{feature}} testability and risk" --ephemeral -t task --wisp-type ping --silent \
-  --description "$(cat <<EOF
+cat > "$REVIEW_DIR/review-2b.md" <<'EOF'
 Read:
 - $REVIEW_DIR/spec.md
 - $REVIEW_DIR/plans.md
@@ -449,48 +472,83 @@ Report format:
 - Why it matters
 - Suggested validation or risk-mitigation change
 
-Send your full markdown report back by mail:
-
-gt mail send $REPORT_TO -s \"Plan review 2B report: {{feature}}\" --stdin <<'BODY'
-<full markdown report>
-BODY
-
 Rules:
 - Do not edit files
 - Do not create issues
-- After mailing the report, close this bead
 EOF
-)")
-
-gt sling "$TEST_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
-  --agent claude \
-  --args "Read the hooked review bead, mail the full report to $REPORT_TO, then close the bead."
 ```
 
-## Await Both Reports
+## Emit Review Manifest For Fanout
 
-Monitor your inbox until both subjects arrive:
-
-- `Plan review 2A report: {{feature}}`
-- `Plan review 2B report: {{feature}}`
-
-Use:
+Write the dynamic review manifest and copy it into `gc.output_json` before
+closing this step:
 
 ```bash
-gt mail inbox
-gt mail read <mail-id>
+cat > "$REVIEW_DIR/review-pass-2.json" <<EOF
+{
+  "items": [
+    {
+      "title": "Plan review 2A: {{feature}} sequencing",
+      "reviewer_target": "{{review_target_a}}",
+      "prompt_path": "$REVIEW_DIR/review-2a.md"
+    },
+    {
+      "title": "Plan review 2B: {{feature}} testability and risk",
+      "reviewer_target": "{{review_target_b}}",
+      "prompt_path": "$REVIEW_DIR/review-2b.md"
+    }
+  ]
+}
+EOF
+MANIFEST_JSON=$(jq -c . "$REVIEW_DIR/review-pass-2.json")
+bd update "$GC_BEAD_ID" --set-metadata gc.output_json="$MANIFEST_JSON"
 ```
 
-Do not nudge reviewers for a report immediately after sling. First use
-`gt peek <rig>/<polecat>` to see whether they are still reviewing. If a
-reviewer says it mailed the report but you do not see it yet, re-check the
-inbox, inspect `gt peek` and `gt hook show`, then nudge the reviewer to resend
-the report. Do not move on without both reports or an explicit failure
-classification.
+After this step closes, graph.v2 fanout will spawn one review lane per item
+using `review-lane-expansion`.
+"""
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[template.on_complete]
+for_each = "output.items"
+bond = "review-lane-expansion"
+parallel = true
+
+[template.on_complete.vars]
+title = "{item.title}"
+reviewer_target = "{item.reviewer_target}"
+prompt_path = "{item.prompt_path}"
+
+# ============================================================================
+# STEP 4B: REVIEW PASS 2 SYNTHESIS
+# ============================================================================
+
+[[template]]
+id = "{target}.review-pass-2-synthesize"
+title = "Review pass 2: synthesize lane reports"
+needs = ["{target}.review-pass-2-survey"]
+waits_for = "children-of({target}.review-pass-2-survey)"
+description = """
+Wait for the fanout control to close, then read the spawned reviewer beads and apply
+the sequencing/testability fixes.
 
 ## Apply Fixes
 
-Read both reports. Apply all must-fix items and any should-fix items that make
+Resolve the workflow root and locate the spawned review beads:
+
+```bash
+ROOT_ID=$(bd show "$GC_BEAD_ID" --json | jq -r '.[0].metadata["gc.root_bead_id"]')
+REVIEW_IDS=$(bd list --all --limit 0 --json --metadata-field gc.root_bead_id="$ROOT_ID" | jq -r '
+  .[] |
+  select(((.metadata["gc.step_ref"] // "") | contains(".review-pass-2-survey.item.")) and ((.metadata["gc.step_ref"] // "") | endswith(".review"))) |
+  .id
+')
+for REVIEW_ID in $REVIEW_IDS; do
+  bd show "$REVIEW_ID"
+done
+```
+
+Read both review beads. Apply all must-fix items and any should-fix items that make
 the plan materially safer to execute.
 
 - update `docs/plans/{{feature}}/plans.md`
@@ -500,11 +558,12 @@ the plan materially safer to execute.
 ## Output
 
 Report:
-- which reports arrived
+- which review beads arrived
 - sequencing issues fixed
 - validation gaps fixed
 - late-rework risks that remain, if any
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 5: FINALIZE PLAN
@@ -513,7 +572,7 @@ Report:
 [[template]]
 id = "{target}.finalize-plan"
 title = "Finalize `plans.md`"
-needs = ["{target}.review-pass-2"]
+needs = ["{target}.review-pass-2-synthesize"]
 description = """
 Finalize the build-ready milestone plan and summarize the handoff.
 
@@ -540,3 +599,4 @@ Report:
 
 This is the handoff artifact for the build session.
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }

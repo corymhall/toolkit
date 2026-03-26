@@ -14,7 +14,7 @@
 #   7. Cleanup transient files
 #
 # Usage:
-#   gt sling enrich <crew> --var feature="ipv6-support"
+#   gc sling enrich <crew> --var feature="ipv6-support"
 #
 # Run it once for a quick pass, or multiple times to iteratively
 # deepen a thin spec into a thorough one.
@@ -54,59 +54,44 @@ Each finding is classified as:
 
 ## Execution Style
 
-Use separate reviewer sessions for the main enrichment analysis. The parent
+Use graph.v2 review fanout lanes for the main enrichment analysis. The parent
 session owns synthesis, auto-fixes, and decision handling.
 - Prioritize outcome, constraints, inputs, and artifacts.
 - Materialize review inputs into a shared `.runtime` directory before slinging
-  fresh reviewers.
-- Require reviewers to mail full reports back instead of editing the spec
-  directly.
+  fresh review lanes.
+- Require reviewers to write durable markdown reports onto their review beads
+  instead of editing the spec directly.
 - When a required decision is missing, call `request_user_input` instead of
   asking multiple-choice questions in plain text.
 - Ask 1 concise question at a time (max 3 per call), provide mutually
   exclusive options, put the recommended option first with "(Recommended)",
   and wait for the tool response before continuing.
 
-## Step Lifecycle (Molecule Work Loop)
+## Graph-First Execution Contract
 
-This formula runs as a molecule — each step is a wisp bead. Use the
-standard molecule work loop to advance through steps:
-
-```bash
-bd mol current <molecule-id>
-# execute the step
-bd close <step-id>
-bd mol current <molecule-id>
-# repeat until complete
-```
-
-`bd mol current <molecule-id>` is the sole source of truth for what to do next.
-Execute exactly that current wisp and nothing beyond it.
-
-After closing a wisp, stop and re-run `bd mol current <molecule-id>` before
-starting anything else. Do not begin the next stage from memory, expected
-sequence, prior banner text, or "workflow intent" alone.
-
-Re-running `bd mol current <molecule-id>` is a refresh step, not a stop-and-wait
-boundary. If it returns another actionable wisp, execute it immediately. Do not
-pause for apologies, hand-holding, or workflow-boundary summaries unless the
-current wisp explicitly says `STOP` or requires `request_user_input`.
-
-Status updates are not pause points. If a wisp tells you to report findings,
-state, or completion, do so and then continue the molecule loop immediately
-unless the wisp explicitly requires `request_user_input` or says `STOP`.
-
-Do NOT batch-close steps or work ahead.
+When this expansion is used inside a graph.v2 workflow, workers execute ready
+beads directly. Do not rely on `bd mol current` or other molecule-only
+positioning semantics in the canonical Gas City path.
 """
 formula = "enrich-expansion"
 type = "expansion"
 pour = true
-version = 1
+version = 2
 
 [vars]
 [vars.feature]
 description = "Feature name (maps to docs/plans/{{feature}}/spec.md)"
 required = true
+
+[vars.review_target_a]
+description = "Optional explicit reviewer target for lane A"
+required = false
+default = "reviewer"
+
+[vars.review_target_b]
+description = "Optional explicit reviewer target for lane B"
+required = false
+default = "reviewer"
 
 # ============================================================================
 # KICKOFF
@@ -126,6 +111,20 @@ description = """
 
 Output this banner to the user, then close this step to begin.
 """
+metadata = { "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[[template]]
+id = "{target}.body"
+title = "Enrich scope"
+needs = ["{target}.validate-spec", "{target}.codebase-exploration", "{target}.analyze-survey", "{target}.analyze-synthesis", "{target}.auto-fix", "{target}.human-decisions", "{target}.fold-answers", "{target}.cleanup-temp", "{target}.commit-push"]
+description = """
+Terminal latch for the enrich phase.
+
+This scope succeeds only after the spec has been validated, reviewed for gaps,
+updated with fixes/decisions, transient files cleaned up, and the enriched spec
+committed and pushed.
+"""
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "enrich", "gc.scope_role" = "body" }
 
 # ============================================================================
 # STEP 1: VALIDATE SPEC
@@ -191,6 +190,7 @@ Planning sections to add or strengthen: [list]
 Proceeding to codebase exploration...
 ```
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "setup", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 2: CODEBASE EXPLORATION
@@ -254,18 +254,19 @@ Write to: docs/plans/{{feature}}/codebase-context.tmp
 Timeout: 10 minutes. If the agent fails, continue — the analysis will be
 less grounded but still useful.
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "setup", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
-# STEP 3: ANALYZE
+# STEP 3: ANALYZE FANOUT PREP
 # ============================================================================
 
 [[template]]
-id = "{target}.analyze"
-title = "Analyze spec across 6 dimensions"
+id = "{target}.analyze-survey"
+title = "Prepare enrichment review fanout"
 needs = ["{target}.codebase-exploration"]
 description = """
 Read the spec and codebase context, then analyze through 6 dimensions.
-Use separate reviewer sessions to generate the raw findings, then synthesize
+Use graph.v2 review lanes to generate the raw findings, then synthesize
 them into one findings list where each item is classified as auto-fix or
 decision.
 
@@ -287,13 +288,12 @@ cp docs/plans/{{feature}}/spec.md "$REVIEW_DIR/spec.md"
 test -f docs/plans/{{feature}}/codebase-context.tmp && cp docs/plans/{{feature}}/codebase-context.tmp "$REVIEW_DIR/codebase-context.tmp"
 ```
 
-## Launch 2 Separate Reviewers
+## Write Lane Briefs
 
 Reviewer A: completeness + ambiguity + scope
 
 ```bash
-ENRICH_A_ID=$(bd create "Enrich review A: {{feature}}" --ephemeral -t task --wisp-type ping --silent \
-  --description "$(cat <<EOF
+cat > "$REVIEW_DIR/enrich-a.md" <<'EOF'
 Read:
 - $REVIEW_DIR/spec.md
 - $REVIEW_DIR/codebase-context.tmp (if present)
@@ -312,29 +312,16 @@ For each finding:
 
 If a reviewed dimension is clean, say so explicitly.
 
-Send your full markdown report back by mail:
-
-gt mail send $REPORT_TO -s \"Enrich review A report: {{feature}}\" --stdin <<'BODY'
-<full markdown report>
-BODY
-
 Rules:
 - Do not edit files
 - Do not create issues
-- After mailing the report, close this bead
 EOF
-)")
-
-gt sling "$ENRICH_A_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
-  --agent codex \
-  --args "Read the hooked enrich-review bead, mail the full report to $REPORT_TO, then close the bead."
 ```
 
 Reviewer B: feasibility + risks + consistency
 
 ```bash
-ENRICH_B_ID=$(bd create "Enrich review B: {{feature}}" --ephemeral -t task --wisp-type ping --silent \
-  --description "$(cat <<EOF
+cat > "$REVIEW_DIR/enrich-b.md" <<'EOF'
 Read:
 - $REVIEW_DIR/spec.md
 - $REVIEW_DIR/codebase-context.tmp (if present)
@@ -353,45 +340,67 @@ For each finding:
 
 If a reviewed dimension is clean, say so explicitly.
 
-Send your full markdown report back by mail:
-
-gt mail send $REPORT_TO -s \"Enrich review B report: {{feature}}\" --stdin <<'BODY'
-<full markdown report>
-BODY
-
 Rules:
 - Do not edit files
 - Do not create issues
 - Quote concrete codebase evidence where applicable
-- After mailing the report, close this bead
 EOF
-)")
-
-gt sling "$ENRICH_B_ID" "$RIG_NAME" --create --no-convoy --no-merge --no-boot --hook-raw-bead \
-  --agent claude \
-  --args "Read the hooked enrich-review bead, mail the full report to $REPORT_TO, then close the bead."
 ```
 
-## Await Both Reports
+## Emit Review Manifest For Fanout
 
-Monitor your inbox until both subjects arrive:
-
-- `Enrich review A report: {{feature}}`
-- `Enrich review B report: {{feature}}`
-
-Use:
+Write the dynamic review manifest and copy it into `gc.output_json` before
+closing this step:
 
 ```bash
-gt mail inbox
-gt mail read <mail-id>
+cat > "$REVIEW_DIR/enrich-manifest.json" <<EOF
+{
+  "items": [
+    {
+      "title": "Enrich review A: {{feature}}",
+      "reviewer_target": "{{review_target_a}}",
+      "prompt_path": "$REVIEW_DIR/enrich-a.md"
+    },
+    {
+      "title": "Enrich review B: {{feature}}",
+      "reviewer_target": "{{review_target_b}}",
+      "prompt_path": "$REVIEW_DIR/enrich-b.md"
+    }
+  ]
+}
+EOF
+MANIFEST_JSON=$(jq -c . "$REVIEW_DIR/enrich-manifest.json")
+bd update "$GC_BEAD_ID" --set-metadata gc.output_json="$MANIFEST_JSON"
 ```
 
-Do not nudge reviewers for a report immediately after sling. First use
-`gt peek <rig>/<polecat>` to see whether they are still reviewing. If a
-reviewer says it mailed the report but you do not see it yet, re-check the
-inbox, inspect `gt peek` and `gt hook show`, then nudge the reviewer to resend
-the report. Do not move on without both reports or an explicit failure
-classification.
+After this step closes, graph.v2 fanout will spawn one review lane per item
+using `review-lane-expansion`.
+"""
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+[template.on_complete]
+for_each = "output.items"
+bond = "review-lane-expansion"
+parallel = true
+
+[template.on_complete.vars]
+title = "{item.title}"
+reviewer_target = "{item.reviewer_target}"
+prompt_path = "{item.prompt_path}"
+
+# ============================================================================
+# STEP 3B: ANALYZE SYNTHESIS
+# ============================================================================
+
+[[template]]
+id = "{target}.analyze-synthesis"
+title = "Synthesize enrichment lane reports"
+needs = ["{target}.analyze-survey"]
+waits_for = "children-of({target}.analyze-survey)"
+description = """
+Wait for the fanout control to close, then read the spawned reviewer beads and
+synthesize them into one findings file where each item is classified as
+auto-fix or decision.
 
 ### Fidelity Preservation Check (run before classification)
 
@@ -406,7 +415,21 @@ rewriting or deleting prior intent.
 
 ## Synthesis And Classification
 
-Read both mailed reports and synthesize them into one findings file. For EACH
+Resolve the workflow root and locate the spawned review beads:
+
+```bash
+ROOT_ID=$(bd show "$GC_BEAD_ID" --json | jq -r '.[0].metadata["gc.root_bead_id"]')
+REVIEW_IDS=$(bd list --all --limit 0 --json --metadata-field gc.root_bead_id="$ROOT_ID" | jq -r '
+  .[] |
+  select(((.metadata["gc.step_ref"] // "") | contains(".analyze-survey.item.")) and ((.metadata["gc.step_ref"] // "") | endswith(".review"))) |
+  .id
+')
+for REVIEW_ID in $REVIEW_IDS; do
+  bd show "$REVIEW_ID"
+done
+```
+
+Read both review beads and synthesize them into one findings file. For EACH
 finding in the synthesis, classify:
 
 **Auto-fix** — apply silently if ALL of these are true:
@@ -488,6 +511,7 @@ Before completing this step, verify:
 - [ ] Findings reference actual codebase evidence where applicable
 - [ ] Obvious best practices are NOT listed as findings
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 4: AUTO-FIX
@@ -496,7 +520,7 @@ Before completing this step, verify:
 [[template]]
 id = "{target}.auto-fix"
 title = "Apply auto-fixes to spec"
-needs = ["{target}.analyze"]
+needs = ["{target}.analyze-synthesis"]
 description = """
 Apply all auto-fix items to the spec silently.
 
@@ -536,6 +560,7 @@ Proceeding to human decisions...
 
 If there are no auto-fix items, report "No auto-fixes needed" and proceed.
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 5: HUMAN DECISIONS
@@ -608,6 +633,7 @@ Report:
 Proceeding to fold answers into spec...
 ```
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
 # STEP 6: FOLD INTO SPEC
@@ -656,17 +682,18 @@ Spec is now enriched. Proceeding to cleanup...
 If no decisions were made (all auto-fix or no findings), report
 "No changes needed" and proceed.
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
 
 # ============================================================================
-# STEP 7: CLEANUP
+# STEP 7: CLEANUP TEMP FILES
 # ============================================================================
 
 [[template]]
-id = "{target}.cleanup"
-title = "Cleanup and commit"
+id = "{target}.cleanup-temp"
+title = "Cleanup transient enrich files"
 needs = ["{target}.fold-answers"]
 description = """
-Delete transient files and commit the enriched spec.
+Delete transient files before committing the enriched spec.
 
 ## Delete Transient Files
 
@@ -674,6 +701,19 @@ Delete transient files and commit the enriched spec.
 rm -f docs/plans/{{feature}}/codebase-context.tmp
 rm -f docs/plans/{{feature}}/enrichment-findings.tmp
 ```
+"""
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
+
+# ============================================================================
+# STEP 8: COMMIT & PUSH
+# ============================================================================
+
+[[template]]
+id = "{target}.commit-push"
+title = "Commit and push the enriched spec"
+needs = ["{target}.cleanup-temp"]
+description = """
+Commit and push the enriched spec.
 
 ## Commit
 
@@ -731,6 +771,7 @@ git push -u origin "$(git branch --show-current)" || git push
 
 ### Next Steps
 - Run enrich again for another pass (optional)
-- Run beadify to create execution beads
+- Then continue into the appropriate delivery workflow
 ```
 """
+metadata = { "gc.scope_ref" = "{target}.body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope", "gc.continuation_group" = "main", "gc.session_affinity" = "require" }
