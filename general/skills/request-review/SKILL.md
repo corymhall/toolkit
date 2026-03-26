@@ -51,9 +51,18 @@ Open `references/target-shapes.md` for the supported target patterns.
 
 ## Review Lenses
 
-Prefer Codex-native custom agents from the repo-level `agents/` directory when
-they are installed in Codex. If they are not installed yet, emulate the same
-lenses by spawning normal Codex reviewer subagents with equivalent prompts.
+Prefer Codex-native reviewer agents when they are available in the current
+Codex session.
+
+Before launching reviewer lanes, check whether the named reviewer agents are
+actually available to you. If some are missing:
+
+- continue with the reviewer agents you do have when coverage is still useful
+- report which intended reviewer lanes were unavailable
+- fall back to equivalent normal Codex reviewer subagents only when that still
+  preserves the intended lens clearly
+
+Do not assume a particular filesystem layout for agent availability at runtime.
 
 Open `references/reviewer-lenses.md` for the mapping from request shape to
 reviewer set.
