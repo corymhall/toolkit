@@ -310,12 +310,37 @@ description = """
 Review the implementation against `spec.md` and the current delivery changes
 before final verification.
 
-This stage owns:
-- launching Codex-native reviewer lanes such as general, spec-alignment, and
-  test review as needed for the current change
-- optionally adding one independent `mol-review-implementation` sidecar lane
-- synthesizing the review result
-- returning to fix work if the review finds blocking issues
+Do this review in the current session using this recipe:
+
+1. Review scope:
+- `docs/plans/{{feature}}/spec.md`
+- the current branch's implementation changes for this delivery
+
+2. Launch Codex-native reviewer lanes in parallel:
+- `general_reviewer` is required
+- `spec_alignment_reviewer` is required when `spec.md` exists; in this workflow
+  it should
+- `test_reviewer` is required when behavior changes, tests changed, or the main
+  uncertainty is verification strength
+
+3. If the named reviewer agents are unavailable in the current Codex session:
+- report which intended lanes are unavailable
+- continue with the reviewer lanes you do have when coverage is still useful
+- fall back to equivalent normal Codex reviewer subagents only when the lens
+  stays clear
+
+4. Optional independent review lane:
+- add one `mol-review-implementation` sidecar lane only when an extra
+  fresh-worker or alternate-runtime perspective is worth the latency
+
+5. Synthesize the results in the parent session:
+- group blocking findings, important findings, and residual risks
+- call out disagreements or ambiguities across lanes
+
+6. If review finds blocking issues:
+- return to implementation work
+- fix the issues
+- rerun this review stage before proceeding
 
 Do not proceed to final verification until the review result is clean.
 """

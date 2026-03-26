@@ -132,12 +132,20 @@ For the `implementation review` bead specifically:
 - direct the executor to review the implementation against
   `docs/plans/{{feature}}/spec.md` and the current delivery changes, not to use
   a manual review skill
-- launch at least one dedicated Codex reviewer lane rather than relying on a
-  parent-session self-review fallback
+- launch Codex-native reviewer lanes in parallel:
+  - `general_reviewer` is required
+  - `spec_alignment_reviewer` is required when `spec.md` exists
+  - `test_reviewer` is required when behavior changes, tests changed, or
+    verification strength is the main uncertainty
+- if named reviewer agents are unavailable, report missing lanes and fall back
+  to equivalent normal Codex reviewer subagents only when the intended lens
+  stays clear
 - add an independent `mol-review-implementation` sidecar lane only when an
   extra fresh-worker or alternate-runtime perspective is warranted
 - scope review against `docs/plans/{{feature}}/spec.md` and the current branch's
   implementation changes for this delivery
+- synthesize the reviewer results in the parent session and separate blocking
+  findings from residual risks
 - require a return to fix work if the review is blocking
 
 Do not copy the entire milestone text verbatim into bead descriptions.

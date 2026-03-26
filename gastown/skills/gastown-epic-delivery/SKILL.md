@@ -62,10 +62,18 @@ Optional but expected:
 - If the selected bead is `implementation review`, review the implementation
   against `spec.md` and the current delivery changes instead of treating it like
   a generic execution bead.
-- Launch Codex-native reviewer subagents in the current session and synthesize
-  their findings there.
+- Launch reviewer lanes in parallel:
+  - `general_reviewer` is required
+  - `spec_alignment_reviewer` is required when `spec.md` exists
+  - `test_reviewer` is required when behavior changes, tests changed, or
+    verification strength is the main uncertainty
+- If named reviewer agents are unavailable, report missing lanes and fall back
+  to equivalent normal Codex reviewer subagents only when the intended lens
+  stays clear.
 - Add an independent `mol-review-implementation` sidecar lane only when an
   extra fresh-worker or alternate-runtime perspective is worth the latency.
+- Synthesize the reviewer findings in the current session and separate blocking
+  findings from residual risks.
 - Work it to completion in the current session.
 - Refresh convoy status and repeat.
 - See [references/monitoring-handoff.md](references/monitoring-handoff.md).
