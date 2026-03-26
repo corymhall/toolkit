@@ -359,7 +359,7 @@ Also append notes including:
 - execution convoy ID
 - execution convoy target branch
 - confirmation that the convoy, not the epic, is the execution container
-- next command to begin same-session execution with `$epic-delivery`
+- next command to begin same-session execution with `$gascity-epic-delivery`
 
 Do not dispatch from this workflow. The execution convoy is a tracking artifact
 for the current-session delivery path, not a daemon-dispatch handoff.
@@ -384,7 +384,7 @@ Two-session planned workflow complete.
 - owned execution convoy tracking those execution beads
 
 **Next Step:**
-- execute the convoy in the current session using `$epic-delivery`
+- execute the convoy in the current session using `$gascity-epic-delivery`
 - use the convoy ID as the skill input
 
 **Modeling note:**

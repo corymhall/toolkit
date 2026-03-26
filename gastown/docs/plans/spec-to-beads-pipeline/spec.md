@@ -89,7 +89,7 @@ Only `spec.md` and beads persist.
 - **multi-model-evaluate**: Ad-hoc multi-model review of any document.
   Dispatches same prompt to available model CLIs, synthesizes consensus
   and disagreements. Replaces manual multi-session paste-and-combine.
-- **epic-delivery**: Dispatches beads to polecats for swarm execution.
+- **gastown-epic-delivery**: Dispatches beads to polecats for swarm execution.
 - **review-implementation**: Reviews code against spec post-implementation.
 
 ### Expansion/Workflow Architecture
@@ -105,7 +105,7 @@ In:
 - Spec template and format standard
 - draft-spec, enrich, beadify expansion formulas
 - spec-to-beads workflow orchestrator
-- brainstorming, multi-model-evaluate, epic-delivery, review-implementation skills
+- brainstorming, multi-model-evaluate, gastown-epic-delivery, review-implementation skills
 - README documentation for repo and formulas
 
 Out:

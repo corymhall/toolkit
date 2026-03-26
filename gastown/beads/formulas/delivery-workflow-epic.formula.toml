@@ -356,7 +356,7 @@ Epic-delivery workflow is complete.
 
 **Next steps:**
 - For each coherent feature bead, run `delivery-workflow`
-- Use epic-delivery to dispatch implementation once feature beads are ready
+- Use gastown-epic-delivery to dispatch implementation once feature beads are ready
 """
 
 # ============================================================================

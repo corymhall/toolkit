@@ -1,4 +1,0 @@
-interface:
-  display_name: "Gastown Upstream Sync"
-  short_description: "Sync a gastown fork with upstream main"
-  default_prompt: "Use $gastown-upstream-sync to update our gastown fork to the latest upstream main and finish the local post-push maintenance."

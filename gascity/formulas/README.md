@@ -487,7 +487,7 @@ Session 2:
 - Plan (`plans.md`)
 - Create execution beads
 - Finalize execution convoy
-- Hand off to `$epic-delivery` in the same session
+- Hand off to `$gascity-epic-delivery` in the same session
 
 ```
  Kickoff -> Bootstrap -> Draft Spec -> Enrich -> [handoff] -> Execution Setup -> Plan -> Execution Beads -> Finalize Convoy -> Complete
@@ -538,7 +538,7 @@ resume behavior relies on the normal hooked molecule flow: close the current
 step, hand off, then let the next session resume the next current step.
 
 When the workflow completes, execution no longer lives in the formula. The next
-step is to use `$epic-delivery` to work the owned convoy and close the
+step is to use `$gascity-epic-delivery` to work the owned convoy and close the
 execution beads in the current session.
 
 ---

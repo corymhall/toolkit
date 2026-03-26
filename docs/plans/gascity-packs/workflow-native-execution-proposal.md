@@ -32,7 +32,7 @@ Still intentionally unresolved:
 Today the canonical planned path still splits into two systems:
 
 1. formulas produce planning artifacts and execution beads
-2. `epic-delivery` skill manually walks the convoy-tracked execution beads
+2. `gascity-epic-delivery` skill manually walks the convoy-tracked execution beads
 
 That means:
 - graph.v2 is used for orchestration around execution, not for execution itself
@@ -383,7 +383,7 @@ For `quick` and `planned`, that is likely the right trade.
 
 ### Phase 1
 - finish v2 conversion of current canonical formulas
-- keep current `execution-beads-expansion` + `epic-delivery`
+- keep current `execution-beads-expansion` + `gascity-epic-delivery`
 
 ### Phase 2
 - prototype `execute-delivery.formula.toml`
@@ -399,7 +399,7 @@ For `quick` and `planned`, that is likely the right trade.
 - decide whether external execution beads remain as mirror/reporting only
 
 ### Phase 5
-- retire or narrow `epic-delivery`
+- retire or narrow `gascity-epic-delivery`
 
 ## Open Questions
 

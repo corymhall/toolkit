@@ -37,7 +37,7 @@ Gas City operating model.
 |-------|-------------|
 | [brainstorming](gascity/skills/brainstorming/) | Interactive spec writing through dialogue — clarify intent, explore approaches, write a design spec. |
 | [review-implementation](gascity/skills/review-implementation/) | Review code changes against a spec to verify implementation completeness and correctness. |
-| [epic-delivery](gascity/skills/epic-delivery/) | Work a convoy-backed execution plan in-session with convoy-first tracking. |
+| [gascity-epic-delivery](gascity/skills/gascity-epic-delivery/) | Work a convoy-backed execution plan in-session with convoy-first tracking. |
 
 ### Formula Portfolio
 
@@ -45,22 +45,22 @@ The current formula stack has two user-facing workflows plus reusable building
 blocks underneath them.
 
 ```
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│ Draft Spec  │ ───▶ │   Enrich    │ ───▶ │  Beadify    │
-│             │      │ (optional,  │      │             │
-│ brief →     │      │  repeatable)│      │ spec →      │
-│ spec.md     │      │ spec →      │      │ beads       │
-│             │      │ better spec │      │             │
-└─────────────┘      └─────────────┘      └─────────────┘
+┌─────────────┐      ┌─────────────┐      ┌──────────────────────┐
+│ Draft Spec  │ ───▶ │   Enrich    │ ───▶ │ Delivery Workflow    │
+│             │      │ (optional,  │      │ quick / planned      │
+│ brief →     │      │  repeatable)│      │                      │
+│ spec.md     │      │ spec →      │      │                      │
+│             │      │ better spec │      │                      │
+└─────────────┘      └─────────────┘      └──────────────────────┘
 ```
 
 **Draft Spec** — Explores the codebase, asks focused questions, proposes approaches, writes a spec.
 
 **Enrich** — Finds gaps across 6 analytical dimensions (completeness, ambiguity, feasibility, scope, risks, consistency). Auto-fixes what's obvious, asks about what needs judgment. Repeatable.
 
-**Beadify** — Explores the codebase (3 parallel agents), decomposes the spec into feature/workstream beads, runs 3 review passes, creates beads with validated dependencies.
+**Delivery Workflow** — Routes the work into the active quick or planned delivery path.
 
-Any entry point works. Already have a spec? Skip to beadify. Want more rigor? Run enrich multiple times.
+Any entry point works. Already have a spec? Skip to the appropriate delivery workflow. Want more rigor? Run enrich multiple times.
 
 See [gascity/formulas/README.md](gascity/formulas/README.md) for full formula
 documentation.
@@ -70,13 +70,8 @@ documentation.
 **delivery-workflow** — The default feature workflow. One main Codex-owned
 session goes from spec to implementation to review.
 
-**epic-delivery-workflow** — The umbrella workflow. It breaks a larger
-initiative into feature/workstream beads that are then expected to kick off
-`delivery-workflow`.
-
-**epic-delivery** (skill) — Still useful. This is the dispatch/convoy skill for
-launching an epic once the bead graph already exists. It complements
-`epic-delivery-workflow`; it does not replace it.
+**gascity-epic-delivery** (skill) — The convoy-execution skill for the current
+Gas City path once a planned delivery convoy already exists.
 
 #### Design principles
 
@@ -92,23 +87,16 @@ launching an epic once the bead graph already exists. It complements
 
 ```bash
 # From a brief to a spec (interactive)
-gt sling draft-spec-expansion <crew> \
+gc sling <target> draft-spec-expansion --formula \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 
 # Enrich the spec (optional, repeatable)
-gt sling enrich-expansion <crew> \
+gc sling <target> enrich-expansion --formula \
   --var feature="ipv6-support"
 
-# Create execution beads from the spec
-gt sling beadify-expansion <crew> \
-  --var feature="ipv6-support"
-```
-
-Or run the umbrella decomposition pipeline as a single workflow:
-
-```bash
-gt sling epic-delivery-workflow <crew> \
+# Route into the active delivery workflow
+gc sling <target> delivery-workflow --formula \
   --var feature="ipv6-support" \
   --var brief="Add IPv6 CIDR block and subnet support to VPC components"
 ```
@@ -142,9 +130,7 @@ These are useful when:
 
 Examples include:
 
-- [gastown/skills/gastown-upstream-sync/](/Users/chall/gt/toolkit/crew/quick/gastown/skills/gastown-upstream-sync)
-- [gastown/skills/sling-work/](/Users/chall/gt/toolkit/crew/quick/gastown/skills/sling-work)
-- [gastown/skills/workflow-cheatsheet/](/Users/chall/gt/toolkit/crew/quick/gastown/skills/workflow-cheatsheet)
+- [gastown/skills/gastown-epic-delivery/](/Users/chall/gt/toolkit/crew/quick/gastown/skills/gastown-epic-delivery)
 - [gastown/beads/formulas/](/Users/chall/gt/toolkit/crew/quick/gastown/beads/formulas)
 
 ## What's here

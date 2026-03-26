@@ -344,7 +344,7 @@ Also append a root epic note including:
 - `plans.md` path
 - staged convoy ID
 - staged convoy status
-- next command to begin same-session execution with `$epic-delivery`
+- next command to begin same-session execution with `$gastown-epic-delivery`
 
 Do not launch the convoy from this workflow. The staged convoy is a tracking
 artifact for the execution session, not a daemon-dispatch handoff.
@@ -369,7 +369,7 @@ Two-session planned workflow complete.
 - staged convoy tracking those execution beads
 
 **Next Step:**
-- execute the staged convoy in the current session using `$epic-delivery`
+- execute the staged convoy in the current session using `$gastown-epic-delivery`
 - use the root epic ID as the skill input
 
 **Modeling note:**

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gastown Epic Delivery"
+  short_description: "Execute a planned delivery epic in the current session with a staged convoy as tracking"
+  default_prompt: "Use $gastown-epic-delivery to reuse or stage the convoy for this epic, stage convoys with --no-validate, validate the execution bead graph, work the ready tracked beads in this same session, and close the convoy when the tracked execution beads are done. Do not run gt convoy launch or gt mq integration land."

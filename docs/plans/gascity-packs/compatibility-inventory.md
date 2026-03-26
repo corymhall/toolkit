@@ -78,12 +78,12 @@ Open question:
 Files:
 
 - [bootstrap-expansion.formula.toml](/Users/chall/gt/toolkit/crew/quick/gascity/formulas/bootstrap-expansion.formula.toml)
-- [beadify-expansion.formula.toml](/Users/chall/gt/toolkit/crew/quick/gascity/formulas/beadify-expansion.formula.toml)
-- [delivery-workflow-epic.formula.toml](/Users/chall/gt/toolkit/crew/quick/gascity/formulas/delivery-workflow-epic.formula.toml)
+- `beadify-expansion.formula.toml` (removed)
+- `delivery-workflow-epic.formula.toml` (removed)
 - [final-review-launch-expansion.formula.toml](/Users/chall/gt/toolkit/crew/quick/gascity/formulas/final-review-launch-expansion.formula.toml)
-- [epic-delivery/SKILL.md](/Users/chall/gt/toolkit/crew/quick/gascity/skills/epic-delivery/SKILL.md)
-- [epic-delivery/references/setup-dispatch.md](/Users/chall/gt/toolkit/crew/quick/gascity/skills/epic-delivery/references/setup-dispatch.md)
-- [epic-delivery/references/validation-reporting.md](/Users/chall/gt/toolkit/crew/quick/gascity/skills/epic-delivery/references/validation-reporting.md)
+- [gascity-epic-delivery/SKILL.md](/Users/chall/gt/toolkit/crew/quick/gascity/skills/gascity-epic-delivery/SKILL.md)
+- [gascity-epic-delivery/references/setup-dispatch.md](/Users/chall/gt/toolkit/crew/quick/gascity/skills/gascity-epic-delivery/references/setup-dispatch.md)
+- [gascity-epic-delivery/references/validation-reporting.md](/Users/chall/gt/toolkit/crew/quick/gascity/skills/gascity-epic-delivery/references/validation-reporting.md)
 
 Observed Gastown assumptions:
 
@@ -118,9 +118,9 @@ Files:
 - [plan-expansion.formula.toml](/Users/chall/gt/toolkit/crew/quick/gascity/formulas/plan-expansion.formula.toml)
 - [enrich-expansion.formula.toml](/Users/chall/gt/toolkit/crew/quick/gascity/formulas/enrich-expansion.formula.toml)
 - [mol-review-implementation.formula.toml](/Users/chall/gt/toolkit/crew/quick/gascity/formulas/mol-review-implementation.formula.toml)
-- [sling-work/SKILL.md](/Users/chall/gt/toolkit/crew/quick/gastown/skills/sling-work/SKILL.md)
-- [sling-work/references/monitoring.md](/Users/chall/gt/toolkit/crew/quick/gastown/skills/sling-work/references/monitoring.md)
-- [sling-work/references/failure-handling.md](/Users/chall/gt/toolkit/crew/quick/gastown/skills/sling-work/references/failure-handling.md)
+- `sling-work` skill (removed)
+- `sling-work/references/monitoring.md` (removed)
+- `sling-work/references/failure-handling.md` (removed)
 
 Observed Gastown assumptions:
 
@@ -153,8 +153,8 @@ Current recommendation:
 Files:
 
 - [mol-review-implementation.formula.toml](/Users/chall/gt/toolkit/crew/quick/gascity/formulas/mol-review-implementation.formula.toml)
-- [epic-delivery/SKILL.md](/Users/chall/gt/toolkit/crew/quick/gascity/skills/epic-delivery/SKILL.md)
-- [workflow-cheatsheet/SKILL.md](/Users/chall/gt/toolkit/crew/quick/gastown/skills/workflow-cheatsheet/SKILL.md)
+- [gascity-epic-delivery/SKILL.md](/Users/chall/gt/toolkit/crew/quick/gascity/skills/gascity-epic-delivery/SKILL.md)
+- `workflow-cheatsheet` skill (removed)
 
 Observed Gastown assumptions:
 
@@ -181,14 +181,15 @@ Current recommendation:
 
 Files:
 
-- [epic-delivery/SKILL.md](/Users/chall/gt/toolkit/crew/quick/gascity/skills/epic-delivery/SKILL.md)
-- [workflow-cheatsheet/SKILL.md](/Users/chall/gt/toolkit/crew/quick/gastown/skills/workflow-cheatsheet/SKILL.md)
-- [gastown-upstream-sync/SKILL.md](/Users/chall/gt/toolkit/crew/quick/gastown/skills/gastown-upstream-sync/SKILL.md)
-- [sling-work/SKILL.md](/Users/chall/gt/toolkit/crew/quick/gastown/skills/sling-work/SKILL.md)
+- [gascity-epic-delivery/SKILL.md](/Users/chall/gt/toolkit/crew/quick/gascity/skills/gascity-epic-delivery/SKILL.md)
+- `workflow-cheatsheet` skill (removed)
+- `gastown-upstream-sync` skill (removed)
+- `sling-work` skill (removed)
 
 Assessment:
 
-- `epic-delivery` and `workflow-cheatsheet` are intentionally Gastown-shaped
+- `gascity-epic-delivery` and the old `workflow-cheatsheet` addressed
+  different runtime assumptions
 - `sling-work` may still have a future in Gas City, but only after rewriting it
   around `gc sling`, session aliases, and convoy/session primitives
 - `gastown-upstream-sync` should remain clearly GT-specific unless we want an

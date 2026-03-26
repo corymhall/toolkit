@@ -1,5 +1,5 @@
 ---
-name: epic-delivery
+name: gastown-epic-delivery
 description: Execute a planned delivery epic in the current session using execution beads, with a staged convoy as the tracking surface. Use when an epic already has execution beads and you want to work the convoy-backed plan yourself without daemon dispatch.
 ---
 

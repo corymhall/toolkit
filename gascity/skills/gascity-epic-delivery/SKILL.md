@@ -1,5 +1,5 @@
 ---
-name: epic-delivery
+name: gascity-epic-delivery
 description: Execute a planned delivery convoy in the current session using convoy-owned execution beads as the primary container. Use when planning is done and you want to work the convoy-backed plan yourself without daemon dispatch.
 ---
 
