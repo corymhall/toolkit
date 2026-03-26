@@ -92,6 +92,10 @@ Create a new skill:
 
 - `general/skills/request-review/`
 
+Also create a repo-level custom agent library:
+
+- `agents/`
+
 This is the manual entry point for implementation/code review that is not
 specifically about GitHub review comments.
 
@@ -151,6 +155,7 @@ Proposed surface:
 - `general/skills/request-review/agents/openai.yaml`
 - `general/skills/request-review/references/reviewer-lenses.md`
 - `general/skills/request-review/references/target-shapes.md`
+- `agents/` for repo-versioned custom reviewer subagents
 
 #### Contract
 
@@ -203,6 +208,10 @@ Optional lenses:
 
 We should model specialist review as reusable reviewer prompts/lenses instead of
 as giant conditionals inside one skill.
+
+These custom agents should live in the repo at top-level `agents/` so they can
+be versioned here first and later symlinked into `.codex/agents/` or
+`~/.codex/agents/`.
 
 Initial proposed reviewer set:
 
@@ -302,6 +311,7 @@ Recommended rule:
 Create:
 
 - `general/skills/request-review/`
+- `agents/`
 
 Review and simplify:
 
@@ -366,4 +376,3 @@ Update docs and README references to the new split.
 - A-6: Codex-native subagents are the primary review mechanism.
 - A-7: One optional external review lane can be added without becoming the
   center of the system.
-

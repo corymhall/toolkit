@@ -3,8 +3,9 @@
 A collection of skills, formulas, packs, and templates for AI-assisted
 software engineering.
 
-This repo now has three top-level areas:
+This repo now has four top-level areas:
 
+- `agents/` — repo-versioned custom Codex subagents
 - `general/` — product-agnostic engineering skills
 - `gascity/` — canonical Gas City assets for the current model
 - `gastown/` — legacy / compatibility Gas Town assets
@@ -141,6 +142,7 @@ Gas City. Today that includes `brainstorming` and `review-implementation`.
 
 | Directory | Contents |
 |-----------|----------|
+| `agents/` | Repo-versioned custom Codex subagents that can later be symlinked into Codex's agent directories. |
 | `general/skills/` | Language-specific development, review, and evaluation skills. No Gas Town dependency. |
 | `gascity/skills/` | Canonical Gas City skills for the current workflow model. |
 | `gascity/formulas/` | Canonical Gas City formulas and workflow expansions. |
