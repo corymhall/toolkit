@@ -129,10 +129,12 @@ Each execution bead description should be concise and execution-oriented:
 - pointers back to `spec.md` and `plans.md`
 
 For the `implementation review` bead specifically:
-- direct the executor to run `$review-implementation` in preflight mode
-- use both `gpt` and `claude` reviewer lanes with `--categories all`
-- treat `gpt` as a required dedicated Codex reviewer lane, not as a parent
-  session self-review fallback
+- direct the executor to run the workflow-owned implementation review recipe,
+  not a manual review skill
+- launch at least one dedicated Codex reviewer lane rather than relying on a
+  parent-session self-review fallback
+- add an independent `mol-review-implementation` sidecar lane only when an
+  extra fresh-worker or alternate-runtime perspective is warranted
 - scope review against `docs/plans/{{feature}}/spec.md` and the current branch's
   implementation changes for this delivery
 - require a return to fix work if the review is blocking

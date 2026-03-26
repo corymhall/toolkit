@@ -56,9 +56,13 @@ Optional but useful:
 3. Execute the convoy in-session.
 - Inspect convoy status.
 - Find the next ready tracked bead.
-- If the selected bead is `implementation review`, run
-  `$review-implementation` instead of treating it like a generic execution
-  bead.
+- If the selected bead is `implementation review`, run the workflow-owned
+  implementation review checkpoint instead of treating it like a generic
+  execution bead.
+- Launch Codex-native reviewer subagents in the current session and synthesize
+  their findings there.
+- Add an independent `mol-review-implementation` sidecar lane only when an
+  extra fresh-worker or alternate-runtime perspective is worth the latency.
 - Work it to completion in the current session.
 - Refresh convoy status and repeat.
 - See [references/monitoring-handoff.md](references/monitoring-handoff.md).
