@@ -40,3 +40,16 @@ default_sling_formula = "mol-triage-work"
 [agent.pool]
 min = 0
 max = 2
+
+[[agent]]
+name = "triagev2"
+scope = "rig"
+provider = "codex"
+args = ["--profile", "triage", "-c", "default_permissions=triage-net"]
+env = { PULUMI_ACCESS_TOKEN = "$PULUMI_WORK_TOKEN" }
+work_dir = "{{.RigRoot}}"
+prompt_template = "prompts/triage-v2.md.tmpl"
+nudge = "Check your hook, investigate the assigned issue, record a durable triage report, and stop without pushing."
+[agent.pool]
+min = 0
+max = 5
