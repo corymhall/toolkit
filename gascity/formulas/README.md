@@ -85,7 +85,7 @@ flowchart TD
         EB["execution-beads-expansion"]
 
         VF["verify-finalize"]
-        RS["review-implementation skill"]
+        RS["request-review skill"]
 
         SPEC["spec.md"]
         PLAN_DRAFT["plan-draft.md"]
@@ -101,7 +101,7 @@ flowchart TD
         DW_BOOT["bootstrap"]
         DW_TRACK["tracking-setup"]
         DW_IMPL["stage-implement"]
-        DW_REVIEW["review-implementation"]
+        DW_REVIEW["implementation review"]
         DW_DONE["complete"]
     end
 
@@ -571,7 +571,7 @@ structured review artifact without a human-interactive skill session.
 gc sling <target> mol-review-implementation --formula \
   --var feature="ipv6-support" \
   --var reviewer_label="codex" \
-  --var spec_scope="/Users/chall/gt/toolkit/.runtime/reviews/ipv6-support/run-001/spec.md" \
+  --var spec_scope="/path/to/rig/.runtime/reviews/ipv6-support/run-001/spec.md" \
   --var impl_scope="integration/ipv6-support" \
   --var categories="all" \
   --var review_profile="general" \

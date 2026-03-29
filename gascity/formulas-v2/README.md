@@ -21,7 +21,7 @@ bead.
 
 See:
 
-- [AGENTS.md](/Users/chall/gt/toolkit/crew/quick/gascity/formulas-v2/AGENTS.md)
+- [AGENTS.md](AGENTS.md)
 
 ## Upstream Context
 
@@ -40,7 +40,7 @@ the default path.
 
 The currently active, legacy-compatible formula set is:
 
-- [gascity/formulas](/Users/chall/gt/toolkit/crew/quick/gascity/formulas)
+- [gascity/formulas](../formulas)
 
 Those formulas are the older molecule-driven workflow family restored from
 `gastown/beads/formulas/`.

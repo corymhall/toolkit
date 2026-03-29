@@ -38,7 +38,6 @@ Gas City operating model.
 | Skill | Description |
 |-------|-------------|
 | [brainstorming](gascity/skills/brainstorming/) | Interactive spec writing through dialogue — clarify intent, explore approaches, write a design spec. |
-| [review-implementation](gascity/skills/review-implementation/) | Review code changes against a spec to verify implementation completeness and correctness. |
 | [gascity-epic-delivery](gascity/skills/gascity-epic-delivery/) | Work a convoy-backed execution plan in-session with convoy-first tracking. |
 
 ### Formula Portfolio
@@ -114,10 +113,10 @@ Or copy to a specific rig's `.beads/formulas/` directory for project-scoped use.
 #### Local pack family
 
 The canonical local Gas City pack family now lives under
-[gascity/packs/](/Users/chall/gt/toolkit/crew/quick/gascity/packs).
+[gascity/packs/](gascity/packs/).
 
 The related planning docs stay at top level in
-[docs/plans/gascity-packs/](/Users/chall/gt/toolkit/crew/quick/docs/plans/gascity-packs).
+[docs/plans/gascity-packs/](docs/plans/gascity-packs/).
 
 ## Gastown
 
@@ -132,12 +131,12 @@ These are useful when:
 
 Examples include:
 
-- [gastown/skills/gastown-epic-delivery/](/Users/chall/gt/toolkit/crew/quick/gastown/skills/gastown-epic-delivery)
-- [gastown/beads/formulas/](/Users/chall/gt/toolkit/crew/quick/gastown/beads/formulas)
+- [gastown/skills/gastown-epic-delivery/](gastown/skills/gastown-epic-delivery/)
+- [gastown/beads/formulas/](gastown/beads/formulas/)
 
 Some neutral interactive skills currently remain mirrored under both
 `gascity/` and `gastown/` for compatibility while the canonical path stays in
-Gas City. Today that includes `brainstorming` and `review-implementation`.
+Gas City. Today that includes `brainstorming`.
 
 ## What's here
 
@@ -156,7 +155,7 @@ Gas City. Today that includes `brainstorming` and `review-implementation`.
 
 - [obra/superpowers](https://github.com/obra/superpowers) — the brainstorming skill and interactive design dialogue approach
 - [Xexr/gt-toolkit](https://github.com/Xexr/gt-toolkit) — the expansion/workflow formula architecture, multi-stage pipeline patterns, and bidirectional review approach
-- [Xexr/marketplace](https://github.com/Xexr/marketplace) — the epic-delivery and review-implementation skills
+- [Xexr/marketplace](https://github.com/Xexr/marketplace) — the epic-delivery workflows and review patterns
 - [steveyegge/gastown](https://github.com/steveyegge/gastown) — the Gas Town multi-agent workspace and molecule/convoy execution model
 - The upstream `mol-idea-to-plan` and `mol-prd-review` formulas — the PRD review dimensions that informed the enrich formula's analytical approach
 

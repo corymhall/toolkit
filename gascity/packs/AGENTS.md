@@ -56,8 +56,8 @@ provider = "codex"
 
 [[rigs]]
 name = "demo"
-path = "/Users/chall/gt/toolkit/crew/quick"
-includes = ["/Users/chall/gt/toolkit/crew/quick/gascity/packs/work"]
+path = "/path/to/toolkit-checkout"
+includes = ["/path/to/toolkit-checkout/gascity/packs/work"]
 ```
 
 Then run:
@@ -82,6 +82,7 @@ Good prompt content:
 - hook/mail/handoff behavior
 - invariant policy such as "work repos stay on branches and use PRs"
 - high-level landing rules
+- crew/rig checkout distinctions when they materially change git behavior
 
 Bad prompt content:
 - long procedural checklists that only apply sometimes
@@ -134,6 +135,8 @@ Use this split consistently:
   merge/push to the default branch from the crew/owner path
 - `personal/` may carry more autonomous landing behavior, but it must never
   weaken `work` by accident
+- `personal/` should explicitly teach the crew-checkout landing flow when
+  `origin` points at the rig checkout and landing happens via the rig's `main`
 
 If a rule differs between `work` and `personal`, do not hide that difference in
 one shared prompt paragraph. Put the difference in the trust-class prompt or
@@ -143,8 +146,8 @@ formula explicitly.
 
 Today the concrete owner prompts live here:
 
-- `gascity/packs/work/prompts/owner-work.md.tmpl`
-- `gascity/packs/personal/prompts/owner-personal.md.tmpl`
+- `gascity/packs/work/prompts/owner-work-v2.md.tmpl`
+- `gascity/packs/personal/prompts/owner-personal-v2.md.tmpl`
 
 Shared owner-session sections live in:
 
@@ -155,7 +158,7 @@ Shared owner-session sections live in:
 
 When changing owner-session wording:
 - edit shared sections in `base/prompts/shared/` if they are truly common
-- edit `owner-work.md.tmpl` or `owner-personal.md.tmpl` if the behavior differs
+- edit `owner-work-v2.md.tmpl` or `owner-personal-v2.md.tmpl` if the behavior differs
 
 ## Current Formula Ownership
 

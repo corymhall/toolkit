@@ -56,7 +56,7 @@ flowchart TD
         BD["beadify-expansion"]
 
         VF["verify-finalize"]
-        RS["review-implementation skill"]
+        RS["request-review skill"]
 
         SPEC["spec.md"]
         PLAN_DRAFT["plan-draft.md"]
@@ -81,7 +81,7 @@ flowchart TD
         DW_BOOT["bootstrap"]
         DW_TRACK["tracking-setup"]
         DW_IMPL["stage-implement"]
-        DW_REVIEW["review-implementation"]
+        DW_REVIEW["implementation review"]
         DW_DONE["complete"]
     end
 

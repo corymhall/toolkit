@@ -23,5 +23,4 @@ Operational note:
   - `no-git-ops: true` in rig-local beads config
   - protection against tracked `.gitignore` edits and accidental `bd init`
     commits
-- The helper `/Users/chall/personal/config/bin/gc-rig-add` encodes that local
-  workflow today.
+- The local `gc-rig-add` helper encodes that workflow today.

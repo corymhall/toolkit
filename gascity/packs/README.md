@@ -22,5 +22,4 @@ Practical rig-adoption note:
   - `no-git-ops: true`
   - no tracked `.gitignore` mutation
   - no leftover `bd init` commit in the rig repo
-- The local helper `/Users/chall/personal/config/bin/gc-rig-add` currently
-  captures that workflow.
+- The local `gc-rig-add` helper currently captures that workflow.

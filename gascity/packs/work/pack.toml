@@ -14,7 +14,7 @@ scope = "rig"
 suspended = true
 work_dir = "crews/{{.Rig}}/{{.AgentBase}}"
 pre_start = ["{{.ConfigDir}}/scripts/ensure-agent-clone.sh {{.RigRoot}} {{.WorkDir}} --sync"]
-prompt_template = "prompts/owner-work.md.tmpl"
+prompt_template = "prompts/owner-work-v2.md.tmpl"
 nudge = "Review the current work, partner with the human, and own larger tasks end-to-end."
 
 [[agent]]

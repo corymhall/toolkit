@@ -5,7 +5,7 @@
 #   gc sling <target> mol-review-implementation --formula \
 #     --var feature="ipv6-support" \
 #     --var reviewer_label="codex" \
-#     --var spec_scope="/Users/chall/gt/toolkit/.runtime/reviews/ipv6-support/run-001/spec.md" \
+#     --var spec_scope="/path/to/rig/.runtime/reviews/ipv6-support/run-001/spec.md" \
 #     --var impl_scope="origin/integration/ipv6-support" \
 #     --var categories="all" \
 #     --var review_profile="general" \

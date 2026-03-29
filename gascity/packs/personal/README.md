@@ -10,4 +10,13 @@ Intended contents:
 
 Current runnable surface:
 
-- `owner-personal.md.tmpl` prompt override for the shared `owner` agent
+- `owner-personal-v2.md.tmpl` prompt override for the shared `owner` agent
+
+Personal-pack owner prompts should carry the crew-specific landing behavior for
+personal repos:
+
+- the crew checkout's `origin` points at the rig checkout
+- land by pushing a feature branch to that rig checkout
+- merge `main` in the rig checkout with `git merge --ff-only`
+- push the rig checkout's `main` to the hosted remote
+- sync the crew checkout back to `main`

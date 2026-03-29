@@ -25,13 +25,15 @@ terminal state, then synthesize the results.
 
 ## Primary Monitoring Signal
 
-Treat `gt peek <rig>/<polecat>` as the primary truth source for live progress.
+Treat `gc session peek <session-alias>` as the primary truth source for live
+progress.
 Use it to answer: is the worker actually executing the review, or just sitting
 at the initial assigned prompt?
 
 Secondary signals:
-- `gt polecat status <rig>/<polecat>` for lifecycle state and last activity
-- `gt hook show <rig>/<polecat>` for current hooked wisp
+- `gc status --json` to discover the claimed reviewer session alias and current
+  state
+- `gc session peek <session-alias>` for the current visible prompt and progress
 - `bd show <review-bead-id> --json` for actual review-note existence
 
 ## Terminal Conditions
@@ -50,9 +52,8 @@ terminal conditions:
 Keep polling until terminal conditions are met. A typical pass should:
 
 ```bash
-gt peek <rig>/<polecat>
-gt polecat status <rig>/<polecat>
-gt hook show <rig>/<polecat>
+gc session peek <session-alias>
+gc status --json
 bd show <review-bead-id>
 ```
 
@@ -62,8 +63,8 @@ Then decide whether to continue waiting, retry, or classify failure.
 
 - Treat a "wait window" as a real monitoring interval of roughly 2 minutes, not
   a few seconds.
-- If `gt peek` shows the worker still at the initial assigned prompt after the
-  first wait window, send one explicit nudge
+- If `gc session peek` shows the worker still at the initial assigned prompt
+  after the first wait window, send one explicit nudge
 - If it still has not started after the second wait window, classify startup as
   failed and record that in `session-ledger.md`
 - If the hook clears but the expected bead notes are missing, inspect the worker
@@ -78,7 +79,7 @@ Then decide whether to continue waiting, retry, or classify failure.
 Example startup nudge:
 
 ```bash
-gt nudge <rig>/<polecat> "Run gt hook and execute the hooked mol-review-implementation now. This is a report-only task writing to the shared .runtime review directory; do not commit the report."
+gc session nudge <session-alias> "Run gc hook and execute the hooked mol-review-implementation now. This is a report-only task writing to the shared .runtime review directory; do not commit the report."
 ```
 
 ## Anti-Patterns

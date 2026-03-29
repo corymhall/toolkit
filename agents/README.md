@@ -16,7 +16,7 @@ setup step can symlink them into `~/.codex/agents/`.
 Example:
 
 ```bash
-ln -s /Users/chall/gt/toolkit/crew/quick/agents ~/.codex/agents/toolkit
+ln -s /path/to/toolkit-checkout/agents ~/.codex/agents/toolkit
 ```
 
 Or symlink individual agent files if that layout works better for your local

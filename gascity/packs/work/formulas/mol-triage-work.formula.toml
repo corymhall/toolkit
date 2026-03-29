@@ -37,9 +37,8 @@ title = "Load context and understand the triage ask"
 description = """
 Initialize the session and read the assignment before making any changes.
 
-**1. Prime your environment:**
+**1. Refresh local execution state directly:**
 ```bash
-gc prime
 bd prime
 ```
 
@@ -64,6 +63,9 @@ Focus on:
 ```bash
 gc mail inbox
 ```
+
+Do not rerun `gc prime` here; it only reprints the startup prompt. Recover by
+reading the bead, metadata, git state, and mail directly.
 
 **Exit criteria:** You understand what needs to be investigated and what would
 count as a useful triage outcome."""

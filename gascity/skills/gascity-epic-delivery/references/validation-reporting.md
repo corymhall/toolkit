@@ -43,12 +43,10 @@ git branch --show-current
 git diff <target-branch>...HEAD --stat
 ```
 
-Then run the repo-configured quality gates that still make sense for the final
-state:
-
-```bash
-gt rig settings show <rig>
-```
+Then consult the rig's repo-local instructions and automation for the quality
+gates that still make sense for the final state. Typical sources include
+`AGENTS.md`, `README.md`, `Makefile`, package scripts, or repo-specific task
+runners.
 
 Run configured gates in this order when present:
 1. `setup_command`
