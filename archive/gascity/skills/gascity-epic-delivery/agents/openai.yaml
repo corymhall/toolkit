@@ -1,4 +1,0 @@
-interface:
-  display_name: "Gascity Epic Delivery"
-  short_description: "Execute a planned delivery convoy in-session with convoy-first tracking"
-  default_prompt: "Use $gascity-epic-delivery to validate the convoy-backed execution graph, work the ready tracked beads in this same session, and land the owned convoy only after the tracked execution beads are done."

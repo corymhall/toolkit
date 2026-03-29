@@ -12,16 +12,12 @@ This repo is starting fresh around:
 - `tmux` for one-session-per-worktree ergonomics
 - Codex as the primary implementation owner
 
-Reference material from earlier workflow experiments remains available under
-[`archive/`](archive/).
-
 ## Top-Level Areas
 
 - `agents/` — repo-versioned custom Codex subagents
 - `general/` — product-agnostic engineering skills
 - `.config/wt.toml` — shared `worktrunk` starter config for tmux + Codex
 - `docs/` — active workflow notes plus historical planning docs
-- `archive/` — reference material kept for research and reuse
 
 ## Fresh Start Workflow
 
@@ -42,16 +38,6 @@ Language-specific development skills, review tools, and multi-model evaluation.
 | [ai-contribution-readiness-audit](general/skills/ai-contribution-readiness-audit/) | Evaluate a repo's readiness for AI code contributions and produce concrete fixes. |
 | [git-spice-stack-prs](general/skills/git-spice-stack-prs/) | Manage stacked GitHub PRs with git-spice — branch creation, submit, restack, and update cycles. |
 | [receiving-code-review](https://github.com/obra/superpowers/tree/main/skills/receiving-code-review) | Protocol for handling review feedback — verify before implementing, push back when wrong. |
-
-## Archived Material
-
-Reference material lives under:
-
-- [archive/gastown/](archive/gastown/)
-- [archive/gascity/](archive/gascity/)
-
-These are kept as reference material while the active workflow centers on
-OpenSpec, worktrunk, tmux, and Codex.
 
 Historical planning docs also remain under [`docs/plans/`](docs/plans/).
 They are useful as design history, but they are not the active workflow surface.
