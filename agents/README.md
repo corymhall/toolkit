@@ -3,7 +3,7 @@
 This directory holds project-scoped custom Codex subagents for this repo.
 
 These files are kept in the repo so we can version, review, and evolve them
-alongside the skills and formulas they support.
+alongside the skills and workflow notes they support.
 
 ## Intended install shape
 
