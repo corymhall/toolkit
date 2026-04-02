@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bridge Parity Investigation"
+  short_description: "Drive bridge parity investigations"
+  default_prompt: "Use $bridge-parity-investigation to turn this Pulumi-vs-Terraform parity gap into a bridge cross-test investigation."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Provider Triage"
+  short_description: "Triage provider issues end-to-end"
+  default_prompt: "Use $triage-provider-issue to triage this provider issue and choose the next best action."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Stage Terraform Repro"
+  short_description: "Stage durable Terraform repro artifacts"
+  default_prompt: "Use $stage-terraform-provider-repro to stage a durable Terraform-side repro for this provider issue."

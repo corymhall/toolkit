@@ -1,0 +1,4 @@
+interface:
+  display_name: "Stage Pulumi Repro"
+  short_description: "Stage durable Pulumi repro artifacts"
+  default_prompt: "Use $stage-pulumi-provider-repro to stage a durable Pulumi-side repro for this provider issue."
