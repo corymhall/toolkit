@@ -10,5 +10,4 @@ For the current workflow, start with:
 
 - [README.md](/Users/chall/personal/toolkit/README.md)
 - [AGENTS.md](/Users/chall/personal/toolkit/AGENTS.md)
-- [openspec-worktrunk-codex.md](/Users/chall/personal/toolkit/docs/openspec-worktrunk-codex.md)
 - [codex-evaluation-lens.md](/Users/chall/personal/toolkit/docs/codex-evaluation-lens.md)

@@ -7,7 +7,6 @@ AI-assisted software engineering.
 
 This repo is starting fresh around:
 
-- `OpenSpec` for durable planning artifacts when planning is helpful
 - `worktrunk` for worktree lifecycle
 - `tmux` for one-session-per-worktree ergonomics
 - Codex as the primary implementation owner
@@ -19,11 +18,6 @@ This repo is starting fresh around:
 - `.config/wt.toml` — shared `worktrunk` starter config for tmux + Codex
 - `docs/` — active workflow notes plus historical planning docs
 
-## Fresh Start Workflow
-
-See [docs/openspec-worktrunk-codex.md](docs/openspec-worktrunk-codex.md) for
-the recommended workflow.
-
 ## General Skills
 
 Language-specific development skills, review tools, and multi-model evaluation.
@@ -33,6 +27,7 @@ Language-specific development skills, review tools, and multi-model evaluation.
 | [request-review](general/skills/request-review/) | Launch a manual code or implementation review using Codex-native reviewer agents and synthesize the findings. |
 | [multi-model-evaluate](general/skills/multi-model-evaluate/) | Dispatch the same question to multiple AI models and synthesize consensus and disagreements. |
 | [review-pr](general/skills/review-pr/) | Review a teammate's PR and produce draft comments for your approval before posting to GitHub. |
+| [brainstorming](general/skills/brainstorming/) | Clarify scope, compare approaches, and turn a fuzzy idea into an approved design before coding. |
 | [go-development](general/skills/go-development/) | Implement, refactor, and review production Go code using Google-style conventions. |
 | [neovim-plugin-development](general/skills/neovim-plugin-development/) | Build, review, and modernize Neovim plugins in Lua. |
 | [ai-contribution-readiness-audit](general/skills/ai-contribution-readiness-audit/) | Evaluate a repo's readiness for AI code contributions and produce concrete fixes. |
@@ -44,7 +39,6 @@ They are useful as design history, but they are not the active workflow surface.
 
 ## Acknowledgements
 
-- [Fission-AI/OpenSpec](https://github.com/Fission-AI/OpenSpec) — lightweight, customizable planning workflow
 - [max-sixty/worktrunk](https://github.com/max-sixty/worktrunk) — worktree lifecycle and hook-based automation
 - [obra/superpowers](https://github.com/obra/superpowers) — thinking and review patterns that still influence the repo
 - [steveyegge/gastown](https://github.com/steveyegge/gastown) — reference material that informed earlier experiments
