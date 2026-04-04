@@ -22,6 +22,13 @@ Always start with:
 - the diff touches tests or test-like files
 - the main uncertainty is "did we verify this strongly enough?"
 
+## Add `go_reviewer` when
+
+- the review target is mostly `.go` files or Go packages
+- the user asks for review using the `go-development` skill
+- the main uncertainty is Go API design, dependency ownership, error policy,
+  concurrency lifecycle, or Go-specific test quality
+
 ## Add `error_handling_reviewer` when
 
 - the code touches retries, recovery, fallbacks, logging, or incident-prone
@@ -56,9 +63,17 @@ runtimes by default.
 - `general_reviewer`
 - `test_reviewer`
 
+### Go-heavy review
+
+- `general_reviewer`
+- `go_reviewer`
+- optional `test_reviewer`
+- optional `error_handling_reviewer`
+
 ### Risky feature delivery check
 
 - `general_reviewer`
+- optional `go_reviewer` for Go-heavy scopes
 - `spec_alignment_reviewer`
 - `test_reviewer`
 - optional `error_handling_reviewer`

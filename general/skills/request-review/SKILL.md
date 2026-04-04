@@ -77,7 +77,9 @@ reviewer set.
 
 - add `error_handling_reviewer` when failure handling or operational risk is
   important
-- add domain-specific reviewers later when a domain skill or custom agent
+- add `go_reviewer` when the review scope is Go-heavy or the user explicitly
+  wants review using the `go-development` skill
+- add other domain-specific reviewers when a domain skill or custom agent
   exists
 
 ### Optional extra perspective
@@ -125,6 +127,7 @@ Run the selected reviewer lanes in parallel when practical.
 Preferred reviewer lanes:
 
 - `general_reviewer`
+- `go_reviewer` for Go-heavy scopes or explicit `go-development` review requests
 - `spec_alignment_reviewer`
 - `test_reviewer`
 - `error_handling_reviewer` when requested or obviously relevant
@@ -134,7 +137,19 @@ Rules:
 - each reviewer should stay narrow and opinionated
 - reviewer lanes are read-only
 - reviewer lanes should focus on findings, not code edits
+- reviewer lanes should return findings directly, not lane-management status
+  chatter such as "I spawned a review lane" or "still running"
 - parent session owns the synthesis
+
+When launching a domain-specific reviewer via a skill such as
+`go-development`, make the lane prompt explicit that the lane is the reviewer,
+not a coordinator: it should return findings-only output (or an explicit
+no-findings result with residual risk), not process narration.
+
+If a reviewer lane returns status chatter or malformed coordination output
+instead of findings, do not synthesize that output as if it were a review.
+Respawn once with a simpler findings-only prompt, then continue the synthesis
+locally if the lane still fails.
 
 ### 4. Synthesize
 

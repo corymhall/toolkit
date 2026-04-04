@@ -20,6 +20,9 @@ Use this skill in one of two execution profiles.
 1. Run tooling gate.
 2. Review all manual and mixed-enforcement rules relevant to changed files.
 3. Report policy gaps with severity and evidence.
+4. If delegated as a reviewer subagent, return the review itself, not process
+   narration. Do not say that you spawned a lane, are waiting, or are about to
+   review something.
 
 ## Architecture Defaults
 
@@ -106,6 +109,9 @@ For each finding, report:
 - verification evidence
 
 Always flag package-global mutable function vars as a design smell unless the change includes a narrow, explicit justification for keeping a legacy seam.
+
+When there are no meaningful Go-specific findings, say that explicitly and add
+any residual risk or test-gap note instead of describing your process.
 
 ## References
 

@@ -25,6 +25,7 @@ Codex setup.
 ## Initial review-focused agents
 
 - `general-reviewer.toml`
+- `go-reviewer.toml`
 - `spec-alignment-reviewer.toml`
 - `test-reviewer.toml`
 - `error-handling-reviewer.toml`
