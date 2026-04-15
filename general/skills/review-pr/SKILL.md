@@ -45,6 +45,17 @@ CI: <passing/failing/pending>
 <PR description summary>
 ```
 
+Read-only setup rules:
+
+- reviewing a PR does not require rewriting your local branch
+- do not `git rebase`, `git merge`, `git cherry-pick`, `git reset`, or similar
+  branch-mutating commands unless the user explicitly asked for branch surgery
+- prefer `gh pr view`, `gh pr diff`, `gh pr checks`, and targeted local reads
+  over "cleaning up" the checkout first
+- if local conflicts, a dirty worktree, or missing merge-base context limit what
+  you can verify, say that plainly in the draft review instead of mutating the
+  branch
+
 ### 2. Review the Code
 
 Review the diff systematically. For each changed file, assess:

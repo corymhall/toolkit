@@ -120,6 +120,19 @@ Gather the minimum necessary review inputs directly:
 
 Keep scope gathering practical and local to the request.
 
+### 2a. Keep the review lane read-only
+
+Do not rewrite the branch just to produce a cleaner review target.
+
+- do not `git rebase`, `git merge`, `git cherry-pick`, `git reset`, or similar
+  history-changing commands as part of review setup unless the user explicitly
+  asked for that operation
+- if the worktree is dirty, review the requested state as-is: current diff,
+  named range, stash, or PR diff
+- if merge-base ambiguity or local conflicts limit confidence, say so in the
+  review instead of mutating the branch to "fix" the review target
+- fetching metadata is fine; changing local history is not part of this skill
+
 ### 3. Launch reviewer agents
 
 Run the selected reviewer lanes in parallel when practical.
