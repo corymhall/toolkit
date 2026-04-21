@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pulumi Test Audit"
+  short_description: "Collaborative audit for Pulumi test suites"
+  default_prompt: "Use $pulumi-test-rationalization-audit to bootstrap an audit in this repo, build provenance, and then help me review the biggest test families one at a time."
