@@ -1,6 +1,6 @@
 name = "error_handling_reviewer"
 description = "Reviewer focused on failure handling, observability, recovery paths, and dangerous silent failures."
-model = "gpt-5.4"
+model = "gpt-5.5"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """

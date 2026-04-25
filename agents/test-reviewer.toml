@@ -1,6 +1,6 @@
 name = "test_reviewer"
 description = "Reviewer focused on test coverage, weak assertions, missing edge cases, and proof quality."
-model = "gpt-5.4"
+model = "gpt-5.5"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """
