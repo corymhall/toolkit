@@ -90,11 +90,11 @@ Do not replace it with another giant skill.
 
 Create a new skill:
 
-- `general/skills/request-review/`
+- `plugins/engineering-review/skills/request-review/`
 
 Also create a repo-level custom agent library:
 
-- `agents/`
+- `plugins/engineering-review/agents/`
 
 This is the manual entry point for implementation/code review that is not
 specifically about GitHub review comments.
@@ -151,11 +151,11 @@ perspective, not a parallel bureaucracy.
 
 Proposed surface:
 
-- `general/skills/request-review/SKILL.md`
-- `general/skills/request-review/agents/openai.yaml`
-- `general/skills/request-review/references/reviewer-lenses.md`
-- `general/skills/request-review/references/target-shapes.md`
-- `agents/` for repo-versioned custom reviewer subagents
+- `plugins/engineering-review/skills/request-review/SKILL.md`
+- `plugins/engineering-review/skills/request-review/agents/openai.yaml`
+- `plugins/engineering-review/skills/request-review/references/reviewer-lenses.md`
+- `plugins/engineering-review/skills/request-review/references/target-shapes.md`
+- `plugins/engineering-review/agents/` for repo-versioned custom reviewer subagents
 
 #### Contract
 
@@ -209,9 +209,9 @@ Optional lenses:
 We should model specialist review as reusable reviewer prompts/lenses instead of
 as giant conditionals inside one skill.
 
-These custom agents should live in the repo at top-level `agents/` so they can
-be versioned here first and later symlinked into `.codex/agents/` or
-`~/.codex/agents/`.
+These custom agents should live in the repo under
+`plugins/engineering-review/agents/` so they can be versioned with the review
+plugin first and later symlinked into `.codex/agents/` or `~/.codex/agents/`.
 
 Initial proposed reviewer set:
 
@@ -310,8 +310,8 @@ Recommended rule:
 
 Create:
 
-- `general/skills/request-review/`
-- `agents/`
+- `plugins/engineering-review/skills/request-review/`
+- `plugins/engineering-review/agents/`
 
 Review and simplify:
 
@@ -358,7 +358,7 @@ Update docs and README references to the new split.
 
 ## Proposed First Implementation Slice
 
-1. Add `general/skills/request-review/` as a minimal manual review launcher.
+1. Add `plugins/engineering-review/skills/request-review/` as a minimal manual review launcher.
 2. Simplify `mol-review-implementation` around independent sidecar review.
 3. Update workflow and epic-delivery references away from
    `$review-implementation`.

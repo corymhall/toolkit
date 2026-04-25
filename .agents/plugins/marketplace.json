@@ -1,0 +1,56 @@
+{
+  "name": "toolkit",
+  "interface": {
+    "displayName": "Toolkit"
+  },
+  "plugins": [
+    {
+      "name": "engineering-review",
+      "source": {
+        "source": "local",
+        "path": "./plugins/engineering-review"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development"
+    },
+    {
+      "name": "provider-issue-workbench",
+      "source": {
+        "source": "local",
+        "path": "./plugins/provider-issue-workbench"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development"
+    },
+    {
+      "name": "pulumi-audit",
+      "source": {
+        "source": "local",
+        "path": "./plugins/pulumi-audit"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development"
+    },
+    {
+      "name": "codex-workflows",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-workflows"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

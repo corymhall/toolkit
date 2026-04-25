@@ -1,41 +1,52 @@
-# toolkit
+# Toolkit
 
-A collection of Codex-oriented skills, workflow notes, and planning assets for
-AI-assisted software engineering.
+Codex plugins for AI-assisted software engineering workflows.
 
-## Current Direction
+## Install
 
-This repo is starting fresh around:
+Add this repository as a Codex plugin marketplace:
 
-- `worktrunk` for worktree lifecycle
-- `tmux` for one-session-per-worktree ergonomics
-- Codex as the primary implementation owner
+```bash
+codex plugin marketplace add corymhall/toolkit
+```
 
-## Top-Level Areas
+Then open the Codex plugin directory and install the plugins you want from the
+`toolkit` marketplace.
 
-- `agents/` — repo-versioned custom Codex subagents
-- `general/` — product-agnostic engineering skills
-- `.config/wt.toml` — shared `worktrunk` starter config for tmux + Codex
-- `docs/` — active workflow notes plus historical planning docs
+To update later:
 
-## General Skills
+```bash
+codex plugin marketplace upgrade toolkit
+```
 
-Language-specific development skills, review tools, and multi-model evaluation.
+Codex installs plugin contents into its local plugin cache. Updates are picked
+up through the normal marketplace upgrade flow when a plugin's manifest version
+changes.
 
-| Skill | Description |
-|-------|-------------|
-| [request-review](general/skills/request-review/) | Launch a manual code or implementation review using Codex-native reviewer agents and synthesize the findings. |
-| [multi-model-evaluate](general/skills/multi-model-evaluate/) | Dispatch the same question to multiple AI models and synthesize consensus and disagreements. |
-| [review-pr](general/skills/review-pr/) | Review a teammate's PR and produce draft comments for your approval before posting to GitHub. |
-| [brainstorming](general/skills/brainstorming/) | Clarify scope, compare approaches, and turn a fuzzy idea into an approved design before coding. |
-| [go-development](general/skills/go-development/) | Implement, refactor, and review production Go code using Google-style conventions. |
-| [neovim-plugin-development](general/skills/neovim-plugin-development/) | Build, review, and modernize Neovim plugins in Lua. |
-| [ai-contribution-readiness-audit](general/skills/ai-contribution-readiness-audit/) | Evaluate a repo's readiness for AI code contributions and produce concrete fixes. |
-| [git-spice-stack-prs](general/skills/git-spice-stack-prs/) | Manage stacked GitHub PRs with git-spice — branch creation, submit, restack, and update cycles. |
-| [receiving-code-review](https://github.com/obra/superpowers/tree/main/skills/receiving-code-review) | Protocol for handling review feedback — verify before implementing, push back when wrong. |
+## Plugins
 
-Historical planning docs also remain under [`docs/plans/`](docs/plans/).
-They are useful as design history, but they are not the active workflow surface.
+| Plugin | What It Adds |
+|--------|--------------|
+| [Engineering Review](plugins/engineering-review/) | Code review, PR review, Go development, Neovim plugin development, and reviewer role prompts. |
+| [Provider Issue Workbench](plugins/provider-issue-workbench/) | Pulumi provider issue triage, Pulumi and Terraform repro staging, bridge parity investigation, and workaround analysis. |
+| [Pulumi Audit](plugins/pulumi-audit/) | Pulumi test rationalization audit workflow, references, and helper scripts. |
+| [Codex Workflows](plugins/codex-workflows/) | General Codex planning, repo readiness audit, git-spice stack management, and multi-model evaluation. |
+
+## Local Development
+
+If you are working from a local clone, register the checkout itself as the
+marketplace:
+
+```bash
+git clone https://github.com/corymhall/toolkit.git
+cd toolkit
+scripts/install-local-plugins.sh
+```
+
+The local install script registers the checkout as the `toolkit` marketplace
+and refreshes local Codex reviewer role links used by the review plugin. It
+does not force-install individual plugins; use the Codex plugin directory for
+that.
 
 ## Acknowledgements
 

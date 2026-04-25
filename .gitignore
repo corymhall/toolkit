@@ -2,3 +2,5 @@
 .claude/commands/
 .logs/
 mail
+__pycache__/
+*.pyc

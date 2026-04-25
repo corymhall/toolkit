@@ -16,8 +16,8 @@ Workflow:
 1. If the review scope includes Go code, start with the go-development tooling gate when practical:
    - prefer `golangci-lint fmt --diff`, `golangci-lint run`, and `go test ./...` when golangci-lint v2 config is present
    - otherwise use the portable fallback gate described in the go-development skill
-2. Read `general/skills/go-development/SKILL.md` and use its Reviewer-Deep profile as the source of truth.
-3. Use `general/skills/go-development/references/lint-coverage-matrix.md` to decide where manual review is still required.
+2. Read `plugins/engineering-review/skills/go-development/SKILL.md` and use its Reviewer-Deep profile as the source of truth.
+3. Use `plugins/engineering-review/skills/go-development/references/lint-coverage-matrix.md` to decide where manual review is still required.
 4. Pay extra attention to review-only and mixed rules that frequently escape generic review:
    - package-global mutable state and hidden function seams
    - interface ownership and API surface design

@@ -1,0 +1,39 @@
+{
+  "name": "pulumi-audit",
+  "version": "0.1.0",
+  "description": "Pulumi test rationalization audit workflow with references and helper scripts.",
+  "author": {
+    "name": "Toolkit",
+    "email": "",
+    "url": ""
+  },
+  "homepage": "",
+  "repository": "",
+  "license": "MIT",
+  "keywords": [
+    "pulumi",
+    "testing",
+    "audit"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Pulumi Audit",
+    "shortDescription": "Rationalize Pulumi provider and component test suites.",
+    "longDescription": "Collaborative audit tooling for Pulumi test inventories, provenance analysis, ownership review, and disposition reports.",
+    "developerName": "Toolkit",
+    "category": "Development",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "",
+    "privacyPolicyURL": "",
+    "termsOfServiceURL": "",
+    "defaultPrompt": [
+      "Start a Pulumi test audit.",
+      "Validate this audit inventory.",
+      "Render the audit report."
+    ],
+    "brandColor": "#7C3AED"
+  }
+}
