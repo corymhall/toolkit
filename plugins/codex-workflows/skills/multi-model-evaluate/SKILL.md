@@ -1,142 +1,143 @@
 ---
 name: multi-model-evaluate
-description: "Get multiple AI models to evaluate the same document or idea, then synthesize their perspectives into a unified assessment."
+description: "Use when the user explicitly wants multiple model perspectives on a document, plan, or decision, or when independent comparison would materially change a high-risk judgment."
 ---
 
 # Multi-Model Evaluate
 
-## Overview
+Use multiple models as a bounded evidence-gathering move, not as a default
+workflow. The value is not model count; the value is whether independent
+perspectives expose assumptions, alternatives, or risks that change the next
+decision.
 
-Dispatch the same question to multiple AI models in parallel, then synthesize
-their responses. Useful when you want diverse perspectives on a design,
-approach, or decision — without manually running separate sessions and
-combining results yourself.
+The main Codex session owns the judgment. Other models can contribute evidence,
+counterarguments, or blind-spot checks, but they do not vote the answer into
+truth.
 
 ## When to Use
 
-- Evaluating a design or approach from an external source (ChatGPT recommendation, colleague's proposal, RFC)
-- Comparing trade-offs where you want multiple reasoning styles
-- Reviewing a document where blind spots matter (security review, architecture review)
-- Any time you'd otherwise paste the same thing into two agent sessions manually
+Use this skill only when:
 
-## The Process
+- the user explicitly asks for multiple model perspectives or comparison
+- an independent adversarial read could materially change a high-risk decision
 
-### 1. Gather Input
+Skip this skill when a normal repo inspection, focused review, or direct user
+conversation is enough.
 
-Ask the user what to evaluate. Accept any of:
-- A file path (`docs/designs/feature.md`)
-- Pasted text in the conversation
-- A bead ID (`bd show <id>` to read its description)
-- A URL (fetch and read)
+For multi-model code review, keep the runtime boundary clear. The Codex session
+may use `request-review` for its own local review pass, but external helpers
+cannot be assumed to know Codex reviewer agents or skills. Ask external helpers
+for the specific review lens you want, or use that runtime's native review
+skill when one is available.
 
-Also ask what they want to know. This becomes the evaluation prompt.
-Examples:
-- "Evaluate this approach — what are the strengths and weaknesses?"
-- "Find gaps in this design"
-- "Compare this to [alternative] — which is better and why?"
-- "Is this feasible given our codebase?"
+## Process
 
-### 2. Check Available Models
+### 1. Frame The Question
 
-Check which model CLIs are installed:
+Identify:
+
+- the artifact or idea being evaluated
+- the decision the user needs to make
+- the evidence that would change the recommendation
+- constraints the helpers need: repo, product, security, operational, or user
+  intent
+
+Accept paths, pasted text, issue IDs, bead IDs, URLs, or conversation context.
+If the user has not stated the decision clearly, ask a short clarifying
+question or propose the framing before dispatch.
+
+Inspect local context first when feasibility depends on the repo.
+
+### 2. Use Bounded Helpers
+
+Use only available, appropriate helpers. Check local CLIs when needed:
 
 ```bash
-command -v claude >/dev/null 2>&1 && echo "claude: available" || echo "claude: not installed"
-command -v gemini >/dev/null 2>&1 && echo "gemini: available" || echo "gemini: not installed"
+command -v claude
+command -v gemini
 ```
 
-The primary model (the one running this skill) is always available.
-Report which models will be used before dispatching.
+Do not require a minimum number of models. If only the primary session is
+available, say so and proceed with a focused single-model assessment if that is
+still useful.
 
-Minimum: 2 models (primary + one CLI). If only the primary model is available,
-tell the user and offer to proceed with a single-model deep review instead.
+Use the same core facts for every model, but adapt the prompt when doing so
+improves the evidence:
 
-### 3. Dispatch in Parallel
+- Ask one model for adversarial risks and another for implementation tradeoffs.
+- Give all models the same decision question, but tailor tool or output
+  instructions to the model runtime.
+- For code review, use Codex-native review lanes locally and runtime-native
+  review skills or direct review prompts externally.
+- Keep prompts identical only when direct comparison matters.
 
-Build the evaluation prompt:
-
-```
-You are evaluating a document. Read it carefully, then answer the question.
-
-## Document
-
-<full document content>
-
-## Question
-
-<user's evaluation question>
-
-## Instructions
-
-- Be specific and cite evidence from the document
-- State your confidence level for each finding
-- If you disagree with the document's approach, explain why with alternatives
-- Be direct — don't hedge with "it depends" unless it genuinely does
-```
-
-Dispatch to all available models in parallel:
-
-| Model | Command |
-|-------|---------|
-| Claude Opus 4.6 | `claude -p --model opus "<prompt>"` |
-| Gemini 3 Pro | `gemini --model gemini-3-pro-preview -y -o text "<prompt>"` |
-| Primary model | Run directly (no CLI needed) |
-
-Use temp files for prompts if needed. Wait for all models (timeout: 10 minutes each).
-
-### 4. Synthesize
-
-Read all model responses and produce a synthesis:
-
-**Where models agree** — high confidence findings. If all models flag the same
-issue or praise the same aspect, that's strong signal.
-
-**Where models disagree** — this is the most valuable part. For each disagreement:
-- What does each model say?
-- Why might they differ? (different assumptions, different priorities)
-- Which perspective is more compelling and why?
-
-**Unique insights** — things only one model noticed. These aren't necessarily
-wrong — they might be blind spots the others missed.
-
-### 5. Present Results
-
-Present the synthesis conversationally. Don't just dump three responses —
-the value is in the comparison and synthesis.
+Keep each request narrow enough to answer well:
 
 ```
-## Multi-Model Evaluation
+Evaluate this artifact for the decision below.
 
-**Models used:** [list]
-**Document:** [source]
-**Question:** [what was asked]
+Decision:
+<question>
 
-### Consensus (all models agree)
+Context and constraints:
+<facts that matter>
 
-- [Finding 1]: [what they all said]
-- [Finding 2]: [what they all said]
+Artifact:
+<document, excerpt, or path summary>
 
-### Disagreements
-
-**[Topic]:**
-- Claude: [position]
-- Gemini: [position]
-- [Primary]: [position]
-- **Assessment:** [which is more compelling and why]
-
-### Unique Insights
-
-- [Model X] noticed: [insight the others missed]
-
-### Summary
-
-[2-3 sentence bottom line — what should the user take away?]
+Return:
+- findings that would change the decision
+- assumptions you are making
+- evidence from the artifact or repo
+- one recommended next move
 ```
+
+Use temp files for long prompts. Set reasonable timeouts. If a helper fails or
+times out, continue with the available evidence and report that limitation.
+
+For concrete Claude and Gemini CLI invocation patterns, output handling,
+timeouts, and failure cases, open
+[references/model-cli-adapters.md](references/model-cli-adapters.md).
+
+### 3. Synthesize Into Judgment
+
+Compare the responses against the artifact and local evidence. Do not treat
+agreement as proof, and do not treat disagreement as automatically valuable.
+
+Report:
+
+- what changed your confidence
+- what evidence is strongest
+- where responses relied on weak or conflicting assumptions
+- which recommendation you would follow and why
+- what remains unresolved
+
+Unique model observations are leads, not findings, until they survive your own
+check against the evidence.
+
+Keep the output conversational and outcome-focused. Include:
+
+- models or helpers used
+- the decision question
+- bottom-line recommendation
+- high-signal findings
+- disagreements or assumptions that matter
+- next step
+
+Avoid dumping full model transcripts unless the user asks.
+
+Stop early if the comparison is not adding useful evidence. Say that the extra
+perspective did not change the recommendation, then return to direct analysis
+or user collaboration.
 
 ## Key Principles
 
-- **Synthesis over concatenation** — don't just show three responses. Compare, contrast, and judge.
-- **Disagreements are the point** — that's where diverse perspectives add value.
-- **Be direct about which model is right** — when models disagree, take a position on which reasoning is stronger.
-- **No files written** — this is conversational output, not a persisted artifact. If the user wants to save it, they can ask.
-- **Same prompt to all models** — don't customize per model. The value comes from diverse reasoning on identical input.
+- **Outcome over ceremony**: use multiple models only when they improve the
+  decision.
+- **Evidence over consensus**: model agreement is a clue, not validation.
+- **Adaptable prompts**: preserve comparable inputs where useful, but do not
+  force identical prompts when different lenses would produce better evidence.
+- **Main-session ownership**: synthesize, verify, and take responsibility for
+  the recommendation.
+- **Easy to stop**: if the comparison is not producing new information, return
+  to direct analysis or user collaboration.

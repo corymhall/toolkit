@@ -1,6 +1,6 @@
 {
   "name": "codex-workflows",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "General Codex workflow skills for collaborative framing, repo readiness, stacked PRs, and multi-model evaluation.",
   "author": {
     "name": "Toolkit",
