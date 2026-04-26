@@ -1,7 +1,7 @@
 {
   "name": "engineering-review",
-  "version": "0.1.0",
-  "description": "Code review, PR review, and language-specific engineering guidance for Codex.",
+  "version": "0.1.1",
+  "description": "Code review, PR review, repo-instruction compliance, and language-specific engineering guidance for Codex.",
   "author": {
     "name": "Toolkit",
     "email": "",
@@ -19,7 +19,7 @@
   "interface": {
     "displayName": "Engineering Review",
     "shortDescription": "Review code, PRs, Go, and Neovim plugin changes.",
-    "longDescription": "Codex-oriented review workflows, reviewer agents, and language-specific development guidance for software engineering work.",
+    "longDescription": "Codex-oriented review workflows, reviewer agents, repo-instruction compliance checks, and language-specific development guidance for software engineering work.",
     "developerName": "Toolkit",
     "category": "Development",
     "capabilities": [
@@ -32,6 +32,7 @@
     "defaultPrompt": [
       "Review the current diff.",
       "Review this PR and draft comments.",
+      "Check this diff against AGENTS.md.",
       "Use the Go reviewer lens."
     ],
     "brandColor": "#2563EB"

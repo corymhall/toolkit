@@ -1,13 +1,22 @@
 # Reviewer Lenses
 
-Use this file to decide which reviewer agents to launch for a given manual
-review request.
+Use this file as the source of truth for which reviewer agents to launch for a
+manual review request.
+
+Choose the smallest lens set that answers the user's actual question. Do not add
+lanes just because they exist.
 
 ## Baseline
 
 Always start with:
 
 - `general_reviewer`
+
+Also run `repo_instructions_reviewer` when the review target is a repo change
+and an applicable `AGENTS.md` file exists.
+
+This lane is required for plugin, skill, workflow, generated output, release
+process, validation, or file-placement changes.
 
 ## Add `spec_alignment_reviewer` when
 
@@ -47,25 +56,40 @@ Add one outside generic review lane when:
 Do not duplicate the full Codex reviewer stack across multiple external
 runtimes by default.
 
+## Lane Rules
+
+- Reviewer lanes are read-only.
+- Reviewer lanes should focus on findings, not code edits.
+- Reviewer lanes should return findings directly, not lane-management status
+  chatter such as "I spawned a review lane" or "still running".
+- If a selected lane cannot be launched, continue with the useful lanes that are
+  available and report the missing lens as residual risk.
+- If a lane returns process narration instead of findings, ignore the narration
+  and synthesize only the useful findings.
+
 ## Good default combinations
 
 ### Current diff, no extra context
 
 - `general_reviewer`
+- `repo_instructions_reviewer` when applicable
 
 ### Spec or plan alignment check
 
 - `general_reviewer`
+- `repo_instructions_reviewer` when applicable
 - `spec_alignment_reviewer`
 
 ### Behavior change with tests
 
 - `general_reviewer`
+- `repo_instructions_reviewer` when applicable
 - `test_reviewer`
 
 ### Go-heavy review
 
 - `general_reviewer`
+- `repo_instructions_reviewer` when applicable
 - `go_reviewer`
 - optional `test_reviewer`
 - optional `error_handling_reviewer`
@@ -73,6 +97,7 @@ runtimes by default.
 ### Risky feature delivery check
 
 - `general_reviewer`
+- `repo_instructions_reviewer` when applicable
 - optional `go_reviewer` for Go-heavy scopes
 - `spec_alignment_reviewer`
 - `test_reviewer`
