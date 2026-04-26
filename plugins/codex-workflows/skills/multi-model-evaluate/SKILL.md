@@ -24,7 +24,7 @@ combining results yourself.
 ### 1. Gather Input
 
 Ask the user what to evaluate. Accept any of:
-- A file path (`docs/plans/feature/spec.md`)
+- A file path (`docs/designs/feature.md`)
 - Pasted text in the conversation
 - A bead ID (`bd show <id>` to read its description)
 - A URL (fetch and read)

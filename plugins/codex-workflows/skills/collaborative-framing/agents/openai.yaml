@@ -1,0 +1,6 @@
+interface:
+  display_name: "Collaborative Framing"
+  short_description: "Clarify intent and success through shared thinking"
+  default_prompt: "Use $collaborative-framing to work back and forth with me on the goal, open questions, and smallest useful next step."
+policy:
+  allow_implicit_invocation: false

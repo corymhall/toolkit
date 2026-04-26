@@ -30,7 +30,7 @@ changes.
 | [Engineering Review](plugins/engineering-review/) | Code review, PR review, Go development, Neovim plugin development, and reviewer role prompts. |
 | [Provider Issue Workbench](plugins/provider-issue-workbench/) | Pulumi provider issue triage, Pulumi and Terraform repro staging, bridge parity investigation, and workaround analysis. |
 | [Pulumi Audit](plugins/pulumi-audit/) | Pulumi test rationalization audit workflow, references, and helper scripts. |
-| [Codex Workflows](plugins/codex-workflows/) | General Codex planning, repo readiness audit, git-spice stack management, and multi-model evaluation. |
+| [Codex Workflows](plugins/codex-workflows/) | Collaborative framing, repo readiness audit, git-spice stack management, and multi-model evaluation. |
 
 ## Local Development
 

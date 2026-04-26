@@ -26,6 +26,15 @@ Prefer workflows that amplify Codex's strengths.
 5. Is review happening at the right granularity?
 6. What is the smallest valuable adaptation?
 
+## Prompt And Skill Fit
+
+When the pattern is a reusable prompt or skill, also apply
+`docs/skill-prompting-lens.md`.
+
+Treat skills as model-sensitive interventions, not reusable truths. Adapt them
+to Codex, keep broad general skills minimal, and preserve domain-specific
+judgment only where it has observable workflow value.
+
 ## Patterns We Generally Prefer
 
 - explicit workflow stages over hidden prompt magic

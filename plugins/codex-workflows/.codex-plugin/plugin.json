@@ -1,7 +1,7 @@
 {
   "name": "codex-workflows",
-  "version": "0.1.0",
-  "description": "General Codex workflow skills for planning, repo readiness, stacked PRs, and multi-model evaluation.",
+  "version": "0.1.1",
+  "description": "General Codex workflow skills for collaborative framing, repo readiness, stacked PRs, and multi-model evaluation.",
   "author": {
     "name": "Toolkit",
     "email": "",
@@ -13,13 +13,13 @@
   "keywords": [
     "codex",
     "workflow",
-    "planning"
+    "collaboration"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex Workflows",
-    "shortDescription": "Plan work, assess repos, manage stacks, and compare models.",
-    "longDescription": "General-purpose Codex workflow skills for design exploration, AI contribution readiness, git-spice stack management, and multi-model evaluation.",
+    "shortDescription": "Frame work, assess repos, manage stacks, and compare models.",
+    "longDescription": "General-purpose Codex workflow skills for collaborative framing, AI contribution readiness, git-spice stack management, and multi-model evaluation.",
     "developerName": "Toolkit",
     "category": "Productivity",
     "capabilities": [
@@ -30,7 +30,7 @@
     "privacyPolicyURL": "",
     "termsOfServiceURL": "",
     "defaultPrompt": [
-      "Help me brainstorm this change.",
+      "Work back and forth with me on this change.",
       "Audit this repo for AI readiness.",
       "Prepare this git-spice stack."
     ],
