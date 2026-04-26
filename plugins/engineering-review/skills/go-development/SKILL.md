@@ -1,28 +1,37 @@
 ---
 name: go-development
-description: Implement, refactor, and review production Go code using Google-style API, error, concurrency, testing, and readability rules plus version-gated modernization guidance. Use when building Go features, reviewing Go pull requests, modernizing legacy Go code, or debugging Go services/CLIs/libraries.
+description: Implement, refactor, modernize, and debug production Go code using Google-style API, error, concurrency, testing, and readability rules plus version-gated modernization guidance. For Go code review, prefer request-review, which can launch the Go reviewer lane.
 ---
 
 # Go Development
 
-Use this skill in one of two execution profiles.
+Use this skill for writing and changing Go code. Keep the main session focused
+on the implementation outcome, and load only the Go rules that match the code
+being touched.
 
-## Profiles
+For review-only work, prefer `request-review`. It can launch `go_reviewer`,
+which uses the Go-specific review contract in
+[references/reviewer-deep.md](references/reviewer-deep.md).
 
-### Implementer-Fast (default)
+## Implementer Profile
 
-1. Run tooling gate first.
-2. If tooling passes, read only rules that match changed risk areas.
-3. Implement with minimal policy overhead.
+1. Inspect the repo's existing Go version, style, lint config, and local
+   patterns.
+2. Run the tooling gate when practical, or note why it is too expensive or
+   blocked.
+3. Read only the rule files that match the changed risk areas.
+4. Implement with minimal policy overhead and verify the changed behavior.
 
-### Reviewer-Deep
+## Version Gate
 
-1. Run tooling gate.
-2. Review all manual and mixed-enforcement rules relevant to changed files.
-3. Report policy gaps with severity and evidence.
-4. If delegated as a reviewer subagent, return the review itself, not process
-   narration. Do not say that you spawned a lane, are waiting, or are about to
-   review something.
+Before applying modernization rules, check the target Go version from `go.mod`,
+toolchain config, CI, or repo docs.
+
+- Use modernization rules only when the repo's target Go version supports them.
+- Do not "modernize" across a version boundary without an explicit upgrade
+  request.
+- If version support is unclear, prefer the established local pattern and note
+  the uncertainty.
 
 ## Architecture Defaults
 
@@ -81,12 +90,23 @@ Use `references/lint-coverage-matrix.md` to decide depth:
 - `mixed`: check linter output plus rule intent
 - `review-only`: always evaluate manually
 
-When implementation touches package design, dependency wiring, `main`, lifecycle code, or tests with fakes/stubs, read these rules before editing:
+For implementation, load targeted rules based on the work:
 
-- `rules/api-global-state.md`
-- `rules/api-consumer-interfaces.md`
-- `rules/api-cli-command-context.md`
-- `rules/testing-failures-helpers.md`
+- package design, dependency wiring, or test seams:
+  `rules/api-global-state.md`, `rules/api-consumer-interfaces.md`
+- command setup, cancellation, or process boundaries:
+  `rules/api-cli-command-context.md`, `rules/error-init-panic-boundaries.md`
+- goroutines, cancellation, or worker lifecycles:
+  `rules/concurrency-context-first.md`,
+  `rules/concurrency-goroutine-lifecycles.md`
+- error surfaces, wrapping, logging, or panic policy:
+  `rules/error-api-contract.md`, `rules/error-wrap-context.md`,
+  `rules/error-logging-boundaries.md`, `rules/error-no-panic-libraries.md`
+- tests, fakes, or helper assertions:
+  `rules/testing-failures-helpers.md`, `rules/testing-table-driven.md`
+- Go version updates or cleanup work:
+  `references/modernize-checklist.md` and only the relevant `modernize-*`
+  rules
 
 ## Local Autofix Policy
 
@@ -98,24 +118,10 @@ golangci-lint run --fix
 
 Reviewer/CI gate stays non-mutating (`fmt --diff`, `run`, tests).
 
-## Reviewer Output Contract
-
-For each finding, report:
-
-- severity
-- `automated` / `mixed` / `review-only`
-- source rule file
-- required action
-- verification evidence
-
-Always flag package-global mutable function vars as a design smell unless the change includes a narrow, explicit justification for keeping a legacy seam.
-
-When there are no meaningful Go-specific findings, say that explicitly and add
-any residual risk or test-gap note instead of describing your process.
-
 ## References
 
 - `references/lint-coverage-matrix.md` - rule-to-enforcement routing
+- `references/reviewer-deep.md` - Go reviewer lane contract
 - `references/golangci-lint-v2.7.2.yml` - recommended v2 config baseline
 - `references/google-go-style-checklist.md` - guide/decisions/best-practices pass/fail list
 - `references/effective-go-checklist.md` - core idioms and API basics

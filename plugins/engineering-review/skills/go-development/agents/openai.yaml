@@ -1,4 +1,4 @@
 interface:
   display_name: "Go Development"
-  short_description: "Build and review production Go code"
-  default_prompt: "Use $go-development to implement or review Go changes with idiomatic design, modernization, and verification checks."
+  short_description: "Build and modernize production Go code"
+  default_prompt: "Use $go-development to implement, refactor, or modernize Go code with idiomatic design and verification checks."
