@@ -1,187 +1,199 @@
 ---
 name: review-pr
-description: "Review a teammate's PR and produce draft comments for your approval before posting. Use when asked to review a PR, look at a PR, or give feedback on someone's code."
+description: "Review a GitHub PR by loading PR context, running or reusing the core request-review findings, drafting comments for approval, and posting only after explicit go-ahead."
 ---
 
 # Review PR
 
-Review a pull request and produce draft comments for human approval before
-posting anything to GitHub. Nothing gets posted without your explicit go-ahead.
+Use this skill for GitHub PR review IO.
 
-## When to Use
+`review-pr` does not define the technical review lens. Use `request-review` for
+the actual review, then turn approved findings into GitHub review comments.
+Nothing posts without explicit approval.
 
-- Teammate asks you to review their PR
-- You want AI-assisted review of an external PR
-- You want to review a PR before approving/merging
-- Any PR review where you want draft comments, not auto-posted feedback
+## When To Use
 
-## The Process
+- review a GitHub PR
+- draft inline PR comments for human approval
+- approve, comment, or request changes after the user approves the review
+- turn existing review findings into GitHub review comments
 
-### 1. Load the PR
+Use `request-review` directly when the user only wants local technical analysis
+and no draft GitHub comments.
+
+## Load PR Context
 
 Accept PR input as:
-- A PR URL (`https://github.com/org/repo/pulls/123`)
-- A PR number (assumes current repo: `gh pr view 123`)
-- "Review the open PR" (find it: `gh pr list`)
 
-Fetch PR details:
+- PR URL
+- PR number in the current repo
+- "the open PR" when there is only one obvious candidate
+
+Use `gh` for GitHub work:
 
 ```bash
-gh pr view <number> --json title,body,author,baseRefName,headRefName,files,additions,deletions,commits
+gh pr view <number> --json title,body,author,baseRefName,headRefName,headRefOid,files,additions,deletions,commits,reviewDecision
 gh pr diff <number>
 gh pr checks <number>
 ```
 
-Present a summary:
+Summarize the PR briefly:
 
-```
-## PR #<number>: <title>
+- title, author, base/head refs
+- changed file count and diff size
+- CI state
+- short PR-description summary
 
-Author: <author>
-Base: <base> ← <head>
-Files changed: <count> (+<additions>/-<deletions>)
-CI: <passing/failing/pending>
+Keep setup read-only. Do not rebase, merge, reset, cherry-pick, or otherwise
+rewrite local history unless the user explicitly asks for branch surgery.
 
-<PR description summary>
-```
+## Review Source
 
-Read-only setup rules:
+Use the core review flow for technical findings.
 
-- reviewing a PR does not require rewriting your local branch
-- do not `git rebase`, `git merge`, `git cherry-pick`, `git reset`, or similar
-  branch-mutating commands unless the user explicitly asked for branch surgery
-- prefer `gh pr view`, `gh pr diff`, `gh pr checks`, and targeted local reads
-  over "cleaning up" the checkout first
-- if local conflicts, a dirty worktree, or missing merge-base context limit what
-  you can verify, say that plainly in the draft review instead of mutating the
-  branch
+- If the user already provided findings, use those.
+- Otherwise invoke or follow `request-review` against the PR diff and relevant
+  local context.
+- Include the `repo_instructions_reviewer` lane when applicable instructions
+  exist.
 
-### 2. Review the Code
+Do not duplicate the generic review rubric here. `request-review` owns reviewer
+lens selection and findings synthesis.
 
-Review the diff systematically. For each changed file, assess:
+## Draft Comments
 
-**Correctness**
-- Logic errors, edge cases, null/nil handling
-- Race conditions, off-by-one errors
-- Does the code do what the PR description claims?
+Convert only actionable findings into draft GitHub comments.
 
-**Security**
-- Input validation, injection risks, auth checks
-- Exposed secrets, unsafe operations
-- OWASP top 10 concerns
+For each draft, include:
 
-**Design**
-- Does it fit the existing codebase patterns?
-- Is complexity justified?
-- Are abstractions appropriate (not over/under-engineered)?
+- category: blocking, suggestion, question, or nit
+- file, line, and side for the inline review comment
+- comment text written as it should appear on GitHub
+- source finding or rationale when that helps approval
 
-**Error Handling**
-- Swallowed errors, missing checks
-- Unclear error messages
-- Recovery paths
+Prefer inline review comments for specific findings. The overall review body
+should be brief and high-level; do not list all specific comments in the body.
+Use body-only comments only for feedback that cannot be anchored to a changed
+line.
 
-**Testing**
-- Are changes tested? Are tests meaningful?
-- Edge cases covered?
-- Do tests actually verify behavior (not just coverage)?
+Use `gh pr diff` to confirm that each inline comment can be anchored to a
+changed line:
 
-**Style & Conventions**
-- Consistent with existing codebase?
-- Naming, formatting, organization
-- Documentation for non-obvious logic
+- use `side: "RIGHT"` for added or changed lines in the PR
+- use `side: "LEFT"` for deleted or base-side lines
+- include `start_line` and `start_side` only for multi-line comments
 
-### 3. Produce Draft Comments
+Prefer fewer high-quality comments. Skip praise, non-issues, and correctness
+narration unless they belong in a short overall review body.
 
-For each finding, draft a comment. Categorize:
+Use blocking only for genuine bugs, security issues, data loss risks, serious
+regressions, or significant maintainability hazards.
 
-- **Blocking** — must fix before merge
-- **Suggestion** — should consider but not blocking
-- **Question** — need clarification, not a judgment
-- **Nit** — minor style/preference, definitely not blocking
+## Approval Display
 
-For each draft comment, include:
-- File and line reference
-- The comment text (written as if you're posting it)
-- Category (blocking/suggestion/question/nit)
+Show the draft review before posting:
 
-### 4. Present Drafts for Approval
-
-Show all draft comments grouped by category:
-
-```
+```markdown
 ## Draft Review: PR #<number>
 
-### Overall Assessment: <APPROVE / REQUEST CHANGES / COMMENT>
+Overall assessment: <APPROVE / COMMENT / REQUEST CHANGES>
 
-### Blocking (<count>)
+Review body: <brief high-level summary>
 
-**<file>:<line>**
-> <the code being commented on>
+### Blocking
+- `<file>:<line>`: <draft comment>
 
-Draft comment: "<your comment>"
+### Suggestions
+- `<file>:<line>`: <draft comment>
 
----
+### Questions
+- `<file>:<line>`: <draft comment>
 
-### Suggestions (<count>)
+### Nits
+- `<file>:<line>`: <draft comment>
 
-**<file>:<line>**
-> <the code>
-
-Draft comment: "<your comment>"
-
----
-
-### Questions (<count>)
-...
-
-### Nits (<count>)
-...
+### Body-only Comments
+- <draft comment that cannot be anchored to a changed line>
 ```
 
-Then ask:
+Ask for approval with clear options:
 
-- `Post all as-is (Recommended)`: Submit the review with all comments
-- `Edit first`: Let me modify comments before posting
-- `Post without nits`: Submit blocking + suggestions + questions, skip nits
-- `Don't post`: Just show me the review, I'll handle it manually
+- post all as-is
+- edit first
+- post without nits
+- do not post
 
-### 5. Post Review (if approved)
+## Post Review
 
-Based on the overall assessment:
+Post only after explicit approval.
+
+### Overall-only review
+
+Use `gh pr review` only when there are no inline comments to submit:
 
 ```bash
-# If APPROVE (no blocking issues):
 gh pr review <number> --approve --body "<summary>"
-
-# If REQUEST CHANGES (blocking issues exist):
-gh pr review <number> --request-changes --body "<summary>"
-
-# If COMMENT (questions only, no judgment):
 gh pr review <number> --comment --body "<summary>"
+gh pr review <number> --request-changes --body "<summary>"
 ```
 
-For inline comments, post each as a review comment on the specific file/line.
-Use the GitHub review API to batch them into a single review submission.
+### Inline review comments
 
-### 6. Report
+Use the GitHub review API for inline comments so all approved comments are
+batched into a single review. Specific findings should be posted as inline
+review comments on the relevant changed lines; the review body should stay
+brief.
 
+Create a review payload:
+
+```bash
+PR=<number>
+HEAD_SHA="$(gh pr view "$PR" --json headRefOid --jq .headRefOid)"
+
+jq -n \
+  --arg commit_id "$HEAD_SHA" \
+  --arg body "Thanks. I left a couple of inline comments." \
+  '{
+    commit_id: $commit_id,
+    event: "REQUEST_CHANGES",
+    body: $body,
+    comments: [
+      {
+        path: "pkg/example.go",
+        line: 42,
+        side: "RIGHT",
+        body: "This can return nil here, which would panic below. Can we handle the empty result explicitly?"
+      },
+      {
+        path: "pkg/example_test.go",
+        line: 88,
+        side: "RIGHT",
+        body: "This test only checks that the call succeeds. Can we assert the behavior that regressed?"
+      }
+    ]
+  }' > /tmp/review.json
 ```
-## Review Posted: PR #<number>
 
-Decision: <APPROVE / REQUEST CHANGES / COMMENT>
-Comments posted: <count>
-  - Blocking: <count>
-  - Suggestions: <count>
-  - Questions: <count>
-  - Nits: <count>
+Submit the review:
+
+```bash
+gh api \
+  -X POST \
+  repos/{owner}/{repo}/pulls/$PR/reviews \
+  --input /tmp/review.json
 ```
 
-## Key Principles
+Use `event: "APPROVE"`, `event: "COMMENT"`, or `event: "REQUEST_CHANGES"` to
+match the approved overall assessment. Use `REQUEST_CHANGES` when any blocking
+finding is being posted.
 
-- **Nothing posts without approval** — always show drafts first
-- **Write comments as yourself** — the tone should sound like you, not an AI
-- **Be specific** — file:line references, quote the code, explain why
-- **Blocking means blocking** — only use for genuine issues that would cause bugs, security problems, or significant maintenance burden
-- **Don't be noisy** — fewer high-quality comments beat many nitpicks
-- **Questions are valuable** — "why did you choose X over Y?" is a great review comment
-- **Acknowledge what's good** — if the PR has strengths, say so in the summary
+## Report
+
+After posting, report:
+
+- decision
+- number of comments posted
+- category counts
+- anything approved but not posted
+
+If nothing was posted, say so plainly.
