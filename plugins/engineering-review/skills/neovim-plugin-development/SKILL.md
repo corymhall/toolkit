@@ -1,26 +1,28 @@
 ---
 name: neovim-plugin-development
-description: Implement, refactor, and review Neovim plugins in Lua using official runtimepath/module-loading, startup/lazy-loading, keymap/autocmd, health, documentation, and release practices. Use when building plugin features, reviewing plugin PRs, modernizing plugin architecture, or debugging plugin startup/performance issues.
+description: Implement, refactor, modernize, and debug Neovim plugins in Lua using official runtimepath/module-loading, startup/lazy-loading, keymap/autocmd, health, documentation, and release practices. For review-only work, prefer request-review and load the Neovim reviewer reference when needed.
 ---
 
 # Neovim Plugin Development
 
-Use this skill in one of two execution profiles.
+Use this skill for writing and changing Neovim plugin code. Keep the main
+session focused on the implementation outcome, and load only the Neovim rules
+that match the plugin surface being touched.
 
-## Profiles
+For review-only work, prefer `request-review`. There is no dedicated Neovim
+reviewer lane yet; use [references/reviewer-deep.md](references/reviewer-deep.md)
+when a deep Neovim-specific review pass is actually needed.
 
-### Implementer-Fast (default)
+## Implementer Profile
 
-1. Run tooling gate first.
-2. If tooling passes, read only rules that match changed risk areas.
-3. Implement with minimal policy overhead.
-
-### Reviewer-Deep
-
-1. Run tooling gate.
-2. Review all rule files and all checklist sections (exhaustive by default).
-3. Run required behavioral smoke tests when `nvim --headless` is available.
-4. Report both passes and gaps with severity and evidence.
+1. Inspect the plugin layout, supported Neovim version, local style, and test
+   tooling.
+2. Run the tooling gate when practical, or note why it is too expensive or
+   blocked.
+3. Read only the rule files that match changed risk areas.
+4. Implement with minimal policy overhead.
+5. Verify the behavior that changed, especially startup, setup, autocmd,
+   keymap, health, or docs behavior when touched.
 
 ## Tooling Gate First
 
@@ -39,17 +41,20 @@ stylua --check . || true
 nvim --headless "+checkhealth" +qa || true
 ```
 
-If tests exist, include them in both profiles (for example `busted`, `plenary`, or project-specific test runners).
+If tests exist, include them when they are relevant to the change (for example
+`busted`, `plenary`, or project-specific test runners).
 
-## Behavioral Smoke Tests (Reviewer-Deep)
+## Behavioral Smoke Tests
 
-When `nvim --headless` is available, run these runtime checks:
+When `nvim --headless` is available and the change touches the relevant
+behavior, run targeted runtime checks:
 
 - setup idempotency: call `setup()` twice and verify no duplicate autocmds/commands
 - unknown config keys: pass an unknown key and verify warning/error/health visibility
 - docs alignment: compare documented keymaps/commands with actual registrations
 
-If a smoke test is skipped, report: skip reason and resulting risk.
+If an important smoke test is skipped, report the skip reason and resulting
+risk.
 
 ## Rule Categories
 
@@ -87,38 +92,38 @@ Use `references/lint-coverage-matrix.md` to decide depth:
 - `mixed`: check tooling output plus rule intent
 - `review-only`: always evaluate manually
 
-Use `references/neovim-plugin-checklist.md` for policy-level pass/fail checks.
+For implementation, load targeted rules based on the work:
 
-## Reviewer Output Contract
+- runtimepath layout or startup files:
+  `rules/layout-runtime-boundaries.md`,
+  `rules/startup-minimal-entrypoint.md`
+- lazy-loading or startup performance:
+  `rules/startup-defer-require.md`
+- configuration, defaults, setup, or validation:
+  `rules/config-defaults-validation.md`
+- public Lua API, commands, or user-facing actions:
+  `rules/api-exported-entrypoints.md`
+- keymaps or command descriptions:
+  `rules/keymap-nonintrusive-desc.md`
+- autocmds, augroups, or reload behavior:
+  `rules/autocmd-augroup-idempotent.md`
+- `vim.uv`, timers, jobs, or callbacks:
+  `rules/async-schedule-wrap.md`
+- health checks or diagnostics:
+  `rules/health-checks-actionable.md`
+- README, vimdoc, or bug-report instructions:
+  `rules/docs-vimdoc-and-repro.md`
+- release, compatibility, or deprecation behavior:
+  `rules/release-semver-deprecations.md`
 
-Reviewer output must include all of the following:
-
-1. Coverage table for every rule file and every checklist section:
-   - status: `pass`, `fail`, or `not-applicable`
-   - enforcement type: `automated`, `mixed`, or `review-only`
-   - evidence (command output, file/line, or direct inspection note)
-   - linked smoke test evidence when runtime behavior is relevant
-2. Findings list (fails only), ordered by severity.
-3. Commands run, including failures/skips and reasons.
-4. Explicit testing statement:
-   - tests run + results, or
-   - why tests were not run and resulting risk.
-5. Behavioral smoke test statement:
-   - each required smoke test with command + observed result, or
-   - skipped with reason + risk.
-
-For each finding, include:
-
-- severity
-- `automated` / `mixed` / `review-only`
-- source checklist section
-- required action
-- verification evidence
+Use `references/neovim-plugin-checklist.md` for broader policy-level checks
+when the change spans several plugin surfaces.
 
 ## References
 
 - `references/neovim-plugin-checklist.md` - official-practice checklist + Folke patterns
 - `references/lint-coverage-matrix.md` - rule-to-enforcement routing
+- `references/reviewer-deep.md` - deep Neovim review contract
 
 ## Source Alignment
 

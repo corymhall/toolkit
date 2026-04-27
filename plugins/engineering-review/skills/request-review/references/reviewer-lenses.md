@@ -45,6 +45,16 @@ process, validation, or file-placement changes.
 - operational risk matters
 - the request explicitly asks about failure handling or resilience
 
+## Neovim Plugin Reviews
+
+There is no dedicated Neovim reviewer lane yet. For Neovim plugin changes,
+start with the normal reviewer lanes. If the user asks for a Neovim-specific
+review, or the change touches runtimepath layout, startup/lazy-loading, keymaps,
+autocmds, `vim.uv`, health checks, vimdoc, or release/deprecation behavior,
+the parent session should load
+`plugins/engineering-review/skills/neovim-plugin-development/references/reviewer-deep.md`
+and synthesize that domain pass with the reviewer-lane findings.
+
 ## Optional extra external lane
 
 Add one outside generic review lane when:
