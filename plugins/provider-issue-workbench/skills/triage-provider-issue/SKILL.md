@@ -19,6 +19,8 @@ skill. Bounded local actions are allowed.
 
 - Do not guess when confidence is low.
 - Do not optimize for a plausible-looking report.
+- Before path-specific searches or repo-local commands, do a quick layout probe
+  so you know which paths actually exist in this checkout.
 - Prefer the best path to certainty even when execution is blocked by missing
   credentials or approvals.
 - If the best next step requires a repro artifact, create the artifact rather
@@ -49,13 +51,25 @@ strong ownership call.
 ## Workflow
 
 1. Read the issue carefully and classify the issue type.
-2. Identify the likely implementation family or boundary involved.
-3. Gather only enough evidence to choose the next best action.
-4. Estimate confidence and decide whether routing is settled.
-5. If routing is not settled, explicitly switch to the helper skill that best
+2. Do a 30-second repo layout probe before assuming paths.
+3. Identify the likely implementation family or boundary involved.
+4. Gather only enough evidence to choose the next best action.
+5. Estimate confidence and decide whether routing is settled.
+6. If routing is not settled, explicitly switch to the helper skill that best
    reduces uncertainty.
-6. If routing is settled but the human still needs a practical path forward,
+7. If routing is settled but the human still needs a practical path forward,
    switch to workaround work.
+
+For provider repos, the initial probe should answer things like:
+
+- is the upstream provider present as a submodule, vendored module, or absent
+- where the effective Go module lives (`go.mod`, `provider/go.mod`, `sdk/go.mod`)
+- whether likely search roots such as `provider/`, `upstream/`, `examples/`, or
+  `tests/` actually exist in this checkout
+
+Do this before grepping guessed paths like `upstream/internal/...`,
+`tests/...`, or root `go.mod`. A fast `pwd`, `rg --files`, `find`, or targeted
+`ls` pass is cheaper than multiple `os error 2` misses.
 
 If the next best step belongs in another repo, move to that repo and continue.
 Do not stop just because the investigation crossed a repository boundary.
