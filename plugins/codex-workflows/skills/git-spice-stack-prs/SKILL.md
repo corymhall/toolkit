@@ -13,9 +13,16 @@ Use deterministic command sequences, keep one conceptual change per branch, and 
 ## Quick Start
 1. Confirm tool and repo state.
 2. Initialize tracking when needed.
-3. Build or repair the stack graph.
+3. Build or repair the stack graph with one conceptual change per branch.
 4. Submit stack PRs as draft or update-only.
 5. Verify branch-to-PR mapping and update PR descriptions via `gh`.
+
+## Core Concepts
+- `trunk`: the default branch, usually `main` or `master`; it has no base.
+- `base`: a branch's parent in the stack.
+- `upstack`: branches above the current branch.
+- `downstack`: branches below the current branch, toward trunk.
+- `restack`: rebase a branch onto its current base.
 
 ## Workflow
 
@@ -43,13 +50,30 @@ git-spice repo init --trunk "$TRUNK" --remote origin --no-prompt
 If your organization uses a non-default trunk, set `TRUNK` explicitly before init.
 
 ### 3) Create or Track Stack Branches
-For new stacked work:
+For new stacked work with no staged changes:
 ```bash
 git checkout -b <branch-name>
 git-spice branch track --base <base-branch> --no-prompt
 ```
 
+For new stacked work with staged changes, prefer git-spice branch creation so the branch is tracked immediately:
+```bash
+git add <files>
+git-spice branch create <branch-name> --message "<commit message>" --target <base-branch> --no-prompt
+```
+
+Use `--insert` to put a new branch between the target and its upstack. Use `--below` to place it below the target. Keep branch creation non-interactive for agent runs.
+
 For existing branch chains, track each branch explicitly with the correct base.
+
+Useful navigation while inspecting a stack:
+```bash
+git-spice up
+git-spice down
+git-spice top
+git-spice bottom
+git-spice branch checkout
+```
 
 ### 4) Insert or Reorder Foundations
 Use this when review improves by moving foundational work earlier.
@@ -65,6 +89,13 @@ After reordering:
 git-spice log short -a --no-prompt
 ```
 
+For routine branch moves, prefer git-spice commands before manual git surgery:
+```bash
+git-spice branch onto <target> --no-prompt
+git-spice upstack onto <target> --no-prompt
+git-spice branch split --at=<commit>:<new-branch> --no-prompt
+```
+
 ### 5) Submit Stack to GitHub
 Create draft PRs for whole stack:
 ```bash
@@ -77,17 +108,25 @@ git-spice stack submit --update-only --no-web
 ```
 
 ### 6) Maintain Stack After Changes
-After editing a mid-stack branch:
+After editing a mid-stack branch, amend or create the intended commit, then restack and submit:
 ```bash
-git-spice upstack restack
-git-spice stack submit --update-only --no-web
+git add <files>
+git-spice commit amend --no-edit --no-prompt
+git-spice stack submit --update-only --no-web --no-prompt
+```
+
+If the change should be a new commit rather than an amend:
+```bash
+git add <files>
+git-spice commit create --message "<commit message>" --no-prompt
+git-spice upstack restack --no-prompt
+git-spice stack submit --update-only --no-web --no-prompt
 ```
 
 After lower PR merge (single-worktree):
 ```bash
-git-spice repo sync
-git-spice branch restack
-git-spice stack submit --update-only --no-web
+git-spice repo sync --restack --no-prompt
+git-spice stack submit --update-only --no-web --no-prompt
 ```
 
 After lower PR merge (multi-worktree, recommended):
@@ -98,11 +137,22 @@ After lower PR merge (multi-worktree, recommended):
 
 Example:
 ```bash
-(cd .worktrees/<merged-branch> && git-spice repo sync --no-prompt)
+(cd .worktrees/<merged-branch> && git-spice repo sync --restack --no-prompt)
 (cd .worktrees/<next-open-branch> && git-spice branch restack --no-prompt)
 (cd .worktrees/<downstream-1> && git-spice branch restack --no-prompt)
 (cd .worktrees/<downstream-2> && git-spice branch restack --no-prompt)
 (cd .worktrees/<tip-branch> && git-spice stack submit --update-only --no-web --no-prompt)
+```
+
+If restack hits conflicts:
+```bash
+git add <resolved-files>
+git-spice rebase continue
+```
+
+To abandon the restack:
+```bash
+git-spice rebase abort
 ```
 
 If a PR still shows `DIRTY` after restack:
