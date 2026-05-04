@@ -54,6 +54,9 @@ Read `references/repro-shape.md` before editing.
 - Do not silently swap in HEAD semantics if the issue depends on older versions.
 - If you cannot execute the best path, do not invent a weaker one and present
   it as equivalent.
+- When citing staged files, tests, or commands in the final handoff, use
+  app-native Markdown links like `[examples/foo_test.go](/abs/path/foo_test.go:45)`.
+  Do not emit `file://` URIs, including in subagent handoffs.
 
 ## Deliverable
 

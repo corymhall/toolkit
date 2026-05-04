@@ -30,6 +30,9 @@ skill. Bounded local actions are allowed.
   same agent can continue effectively.
 - Treat workaround discovery as part of the job. Triage is often not complete
   when attribution is known.
+- When citing files in evidence or handoff output, use app-native Markdown
+  links like `[file.go](/abs/path/file.go:123)`. Do not emit `file://` URIs,
+  even in subagent-to-parent handoffs.
 
 ## Confidence Fork
 
@@ -132,6 +135,9 @@ Always leave a compact artifact the next pass can pick up:
 - artifacts prepared
 - blocked steps and required access
 - workaround status
+
+When the output cites repo evidence, keep the file references concise and
+clickable in the app. Prefer a few high-signal links over dense link spam.
 
 If you switch to a helper skill, restate the unresolved question in one line so
 the next pass knows exactly what it is trying to collapse.
