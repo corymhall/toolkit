@@ -1,0 +1,37 @@
+{
+  "name": "claude",
+  "version": "0.1.2",
+  "description": "Use Claude Code from Codex for chat-only code review and adversarial review.",
+  "author": {
+    "name": "Toolkit",
+    "email": "",
+    "url": ""
+  },
+  "homepage": "",
+  "repository": "",
+  "license": "MIT",
+  "keywords": [
+    "claude",
+    "review",
+    "codex"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Claude",
+    "shortDescription": "Ask Claude Code for focused code review.",
+    "longDescription": "Codex skills for invoking Claude Code as a chat-only reviewer without posting GitHub comments or editing files.",
+    "developerName": "Toolkit",
+    "category": "Development",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "",
+    "privacyPolicyURL": "",
+    "termsOfServiceURL": "",
+    "defaultPrompt": [
+      "Use Claude to review this diff.",
+      "Use Claude to challenge this design."
+    ],
+    "brandColor": "#D97706"
+  }
+}

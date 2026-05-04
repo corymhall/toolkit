@@ -31,6 +31,7 @@ changes.
 | [Provider Issue Workbench](plugins/provider-issue-workbench/) | Pulumi provider issue triage, Pulumi and Terraform repro staging, bridge parity investigation, and workaround analysis. |
 | [Pulumi Audit](plugins/pulumi-audit/) | Pulumi test rationalization audit workflow, references, and helper scripts. |
 | [Codex Workflows](plugins/codex-workflows/) | Collaborative framing, repo readiness audit, git-spice stack management, and multi-model evaluation. |
+| [Claude](plugins/claude/) | Chat-only Claude Code review and adversarial review skills for second-opinion feedback. |
 
 ## Local Development
 
