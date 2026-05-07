@@ -1,7 +1,7 @@
 {
   "name": "provider-issue-workbench",
-  "version": "0.1.1",
-  "description": "Pulumi provider issue triage, repro staging, bridge parity, and workaround investigation.",
+  "version": "0.1.2",
+  "description": "Pulumi provider issue triage, RPC lifecycle analysis, repro staging, bridge parity, and workaround investigation.",
   "author": {
     "name": "Toolkit",
     "email": "",
@@ -13,13 +13,15 @@
   "keywords": [
     "pulumi",
     "providers",
-    "triage"
+    "triage",
+    "grpc",
+    "lifecycle"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Provider Issue Workbench",
-    "shortDescription": "Triage Pulumi provider issues and stage useful repros.",
-    "longDescription": "Evidence-driven Pulumi provider issue workflows for attribution, durable repros, bridge parity investigations, and practical workarounds.",
+    "shortDescription": "Triage Pulumi provider issues and lifecycle failures.",
+    "longDescription": "Evidence-driven Pulumi provider issue workflows for attribution, RPC lifecycle analysis, durable repros, bridge parity investigations, and practical workarounds.",
     "developerName": "Toolkit",
     "category": "Development",
     "capabilities": [
@@ -31,6 +33,7 @@
     "termsOfServiceURL": "",
     "defaultPrompt": [
       "Triage this provider issue.",
+      "Trace this Pulumi RPC lifecycle issue.",
       "Stage a Pulumi repro.",
       "Check whether this is a bridge parity gap."
     ],

@@ -118,6 +118,21 @@ gap and the right next step is a bridge cross-test investigation.
 
 Do not use it while parity is still unproven.
 
+### `pulumi-rpc-lifecycle-investigation`
+
+Use when the sharpest next action is to reconstruct Pulumi engine, bridge, and
+provider lifecycle behavior from gRPC logs, architecture docs, and provider
+code before assigning ownership.
+
+Typical triggers:
+
+- unexpected `Check`/`Diff`/`Read` ordering or payload contents
+- refresh/import/replacement behavior where old inputs, state, or `news`
+  polarity matters
+- provider upgrade regressions involving stale or surprising inputs/state
+- questions where engine, bridge, provider, and upstream Terraform behavior
+  all remain plausible owners
+
 ### `workaround-investigation`
 
 Use when the likely ownership boundary is clear enough, but the human is not

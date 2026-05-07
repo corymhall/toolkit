@@ -47,6 +47,11 @@ that are available and mention the missing lens as residual risk.
 - Gather the minimum evidence needed: current diff, explicit files, named refs,
   spec/task docs, or PR metadata/diff.
 - Run reviewer lanes in parallel when practical.
+- Set reviewer-agent waits based on review size: use about 5 minutes for small
+  focused diffs and up to 10 minutes for larger or multi-lane reviews.
+- Treat a reviewer timeout as a signal to retry that lane with a larger wait,
+  not as a reason to silently skip the review. Only mark the lane unavailable
+  after a retry still times out or the agent cannot be launched.
 - Reviewer lanes should return findings, not process narration.
 - The parent session owns synthesis.
 

@@ -29,6 +29,20 @@ When all of these are true:
 Do not switch early. If Terraform parity is still unknown, use the Terraform
 repro helper first.
 
+## Switch To `pulumi-rpc-lifecycle-investigation`
+
+When:
+
+- the next best evidence is the actual Pulumi RPC timeline
+- gRPC logs exist or can be collected with `PULUMI_DEBUG_GRPC`
+- ownership depends on how values moved through engine, bridge, provider, and
+  upstream Terraform layers
+- refresh, import, replacement, `Check`/`Diff`/`Read`, old inputs, state, or
+  unknown values are central to the question
+
+Use this before a bridge parity cross-test when the lifecycle path itself is
+still ambiguous.
+
 ## Switch To `workaround-investigation`
 
 When:

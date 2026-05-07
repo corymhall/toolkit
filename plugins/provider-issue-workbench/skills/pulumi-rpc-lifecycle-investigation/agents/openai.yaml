@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pulumi RPC Lifecycle Investigation"
+  short_description: "Trace Pulumi engine, bridge, and provider RPCs"
+  default_prompt: "Use $pulumi-rpc-lifecycle-investigation to trace this Pulumi lifecycle issue from gRPC logs and identify the likely owning layer."

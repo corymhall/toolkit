@@ -26,3 +26,9 @@ Output shape:
 
 Do not modify files.
 """
+
+[features]
+multi_agent = false
+
+[features.multi_agent_v2]
+enabled = false

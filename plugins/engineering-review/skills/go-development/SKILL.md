@@ -17,10 +17,13 @@ which uses the Go-specific review contract in
 
 1. Inspect the repo's existing Go version, style, lint config, and local
    patterns.
-2. Run the tooling gate when practical, or note why it is too expensive or
+2. Locate the real execution surface before running verification: the owning
+   `go.mod`/`go.work`, the repo's preferred wrapper (`mise`, `make`, `mage`,
+   script targets), and any AGENTS/docs command canon.
+3. Run the tooling gate when practical, or note why it is too expensive or
    blocked.
-3. Read only the rule files that match the changed risk areas.
-4. Implement with minimal policy overhead and verify the changed behavior.
+4. Read only the rule files that match the changed risk areas.
+5. Implement with minimal policy overhead and verify the changed behavior.
 
 ## Version Gate
 
@@ -43,6 +46,17 @@ toolchain config, CI, or repo docs.
 - In tests, prefer constructing a subject with fake/stub dependencies over mutating package globals. This keeps dependencies visible and tests safe for parallel execution.
 
 ## Tooling Gate First
+
+Run the gate from the repo's real Go execution surface, not automatically from
+the repository root.
+
+- If the changed code lives under a nested module or workspace, `cd` there or
+  use the repo wrapper that already targets it.
+- If repo instructions prefer a wrapper such as `mise exec -- make ...`, use
+  that before falling back to raw `go` or `golangci-lint` commands.
+- If broad gates fail because generated/embed artifacts are missing or because
+  the root command scans unrelated stale packages, switch to the narrowest
+  meaningful package/module checks and report the blocker clearly.
 
 When `golangci-lint` v2 config is present:
 
