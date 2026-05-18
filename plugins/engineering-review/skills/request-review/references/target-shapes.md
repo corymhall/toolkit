@@ -65,6 +65,20 @@ Examples:
 - "review PR 123 locally"
 - "look at this PR before we post comments"
 
+Preferred evidence:
+
+- `gh pr view <number> --json title,body,author,baseRefName,headRefName,headRefOid,files,reviewDecision`
+- `gh pr diff <number>` for the raw patch when that is enough
+- verified local refs only after confirming or fetching the PR base/head
+
+PR hygiene:
+
+- Do not assume the base branch is `master` or `main`; use `baseRefName`.
+- Do not assume a local `origin/pr-<number>` ref already exists; fetch or avoid
+  local ref math.
+- If `gh pr view --json` lacks a field you need, use `gh api` for the specific
+  PR endpoint instead of inventing field names.
+
 Use `review-pr` instead if the real task is:
 
 - drafting review comments

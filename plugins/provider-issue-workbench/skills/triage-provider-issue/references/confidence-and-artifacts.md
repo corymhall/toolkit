@@ -19,6 +19,9 @@ Run this test before you route strongly:
 
 If yes, the recommendation is not settled and the repro is not optional.
 
+Do not let a detailed static explanation bypass this check. If the opposite
+result would change your routing, your routing is not settled yet.
+
 ## Standard Artifact
 
 Leave behind this structure:
@@ -31,5 +34,15 @@ Leave behind this structure:
 6. Artifacts prepared
 7. Blocked execution and required access
 8. Workaround status
+9. Closest related issues and why they are duplicate, same-family, or only
+   background
 
 Keep each section short and evidence-backed.
+
+When the mechanism is not yet fully proven, label it explicitly:
+
+- proven by evidence
+- likely but unconfirmed
+- related but exact applicability unverified
+
+Do not use a stronger label later in the report than the evidence justifies.

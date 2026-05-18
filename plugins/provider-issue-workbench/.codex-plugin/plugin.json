@@ -1,6 +1,6 @@
 {
   "name": "provider-issue-workbench",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Pulumi provider issue triage, RPC lifecycle analysis, repro staging, bridge parity, and workaround investigation.",
   "author": {
     "name": "Toolkit",

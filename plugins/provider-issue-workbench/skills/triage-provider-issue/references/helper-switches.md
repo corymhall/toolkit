@@ -9,6 +9,7 @@ When:
 - the best next step is a durable Pulumi repro artifact
 - you need a maintainer-quality example or test in the provider repo
 - the issue turns on update, read, refresh, import, or `--refresh --run-program`
+- the opposite Pulumi repro result would change your routing recommendation
 
 ## Switch To `stage-terraform-provider-repro`
 
@@ -17,6 +18,7 @@ When:
 - Terraform behavior is the sharpest discriminator
 - parity with Terraform determines routing
 - an upstream acceptance test or durable Terraform artifact is needed
+- the opposite Terraform result would change your routing recommendation
 
 ## Switch To `bridge-parity-investigation`
 
@@ -28,6 +30,9 @@ When all of these are true:
 
 Do not switch early. If Terraform parity is still unknown, use the Terraform
 repro helper first.
+
+Do not call `awaiting/bridge` while the next real question is still "does
+Terraform also do this?"
 
 ## Switch To `pulumi-rpc-lifecycle-investigation`
 
@@ -50,3 +55,6 @@ When:
 - the ownership boundary is clear enough for practical purposes
 - the human still needs a mitigation or workaround
 - another round of attribution work is less valuable than workaround work
+
+If you switch here, say triage is complete and that the session is now in
+workaround mode rather than continuing to present new routing conclusions.

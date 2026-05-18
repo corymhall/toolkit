@@ -46,6 +46,19 @@ that are available and mention the missing lens as residual risk.
   `git reset`, or otherwise rewrite the branch unless the user explicitly asks.
 - Gather the minimum evidence needed: current diff, explicit files, named refs,
   spec/task docs, or PR metadata/diff.
+- For PR-backed reviews, derive the comparison target from the PR itself. Read
+  `baseRefName`, `headRefName`, and `headRefOid` first; do not assume
+  `origin/master`, ad hoc `origin/pr-*` refs, or that the current checkout
+  already has the PR branch fetched locally.
+- Before running `git diff <base>...<head>` for a PR review, verify the refs
+  you plan to use with `git rev-parse --verify`. Fetch the exact base/head refs
+  first when needed, then diff the verified refs.
+- Do not treat non-zero `gh pr checks` exit codes as command misuse by
+  default. Failing or pending checks can exit non-zero while still returning
+  useful CI state.
+- Use only supported `gh pr view --json` fields. When you need review comments,
+  reviews, or threads that `gh pr view` does not expose, switch to `gh api`
+  rather than guessing field names.
 - Run reviewer lanes in parallel when practical.
 - Set reviewer-agent waits based on review size: use about 5 minutes for small
   focused diffs and up to 10 minutes for larger or multi-lane reviews.

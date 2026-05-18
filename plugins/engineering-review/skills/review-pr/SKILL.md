@@ -37,6 +37,21 @@ gh pr diff <number>
 gh pr checks <number>
 ```
 
+PR context rules:
+
+- Treat `baseRefName`, `headRefName`, and `headRefOid` as the source of truth.
+  Do not assume `origin/master`, `origin/main`, or a local `origin/pr-*` ref.
+- If you need a local `git diff`, fetch the exact base/head refs first and
+  verify them with `git rev-parse --verify` before diffing.
+- `gh pr checks` may exit non-zero when checks are failing or still pending.
+  Read the returned CI state before treating that exit code as a workflow
+  problem.
+- `gh pr diff` does not support path filtering. For file-bounded review, fetch
+  the PR refs locally and run a verified `git diff -- <paths>` instead.
+- Use only supported `gh pr view --json` fields. For review comments, reviews,
+  or thread metadata, use `gh api` on the pull-request endpoints instead of
+  guessing extra JSON field names.
+
 Summarize the PR briefly:
 
 - title, author, base/head refs

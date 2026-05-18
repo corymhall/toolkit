@@ -23,6 +23,10 @@ skill. Bounded local actions are allowed.
   so you know which paths actually exist in this checkout.
 - Prefer the best path to certainty even when execution is blocked by missing
   credentials or approvals.
+- Do not silently compress "same area" into "same issue." Distinguish duplicate,
+  same-family, and related-but-separate cases explicitly.
+- Do not present a leading explanation as settled unless the issue text, local
+  evidence, or repro results actually prove it.
 - If the best next step requires a repro artifact, create the artifact rather
   than substituting a weaker path.
 - Keep working across repos when the investigation moves from provider to
@@ -51,6 +55,9 @@ If the answer to this question is "yes", you are not done routing:
 When the answer is yes, stage the sharper discriminator instead of issuing a
 strong ownership call.
 
+Read `references/disposition-gates.md` before finalizing any strong routing or
+duplicate claim.
+
 ## Workflow
 
 1. Read the issue carefully and classify the issue type.
@@ -62,6 +69,16 @@ strong ownership call.
    reduces uncertainty.
 7. If routing is settled but the human still needs a practical path forward,
    switch to workaround work.
+
+By default, stop after the triage artifact. Do not slide into implementation,
+PR work, or broad project planning unless:
+
+- the user explicitly asks to keep going beyond triage, or
+- you explicitly switch into a helper skill whose purpose is repro or
+  workaround work
+
+When you do continue past triage, say that triage is complete and name the new
+phase.
 
 For provider repos, the initial probe should answer things like:
 
@@ -83,6 +100,7 @@ unless execution is genuinely blocked.
 Read these references before finalizing:
 
 - `references/confidence-and-artifacts.md`
+- `references/disposition-gates.md`
 - `references/helper-switches.md`
 
 ## Helper Skills
@@ -110,6 +128,9 @@ Typical triggers:
 - ownership depends on whether Terraform reproduces
 - you need to test a narrow semantic variant such as `-refresh=false`
 - you need an upstream artifact instead of an ad hoc local run
+
+If the opposite Terraform result would change your routing recommendation,
+switch here before naming `awaiting-upstream` or `awaiting/bridge`.
 
 ### `bridge-parity-investigation`
 
@@ -150,6 +171,14 @@ Always leave a compact artifact the next pass can pick up:
 - artifacts prepared
 - blocked steps and required access
 - workaround status
+- closest related issues and whether they are duplicates, same-family, or only
+  background
+
+When a mechanism is not yet proven, label it plainly as one of:
+
+- proven by evidence
+- likely but unconfirmed
+- related but exact applicability unverified
 
 When the output cites repo evidence, keep the file references concise and
 clickable in the app. Prefer a few high-signal links over dense link spam.
@@ -159,3 +188,7 @@ the next pass knows exactly what it is trying to collapse.
 
 Do not treat "continue investigating" as a sufficient outcome. Always name the
 next action and the helper skill, if any, that should own it.
+
+Always present the triage artifact before mutating GitHub state or moving into
+implementation. Even when the answer is obvious or already fixed by upgrade,
+report first.
