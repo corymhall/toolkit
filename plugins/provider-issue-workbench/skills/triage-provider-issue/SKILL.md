@@ -38,6 +38,24 @@ skill. Bounded local actions are allowed.
   links like `[file.go](/abs/path/file.go:123)`. Do not emit `file://` URIs,
   even in subagent-to-parent handoffs.
 
+## Command Hygiene
+
+When searching GitHub issues, keep `repo:` qualifiers outside shell-quoted
+search phrases. `gh search issues 'repo:owner/repo terms'` can quote the whole
+qualifier as a repository name and fail with an invalid search query. Prefer:
+
+```bash
+gh search issues --repo owner/repo 'terms here' --json number,title,state,url --limit 20
+```
+
+For cross-repo searches, pass each repository as its own `--repo owner/repo`
+argument or use separate `gh search issues` calls. Do not hide invalid search
+queries as weak evidence about whether a duplicate exists.
+
+Read reference files relative to this skill directory, for example
+`triage-provider-issue/references/confidence-and-artifacts.md`. Do not probe a
+plugin-level `skills/references/...` directory.
+
 ## Confidence Fork
 
 Use these thresholds after the first evidence pass:
