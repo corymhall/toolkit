@@ -98,6 +98,10 @@ PR work, or broad project planning unless:
 When you do continue past triage, say that triage is complete and name the new
 phase.
 
+If the issue is about generated provider docs, converted examples, or code
+sample casing, read `references/docs-example-conversion.md` before assigning
+ownership to a provider, bridge, converter, or core code generator.
+
 For provider repos, the initial probe should answer things like:
 
 - is the upstream provider present as a submodule, vendored module, or absent
@@ -118,6 +122,8 @@ unless execution is genuinely blocked.
 Read these references before finalizing:
 
 - `references/confidence-and-artifacts.md`
+- `references/docs-example-conversion.md` when generated docs or converted
+  examples are involved
 - `references/disposition-gates.md`
 - `references/helper-switches.md`
 
