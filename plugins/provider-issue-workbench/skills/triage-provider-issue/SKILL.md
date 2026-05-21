@@ -52,6 +52,11 @@ For cross-repo searches, pass each repository as its own `--repo owner/repo`
 argument or use separate `gh search issues` calls. Do not hide invalid search
 queries as weak evidence about whether a duplicate exists.
 
+Do not use `gh search issues --state all`; local `gh` accepts only `open` or
+`closed` for `--state`. Omit `--state` when you need both open and closed
+issues, or run separate `--state open` and `--state closed` searches when the
+distinction matters.
+
 Read reference files relative to this skill directory, for example
 `triage-provider-issue/references/confidence-and-artifacts.md`. Do not probe a
 plugin-level `skills/references/...` directory.
