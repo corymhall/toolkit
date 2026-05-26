@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Harness Bootstrap"
+  short_description: "Bootstrap repo AI harnesses"
+  default_prompt: "Use $ai-harness-bootstrap to set up a deterministic repo-local AI harness skeleton."
