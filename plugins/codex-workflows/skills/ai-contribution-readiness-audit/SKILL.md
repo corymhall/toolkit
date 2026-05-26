@@ -1,12 +1,22 @@
 ---
 name: ai-contribution-readiness-audit
-description: Evaluate a repository's readiness for high-quality AI code contributions and produce concrete, copy-pasteable file changes that make the repo AI-ready. Use when asked to audit AI contribution quality, diagnose why AI PRs are low quality, or prepare a repo for AI-assisted engineering.
+description: Evaluate a repository's first-rung readiness for high-quality AI code contributions and produce concrete, copy-pasteable file changes that make the repo AI-ready. Use when asked to audit AI contribution quality, diagnose why AI PRs are low quality, prepare a repo for AI-assisted engineering, or move a repo from no harness toward a basic v0.5 contribution harness.
 ---
 
 # AI Contribution Readiness Audit
 
 ## Overview
 Audit a codebase and produce an implementation packet of concrete file changes that make the repo ready for high-quality AI contributions. The primary deliverable is **actual file content** — not descriptions of what files should contain.
+
+This skill is a first-rung readiness audit. It is good for getting a repo from
+no or weak AI-contribution structure to a basic contribution harness: clear
+instructions, command reality, verification loops, safety rails, review
+evidence, generated-file boundaries, and anti-drift checks. Do not stretch it
+into a full AI harness maturity roadmap. If the repo already has a solid v0.5
+baseline and the user is asking about deeper harness engineering, frame that as
+a separate second-stage roadmap covering repo-local skills, evaluators/sensors,
+workflow feedback loops, credential/replay strategy, and repeated-failure
+learning.
 
 ## What You Produce
 An ordered set of file creates/edits, each with full content, that an engineer can apply directly. Accompanied by a brief diagnostic summary of what exists and what's missing.
