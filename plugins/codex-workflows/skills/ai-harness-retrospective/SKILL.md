@@ -53,14 +53,17 @@ Be conservative. Encode lessons that are likely to recur.
 
 - Prefer patching an existing doc or skill before adding a new surface.
 - Keep `AGENTS.md` as a routing map, not a detailed playbook.
+- Delete or shrink harness content that is generic, duplicated, or speculative.
 - Update the harness manifest when active docs, skills, tools, generated outputs,
-  or known gaps change.
+  or known gaps change, if the repo has a manifest.
 - If changing review automation or generated workflow sources, run the repo's
   required compile/generation command.
 - If the retrospective reveals a false harness claim, fix the claim before
   adding new guidance.
 - If a larger tool or sensor is needed, create issue text or acceptance criteria
   instead of half-building it.
+- If the only proposed guidance is "test your work", "read the docs", or
+  similarly generic advice, make no harness change.
 
 ## Output
 
@@ -78,4 +81,3 @@ When edits are made, include:
 - files changed;
 - validation run;
 - residual gaps.
-
