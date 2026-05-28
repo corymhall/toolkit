@@ -48,6 +48,9 @@ PR context rules:
   problem.
 - `gh pr diff` does not support path filtering. For file-bounded review, fetch
   the PR refs locally and run a verified `git diff -- <paths>` instead.
+- `gh pr diff` on this local CLI supports `--name-only` but not
+  `--name-status`. If you need status letters, fetch verified PR refs and use
+  `git diff --name-status <base>...<head>` locally.
 - Use only supported `gh pr view --json` fields. For review comments, reviews,
   or thread metadata, use `gh api` on the pull-request endpoints instead of
   guessing extra JSON field names.

@@ -53,6 +53,10 @@ that are available and mention the missing lens as residual risk.
 - Before running `git diff <base>...<head>` for a PR review, verify the refs
   you plan to use with `git rev-parse --verify`. Fetch the exact base/head refs
   first when needed, then diff the verified refs.
+- `gh pr diff` on this local CLI supports `--name-only` but not
+  `--name-status`. If review setup needs status letters, fetch verified PR refs
+  and run `git diff --name-status <base>...<head>` locally instead of probing
+  unsupported `gh pr diff` flags.
 - Do not treat non-zero `gh pr checks` exit codes as command misuse by
   default. Failing or pending checks can exit non-zero while still returning
   useful CI state.
