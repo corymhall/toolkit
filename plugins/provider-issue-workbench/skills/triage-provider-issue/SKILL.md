@@ -57,6 +57,12 @@ Do not use `gh search issues --state all`; local `gh` accepts only `open` or
 issues, or run separate `--state open` and `--state closed` searches when the
 distinction matters.
 
+When searching PRs, keep `gh search prs --json` fields to fields supported by
+search results. Do not request `mergedAt` from `gh search prs`; this local CLI
+does not expose it there. Use fields such as `number,title,state,url,closedAt`,
+then run `gh pr view <number> --json mergedAt,mergedBy,mergeCommit` for merge
+details on a specific candidate PR.
+
 Read reference files relative to this skill directory, for example
 `triage-provider-issue/references/confidence-and-artifacts.md`. Do not probe a
 plugin-level `skills/references/...` directory.
