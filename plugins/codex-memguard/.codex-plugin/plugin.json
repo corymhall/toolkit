@@ -1,0 +1,39 @@
+{
+  "name": "codex-memguard",
+  "version": "0.1.0",
+  "description": "Guard Codex-run build commands with RSS monitoring and guide recovery after memory-limit kills.",
+  "author": {
+    "name": "Toolkit",
+    "email": "corymhall@users.noreply.github.com",
+    "url": "https://github.com/corymhall/toolkit"
+  },
+  "homepage": "https://github.com/corymhall/toolkit",
+  "repository": "https://github.com/corymhall/toolkit",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "memory",
+    "hooks",
+    "build"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex Memguard",
+    "shortDescription": "Guard build commands and inspect memory kills.",
+    "longDescription": "Codex hook and skill support for running risky build commands under process-tree RSS monitoring, preserving logs, and recovering after memory-limit kills.",
+    "developerName": "Toolkit",
+    "category": "Development",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/corymhall/toolkit",
+    "privacyPolicyURL": "https://github.com/corymhall/toolkit",
+    "termsOfServiceURL": "https://github.com/corymhall/toolkit",
+    "defaultPrompt": [
+      "Inspect this memrun log.",
+      "Debug this command killed by memrun.",
+      "Set up Codex memory guarding."
+    ],
+    "brandColor": "#DC2626"
+  }
+}

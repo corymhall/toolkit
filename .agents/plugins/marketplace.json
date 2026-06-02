@@ -53,6 +53,18 @@
       "category": "Productivity"
     },
     {
+      "name": "codex-memguard",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-memguard"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development"
+    },
+    {
       "name": "claude",
       "source": {
         "source": "local",

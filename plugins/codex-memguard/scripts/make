@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+import os
+import sys
+
+
+def find_real_make() -> str:
+    self_path = os.path.realpath(sys.argv[0])
+    for directory in os.environ.get("PATH", "").split(os.pathsep):
+        if not directory:
+            continue
+        candidate = os.path.realpath(os.path.join(directory, "make"))
+        if candidate == self_path:
+            continue
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return "/usr/bin/make"
+
+
+def main() -> None:
+    real_make = find_real_make()
+    if os.environ.get("CODEX_MEMGUARD_DISABLE") == "1" or os.environ.get("CODEX_MEMRUN_ACTIVE") == "1":
+        os.execv(real_make, [real_make] + sys.argv[1:])
+
+    memrun = os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), "memrun")
+    argv = [
+        memrun,
+        "--label",
+        "make",
+        "--",
+        real_make,
+        *sys.argv[1:],
+    ]
+    os.execv(memrun, argv)
+
+
+if __name__ == "__main__":
+    main()

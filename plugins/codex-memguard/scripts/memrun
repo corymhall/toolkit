@@ -1,0 +1,274 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import signal
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+def parse_size(value: str) -> int:
+    text = value.strip().lower()
+    suffixes = {
+        "k": 1024,
+        "kb": 1024,
+        "m": 1024**2,
+        "mb": 1024**2,
+        "g": 1024**3,
+        "gb": 1024**3,
+    }
+    for suffix, multiplier in sorted(suffixes.items(), key=lambda item: -len(item[0])):
+        if text.endswith(suffix):
+            return int(float(text[: -len(suffix)].strip()) * multiplier)
+    return int(float(text))
+
+
+def format_size(size: int) -> str:
+    units = [("GB", 1024**3), ("MB", 1024**2), ("KB", 1024)]
+    for label, scale in units:
+        if size >= scale:
+            return f"{size / scale:.1f} {label}"
+    return f"{size} B"
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def read_processes() -> dict[int, dict[str, object]]:
+    try:
+        output = subprocess.check_output(
+            ["/bin/ps", "-axo", "pid=,ppid=,rss=,command="],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        return {}
+
+    processes = {}
+    for line in output.splitlines():
+        parts = line.strip().split(None, 3)
+        if len(parts) < 3:
+            continue
+        try:
+            pid = int(parts[0])
+            ppid = int(parts[1])
+            rss = int(parts[2]) * 1024
+        except ValueError:
+            continue
+        processes[pid] = {
+            "pid": pid,
+            "ppid": ppid,
+            "rss": rss,
+            "command": parts[3] if len(parts) > 3 else "",
+        }
+    return processes
+
+
+def process_tree(root_pid: int) -> list[dict[str, object]]:
+    processes = read_processes()
+    if not processes:
+        return []
+
+    children_by_parent: dict[int, list[int]] = {}
+    for pid, proc in processes.items():
+        children_by_parent.setdefault(int(proc["ppid"]), []).append(pid)
+
+    seen = set()
+    queue = [root_pid]
+    tree = []
+    while queue:
+        pid = queue.pop(0)
+        if pid in seen:
+            continue
+        seen.add(pid)
+        proc = processes.get(pid)
+        if proc is not None:
+            tree.append(proc)
+        queue.extend(children_by_parent.get(pid, []))
+    return tree
+
+
+def snapshot(root_pid: int) -> tuple[int, list[dict[str, object]]]:
+    tree = process_tree(root_pid)
+    total = sum(int(proc["rss"]) for proc in tree)
+    return total, sorted(tree, key=lambda proc: int(proc["rss"]), reverse=True)
+
+
+def write_log(log_file: Path, event: dict[str, object]) -> None:
+    event.setdefault("time", utc_now())
+    with log_file.open("a", encoding="utf-8") as out:
+        out.write(json.dumps(event, sort_keys=True) + "\n")
+
+
+def capture_sample(pid: int, log_dir: Path, log_file: Path, reason: str) -> str | None:
+    sample_path = log_dir / f"sample-{pid}-{int(time.time())}.txt"
+    try:
+        subprocess.run(
+            ["/usr/bin/sample", str(pid), "3", "-file", str(sample_path)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=8,
+            check=False,
+        )
+    except Exception as exc:
+        write_log(log_file, {"event": "sample_failed", "pid": pid, "reason": reason, "error": str(exc)})
+        return None
+
+    write_log(log_file, {"event": "sample", "pid": pid, "reason": reason, "path": str(sample_path)})
+    return str(sample_path)
+
+
+def terminate_process_group(pid: int) -> None:
+    try:
+        os.killpg(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    except Exception:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except Exception:
+            return
+
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return
+        time.sleep(0.1)
+
+    try:
+        os.killpg(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return
+    except Exception:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except Exception:
+            return
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Run a command with process-tree RSS monitoring.")
+    parser.add_argument("--rss-limit", default=os.environ.get("CODEX_MEMRUN_RSS_LIMIT", "10g"))
+    parser.add_argument("--sample-at", default=os.environ.get("CODEX_MEMRUN_SAMPLE_AT", "7g"))
+    parser.add_argument("--interval", type=float, default=float(os.environ.get("CODEX_MEMRUN_INTERVAL", "1.0")))
+    parser.add_argument("--log-dir", default=os.environ.get("CODEX_MEMRUN_LOG_DIR"))
+    parser.add_argument("--label", default=os.environ.get("CODEX_MEMRUN_LABEL", "command"))
+    parser.add_argument("command", nargs=argparse.REMAINDER)
+    args = parser.parse_args()
+
+    command = args.command
+    if command and command[0] == "--":
+        command = command[1:]
+    if not command:
+        parser.error("missing command")
+
+    rss_limit = parse_size(args.rss_limit)
+    sample_at = parse_size(args.sample_at)
+    sampling_enabled = sample_at < rss_limit
+
+    log_dir = Path(args.log_dir or os.path.expanduser("~/.codex/memrun"))
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{os.getpid()}.jsonl"
+
+    env = os.environ.copy()
+    env["CODEX_MEMRUN_ACTIVE"] = "1"
+
+    print(
+        f"memrun: running {args.label} with RSS limit {format_size(rss_limit)} "
+        f"(sample at {format_size(sample_at)}); log {log_file}",
+        file=sys.stderr,
+        flush=True,
+    )
+    write_log(
+        log_file,
+        {
+            "event": "start",
+            "label": args.label,
+            "command": command,
+            "rss_limit": rss_limit,
+            "sample_at": sample_at,
+            "cwd": os.getcwd(),
+        },
+    )
+
+    process = subprocess.Popen(command, start_new_session=True, env=env)
+    peak_total = 0
+    peak_tree: list[dict[str, object]] = []
+    sampled = False
+
+    while True:
+        returncode = process.poll()
+        total, tree = snapshot(process.pid)
+        if total > peak_total:
+            peak_total = total
+            peak_tree = tree
+
+        if tree:
+            write_log(
+                log_file,
+                {
+                    "event": "rss",
+                    "root_pid": process.pid,
+                    "total_rss": total,
+                    "processes": tree[:10],
+                },
+            )
+
+        largest = tree[0] if tree else None
+        if sampling_enabled and largest and not sampled and total >= sample_at:
+            sampled = True
+            capture_sample(int(largest["pid"]), log_dir, log_file, "sample_threshold")
+
+        if total >= rss_limit:
+            write_log(
+                log_file,
+                {
+                    "event": "kill",
+                    "root_pid": process.pid,
+                    "total_rss": total,
+                    "rss_limit": rss_limit,
+                    "processes": tree[:20],
+                },
+            )
+            print(
+                f"memrun: killing {args.label}; RSS reached {format_size(total)} "
+                f"over limit {format_size(rss_limit)}; log {log_file}",
+                file=sys.stderr,
+                flush=True,
+            )
+            print(
+                f"memrun: use the codex-memguard skill to inspect {log_file} before rerunning.",
+                file=sys.stderr,
+                flush=True,
+            )
+            terminate_process_group(process.pid)
+            return 137
+
+        if returncode is not None:
+            write_log(
+                log_file,
+                {
+                    "event": "exit",
+                    "returncode": returncode,
+                    "peak_rss": peak_total,
+                    "peak_processes": peak_tree[:20],
+                },
+            )
+            print(
+                f"memrun: {args.label} exited {returncode}; peak RSS {format_size(peak_total)}; log {log_file}",
+                file=sys.stderr,
+                flush=True,
+            )
+            return int(returncode)
+
+        time.sleep(max(args.interval, 0.1))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
