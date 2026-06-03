@@ -31,6 +31,18 @@ process, validation, or file-placement changes.
 - the diff touches tests or test-like files
 - the main uncertainty is "did we verify this strongly enough?"
 
+## Add `documentation_reviewer` when
+
+- the change introduces or modifies public APIs, exported declarations,
+  important internal APIs, non-obvious helpers, commands, configuration,
+  workflows, generated docs, examples, or user-visible behavior
+- the request mentions documentation, comments, doc comments, READMEs, examples,
+  generated API docs, or maintainer onboarding
+- the main uncertainty is whether future users or maintainers can understand
+  the behavior, contracts, invariants, edge cases, error behavior, concurrency
+  expectations, lifecycle assumptions, or compatibility constraints from the
+  code and docs
+
 ## Add `go_reviewer` when
 
 - the review target is mostly `.go` files or Go packages
@@ -101,6 +113,8 @@ runtimes by default.
 - `general_reviewer`
 - `repo_instructions_reviewer` when applicable
 - `go_reviewer`
+- optional `documentation_reviewer` for important API, internal contract, or
+  user-visible behavior
 - optional `test_reviewer`
 - optional `error_handling_reviewer`
 
@@ -111,5 +125,7 @@ runtimes by default.
 - optional `go_reviewer` for Go-heavy scopes
 - `spec_alignment_reviewer`
 - `test_reviewer`
+- optional `documentation_reviewer` for public surface, internal contract, or
+  workflow changes
 - optional `error_handling_reviewer`
 - optional one outside generic lane
