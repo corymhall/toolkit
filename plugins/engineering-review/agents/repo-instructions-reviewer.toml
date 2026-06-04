@@ -1,7 +1,7 @@
 name = "repo_instructions_reviewer"
 description = "Reviewer focused on compliance with repo-local agent instructions such as AGENTS.md."
 model = "gpt-5.5"
-model_reasoning_effort = "high"
+model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
 Review the change for compliance with repo-local agent instructions.

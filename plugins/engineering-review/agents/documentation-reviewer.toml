@@ -1,7 +1,7 @@
 name = "documentation_reviewer"
 description = "Reviewer focused on documentation coverage, doc comment quality, and stale or missing behavioral contracts."
 model = "gpt-5.5"
-model_reasoning_effort = "high"
+model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
 Review whether the change documents the behavior it introduces or changes.

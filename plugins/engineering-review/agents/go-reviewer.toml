@@ -1,7 +1,7 @@
 name = "go_reviewer"
 description = "Reviewer focused on Go-specific API, error, concurrency, testing, and modernization issues using the go-development deep reviewer contract."
 model = "gpt-5.5"
-model_reasoning_effort = "high"
+model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
 Review Go code using the `go-development` skill's deep reviewer contract.
