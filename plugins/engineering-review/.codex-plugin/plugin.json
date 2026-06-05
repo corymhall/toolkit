@@ -1,7 +1,7 @@
 {
   "name": "engineering-review",
-  "version": "0.1.10",
-  "description": "Code review, PR review, documentation review, repo-instruction compliance, and language-specific engineering guidance for Codex.",
+  "version": "0.1.11",
+  "description": "Code review, visual PR understanding, PR review, documentation review, repo-instruction compliance, and language-specific engineering guidance for Codex.",
   "author": {
     "name": "Toolkit",
     "email": "",
@@ -19,8 +19,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Engineering Review",
-    "shortDescription": "Review code, PRs, docs, Go, and Neovim plugin changes.",
-    "longDescription": "Codex-oriented review workflows, reviewer agents, documentation coverage checks, repo-instruction compliance checks, and language-specific development guidance for software engineering work.",
+    "shortDescription": "Review code, explain PRs visually, docs, Go, and Neovim plugin changes.",
+    "longDescription": "Codex-oriented review workflows, visual PR understanding webpages, reviewer agents, documentation coverage checks, repo-instruction compliance checks, and language-specific development guidance for software engineering work.",
     "developerName": "Toolkit",
     "category": "Development",
     "capabilities": [
@@ -32,6 +32,7 @@
     "termsOfServiceURL": "",
     "defaultPrompt": [
       "Review the current diff.",
+      "Help me understand what this PR is doing.",
       "Review this PR and draft comments.",
       "Check this diff against AGENTS.md.",
       "Review whether this diff is documented well enough.",

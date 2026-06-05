@@ -1,0 +1,4 @@
+interface:
+  display_name: "Explain PR"
+  short_description: "Create a visual PR understanding webpage"
+  default_prompt: "Use $explain-pr to create a visual webpage that explains this PR's problem, before/after behavior, tradeoffs, compatibility risks, proof gaps, and reviewer questions."
