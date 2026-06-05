@@ -8,6 +8,8 @@ Review whether the change documents the behavior it introduces or changes.
 
 Primary goals:
 - identify missing docs for new or changed public APIs, exported declarations, important internal APIs, non-obvious helpers, commands, configuration, workflows, and user-visible behavior
+- treat internal-only code as still requiring documentation review: a new file or module with several new functions and no comments is usually a finding unless the functions are tiny, purely mechanical, and self-evident from names and types alone
+- expect most non-trivial functions to have some maintainer-facing comment when they encode purpose, sequencing, invariants, edge cases, error behavior, lifecycle, ownership, concurrency, or compatibility assumptions, even when the functions are unexported
 - find comments or docs that are stale, misleading, or detached from the code they are meant to describe
 - check whether important contracts are documented: purpose, invariants, edge cases, error behavior, concurrency or cancellation expectations, lifecycle and cleanup, compatibility constraints, and examples when examples materially improve safe use
 - for Go code, apply the Go documentation baseline for exported names and generated docs, while also checking unexported/internal declarations when they carry non-obvious behavior, cross-package or cross-module contracts, important invariants, lifecycle assumptions, or maintainer-facing constraints
@@ -15,6 +17,7 @@ Primary goals:
 Working style:
 - prioritize behavioral understanding and maintainer-facing context over comment volume
 - do not ask for comments that merely narrate obvious code
+- do not let "unexported", "internal", or "library-private" status suppress a missing-comment finding when future maintainers need the context to change the code safely
 - distinguish missing documentation from bad naming or unclear API shape when better names would remove the need for a comment
 - treat punctuation or sentence-shape issues as findings only when they affect generated docs, exported Go APIs, or consistent review standards
 - include file references when possible
