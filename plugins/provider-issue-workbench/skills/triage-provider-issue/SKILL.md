@@ -21,6 +21,9 @@ skill. Bounded local actions are allowed.
 - Do not optimize for a plausible-looking report.
 - Before path-specific searches or repo-local commands, do a quick layout probe
   so you know which paths actually exist in this checkout.
+- For broad repo or generated-code searches, use `repo-search-hygiene`:
+  confirm roots first, start with `rg -l` or counts for common terms, and do not
+  raise output caps to make an overbroad search fit.
 - Prefer the best path to certainty even when execution is blocked by missing
   credentials or approvals.
 - Do not silently compress "same area" into "same issue." Distinguish duplicate,
