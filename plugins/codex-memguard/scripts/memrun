@@ -115,10 +115,16 @@ def capture_sample(pid: int, log_dir: Path, log_file: Path, reason: str) -> str 
             check=False,
         )
     except Exception as exc:
-        write_log(log_file, {"event": "sample_failed", "pid": pid, "reason": reason, "error": str(exc)})
+        write_log(
+            log_file,
+            {"event": "sample_failed", "pid": pid, "reason": reason, "error": str(exc)},
+        )
         return None
 
-    write_log(log_file, {"event": "sample", "pid": pid, "reason": reason, "path": str(sample_path)})
+    write_log(
+        log_file,
+        {"event": "sample", "pid": pid, "reason": reason, "path": str(sample_path)},
+    )
     return str(sample_path)
 
 
@@ -153,12 +159,24 @@ def terminate_process_group(pid: int) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run a command with process-tree RSS monitoring.")
-    parser.add_argument("--rss-limit", default=os.environ.get("CODEX_MEMRUN_RSS_LIMIT", "10g"))
-    parser.add_argument("--sample-at", default=os.environ.get("CODEX_MEMRUN_SAMPLE_AT", "7g"))
-    parser.add_argument("--interval", type=float, default=float(os.environ.get("CODEX_MEMRUN_INTERVAL", "1.0")))
+    parser = argparse.ArgumentParser(
+        description="Run a command with process-tree RSS monitoring."
+    )
+    parser.add_argument(
+        "--rss-limit", default=os.environ.get("CODEX_MEMRUN_RSS_LIMIT", "15g")
+    )
+    parser.add_argument(
+        "--sample-at", default=os.environ.get("CODEX_MEMRUN_SAMPLE_AT", "10g")
+    )
+    parser.add_argument(
+        "--interval",
+        type=float,
+        default=float(os.environ.get("CODEX_MEMRUN_INTERVAL", "1.0")),
+    )
     parser.add_argument("--log-dir", default=os.environ.get("CODEX_MEMRUN_LOG_DIR"))
-    parser.add_argument("--label", default=os.environ.get("CODEX_MEMRUN_LABEL", "command"))
+    parser.add_argument(
+        "--label", default=os.environ.get("CODEX_MEMRUN_LABEL", "command")
+    )
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
 
@@ -174,7 +192,9 @@ def main() -> int:
 
     log_dir = Path(args.log_dir or os.path.expanduser("~/.codex/memrun"))
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{os.getpid()}.jsonl"
+    log_file = (
+        log_dir / f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{os.getpid()}.jsonl"
+    )
 
     env = os.environ.copy()
     env["CODEX_MEMRUN_ACTIVE"] = "1"

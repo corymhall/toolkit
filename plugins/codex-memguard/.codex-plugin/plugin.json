@@ -1,6 +1,6 @@
 {
   "name": "codex-memguard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Guard Codex-run build commands with RSS monitoring and guide recovery after memory-limit kills.",
   "author": {
     "name": "Toolkit",
