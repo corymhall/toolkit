@@ -1,6 +1,6 @@
 {
   "name": "claude",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Use Claude Code from Codex for chat-only code review and adversarial review.",
   "author": {
     "name": "Toolkit",

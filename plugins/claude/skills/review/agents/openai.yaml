@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude Review"
+  short_description: "Run Claude Code as a reviewer"
+  default_prompt: "Use $review to ask Claude Code for a chat-only review of the current diff."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Multi-Model Evaluate"
+  short_description: "Compare independent model perspectives"
+  default_prompt: "Use $multi-model-evaluate to gather bounded independent perspectives on this decision."

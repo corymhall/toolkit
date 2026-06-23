@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review PR"
+  short_description: "Review GitHub PRs and draft comments"
+  default_prompt: "Use $review-pr to review this GitHub PR, draft comments for approval, and post only after I approve."

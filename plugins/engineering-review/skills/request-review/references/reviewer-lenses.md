@@ -3,6 +3,19 @@
 Use this file as the source of truth for which reviewer agents to launch for a
 manual review request.
 
+## Contents
+
+- [Baseline](#baseline)
+- [Add `spec_alignment_reviewer` when](#add-spec_alignment_reviewer-when)
+- [Add `test_reviewer` when](#add-test_reviewer-when)
+- [Add `documentation_reviewer` when](#add-documentation_reviewer-when)
+- [Add `go_reviewer` when](#add-go_reviewer-when)
+- [Add `error_handling_reviewer` when](#add-error_handling_reviewer-when)
+- [Neovim Plugin Reviews](#neovim-plugin-reviews)
+- [Optional extra external lane](#optional-extra-external-lane)
+- [Lane Rules](#lane-rules)
+- [Good default combinations](#good-default-combinations)
+
 Choose the smallest lens set that answers the user's actual question. Do not add
 lanes just because they exist.
 

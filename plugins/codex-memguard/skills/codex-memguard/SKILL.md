@@ -19,14 +19,17 @@ Do not immediately rerun the failed command. First inspect the log and explain:
 - whether a macOS `sample` file was captured;
 - the exact log path and any sample path.
 
-Prefer the bundled summarizer:
+Prefer the bundled summarizer. Codex includes the absolute path to this
+`SKILL.md` when loading the skill; derive the helper path by replacing
+`/skills/codex-memguard/SKILL.md` with
+`/scripts/summarize_memrun_log.py`.
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/summarize_memrun_log.py" ~/.codex/memrun/<log>.jsonl
+python3 /absolute/path/to/plugins/codex-memguard/scripts/summarize_memrun_log.py ~/.codex/memrun/<log>.jsonl
 ```
 
-If `PLUGIN_ROOT` is unavailable because the skill is being used from source,
-run the script from this plugin directory:
+When working from this toolkit checkout, the repo-relative source path is also
+valid:
 
 ```bash
 python3 plugins/codex-memguard/scripts/summarize_memrun_log.py ~/.codex/memrun/<log>.jsonl

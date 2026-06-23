@@ -2,6 +2,17 @@
 
 Each remediation includes **example content** at the level of concreteness the audit output should match. Adapt paths, commands, and language to the target repo.
 
+## Contents
+
+- [1. AGENTS.md](#1-agentsmd)
+- [2. PR Template](#2-pr-template)
+- [3. Makefile / justfile Targets](#3-makefile--justfile-targets)
+- [4. CI Workflow](#4-ci-workflow)
+- [5. Regeneration Rules](#5-regeneration-rules)
+- [6. Architecture / Module Map](#6-architecture--module-map)
+- [7. Contributing Guide](#7-contributing-guide)
+- [8. Runbook / Debug Guide](#8-runbook--debug-guide)
+
 ---
 
 ## 1. AGENTS.md

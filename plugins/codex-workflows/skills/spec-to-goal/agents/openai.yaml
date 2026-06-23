@@ -1,0 +1,4 @@
+interface:
+  display_name: "Spec To Goal"
+  short_description: "Convert specs into goal prompts"
+  default_prompt: "Use $spec-to-goal to turn this repo-local spec into a compact /goal prompt."

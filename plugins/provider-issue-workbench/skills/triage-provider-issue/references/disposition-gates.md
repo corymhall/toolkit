@@ -2,6 +2,16 @@
 
 Use these gates before making a strong routing or duplicate claim.
 
+## Contents
+
+- [`awaiting-upstream`](#awaiting-upstream)
+- [`awaiting/bridge`](#awaitingbridge)
+- [`duplicate`](#duplicate)
+- [`awaiting-feedback`](#awaiting-feedback)
+- [`local-fix`](#local-fix)
+- [`fixed by upgrade` / version-boundary cases](#fixed-by-upgrade--version-boundary-cases)
+- [Hypothesis Discipline](#hypothesis-discipline)
+
 ## `awaiting-upstream`
 
 Use only when at least one of these is true:

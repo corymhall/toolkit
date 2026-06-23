@@ -2,6 +2,15 @@
 
 Use this reference only when actually dispatching external model helpers.
 
+## Contents
+
+- [Availability](#availability)
+- [Prompt Files](#prompt-files)
+- [Claude](#claude)
+- [Gemini](#gemini)
+- [Output Handling](#output-handling)
+- [Failure Handling](#failure-handling)
+
 The goal is read-only evidence gathering. Prefer pre-collected context in the
 prompt over giving helper CLIs broad repo access. If tool access is useful, use
 read-only or planning modes.

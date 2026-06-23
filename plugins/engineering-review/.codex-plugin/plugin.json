@@ -1,6 +1,6 @@
 {
   "name": "engineering-review",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Code review, visual PR understanding, PR review, documentation review, repo-instruction compliance, and language-specific engineering guidance for Codex.",
   "author": {
     "name": "Toolkit",
