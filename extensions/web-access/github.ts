@@ -106,9 +106,6 @@ export async function fetchGitHubContent(raw: string, pi: ExtensionAPI, signal?:
   const metadata = await ghJson(pi, `repos/${owner}/${repo}`, signal);
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) throw new Error("GitHub repository response was invalid");
   const record = metadata as Record<string, unknown>;
-  if (record.private !== false || (record.visibility !== undefined && record.visibility !== "public")) {
-    throw new Error("fetch_content only reads public GitHub repositories");
-  }
 
   if (parsed.kind === "blob") {
     if (!parsed.path) throw new Error("GitHub blob URL does not contain a file path");

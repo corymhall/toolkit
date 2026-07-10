@@ -19,7 +19,7 @@ It does not contain skills and does not use third-party search or extraction fal
 - `https://github.com/owner/repo/blob/ref/path/to/file`
 - `https://github.com/owner/repo/tree/ref/path/to/directory`
 
-Repository URLs return the root listing and README. Only public repositories are accepted, even when `gh` is authenticated for private repositories. The extension never clones or executes repository content. Branch names containing `/` are not currently supported in GitHub web URLs because the ref/path boundary is ambiguous.
+Repository URLs return the root listing and README. Private repositories work when the authenticated `gh` account can access them. The extension never clones or executes repository content. Branch names containing `/` are not currently supported in GitHub web URLs because the ref/path boundary is ambiguous.
 
 ## Security boundaries
 
@@ -27,4 +27,5 @@ Repository URLs return the root listing and README. Only public repositories are
 - Validated DNS addresses are pinned to the HTTP connection, and every redirect destination is separately validated and pinned.
 - Responses are limited to 5 MB and final tool output stays within Pi's standard 50 KB/2,000-line truncation.
 - Remote content is explicitly labeled as untrusted in tool results.
+- GitHub fetching uses the authenticated `gh` account and can send content from any accessible repository to the active model. A prompt-injected tool call that knows a private repository URL therefore has the same read access.
 - These controls reduce risk but do not make remote content immune to prompt injection. Run Pi in an OS sandbox when exploring adversarial material.

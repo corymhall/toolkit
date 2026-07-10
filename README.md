@@ -62,9 +62,9 @@ dependencies automatically.
 `extensions/web-access` registers only `web_search` and `fetch_content`:
 
 - `web_search` uses Pi's OpenAI Codex subscription login exclusively.
-- Public GitHub repository, tree, and blob URLs use constrained read-only
-  `gh api` calls and never clone or execute repository content; private
-  repositories are rejected even when `gh` can access them.
+- GitHub repository, tree, and blob URLs use constrained read-only `gh api`
+  calls and never clone or execute repository content. Private repositories
+  work when the authenticated `gh` account can access them.
 - Other HTTP(S) pages are fetched directly and HTML is converted locally with
   Readability. Extraction failures are returned without external-service
   fallbacks.

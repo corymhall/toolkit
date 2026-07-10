@@ -38,7 +38,7 @@ test("fetches GitHub files through a constrained gh API invocation", async () =>
   assert.equal(calls.flat().includes("clone"), false);
 });
 
-test("blocks private and loopback fetch targets", async () => {
+test("blocks non-public network targets", async () => {
   await assert.rejects(() => validateRemoteUrl("http://127.0.0.1/test"), /Blocked non-public address/);
   await assert.rejects(
     () => validateRemoteUrl("https://internal.example/test", async () => [{ address: "10.0.0.1", family: 4 }]),
@@ -73,19 +73,22 @@ test("rejects redirects to private addresses before the second fetch", async () 
   assert.equal(fetchCalls, 1);
 });
 
-test("rejects private GitHub repositories before requesting content", async () => {
+test("fetches private GitHub repositories available to gh", async () => {
   const calls: string[][] = [];
+  const responses = [
+    { private: true, visibility: "private", full_name: "acme/private", default_branch: "main" },
+    { type: "file", size: 6, encoding: "base64", content: Buffer.from("secret").toString("base64") },
+  ];
   const pi = {
     async exec(command: string, args: string[]) {
       calls.push([command, ...args]);
-      return { code: 0, stdout: JSON.stringify({ private: true, visibility: "private" }), stderr: "", killed: false };
+      return { code: 0, stdout: JSON.stringify(responses.shift()), stderr: "", killed: false };
     },
   } as unknown as ExtensionAPI;
-  await assert.rejects(
-    () => fetchGitHubContent("https://github.com/acme/private/blob/main/README.md", pi),
-    /only reads public GitHub repositories/,
-  );
-  assert.equal(calls.length, 1);
+  const result = await fetchGitHubContent("https://github.com/acme/private/blob/main/README.md", pi);
+  assert.equal(result?.content, "secret");
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0].slice(0, 4), ["gh", "api", "--hostname", "github.com"]);
 });
 
 test("registers exactly the two intended Pi tools", () => {
