@@ -1,0 +1,232 @@
+---
+name: triage-provider-issue
+description: "Triage Pulumi provider issues end-to-end without forcing a one-shot conclusion. Use when the agent needs to assess likely attribution, decide what evidence is already settled, choose the next best action, and explicitly switch to helper skills for Pulumi repros, Terraform repros, bridge parity investigations, or workaround work."
+---
+
+# Triage Provider Issue
+
+Triage provider issues as an evidence-driven orchestration problem, not a
+single-pass verdict.
+
+The job of this skill is to determine what is already known, what is not yet
+known, and which next action most directly increases certainty or helps the
+human move toward a workaround.
+
+Do not post comments, apply labels, or create issues automatically from this
+skill. Bounded local actions are allowed.
+
+## Core Rules
+
+- Do not guess when confidence is low.
+- Do not optimize for a plausible-looking report.
+- Before path-specific searches or repo-local commands, do a quick layout probe
+  so you know which paths actually exist in this checkout.
+- For broad repo or generated-code searches, use `repo-search-hygiene`:
+  confirm roots first, start with `rg -l` or counts for common terms, and do not
+  raise output caps to make an overbroad search fit.
+- Prefer the best path to certainty even when execution is blocked by missing
+  credentials or approvals.
+- Do not silently compress "same area" into "same issue." Distinguish duplicate,
+  same-family, and related-but-separate cases explicitly.
+- Do not present a leading explanation as settled unless the issue text, local
+  evidence, or repro results actually prove it.
+- If the best next step requires a repro artifact, create the artifact rather
+  than substituting a weaker path.
+- Keep working across repos when the investigation moves from provider to
+  bridge or upstream. Repo boundaries do not require a different agent if the
+  same agent can continue effectively.
+- Treat workaround discovery as part of the job. Triage is often not complete
+  when attribution is known.
+- When citing files in evidence or handoff output, use app-native Markdown
+  links like `[file.go](/abs/path/file.go:123)`. Do not emit `file://` URIs,
+  even in sidecar-to-parent handoffs.
+
+## Command Hygiene
+
+When searching GitHub issues, keep `repo:` qualifiers outside shell-quoted
+search phrases. `gh search issues 'repo:owner/repo terms'` can quote the whole
+qualifier as a repository name and fail with an invalid search query. Prefer:
+
+```bash
+gh search issues --repo owner/repo 'terms here' --json number,title,state,url --limit 20
+```
+
+For cross-repo searches, pass each repository as its own `--repo owner/repo`
+argument or use separate `gh search issues` calls. Do not hide invalid search
+queries as weak evidence about whether a duplicate exists.
+
+Do not use `gh search issues --state all`; local `gh` accepts only `open` or
+`closed` for `--state`. Omit `--state` when you need both open and closed
+issues, or run separate `--state open` and `--state closed` searches when the
+distinction matters.
+
+When searching PRs, keep `gh search prs --json` fields to fields supported by
+search results. Do not request `mergedAt` from `gh search prs`; this local CLI
+does not expose it there. Use fields such as `number,title,state,url,closedAt`,
+then run `gh pr view <number> --json mergedAt,mergedBy,mergeCommit` for merge
+details on a specific candidate PR.
+
+Read reference files relative to this skill directory, for example
+`triage-provider-issue/references/confidence-and-artifacts.md`. Do not probe a
+shared parent-level `skills/references/...` directory.
+
+## Confidence Fork
+
+Use these thresholds after the first evidence pass:
+
+- `>= 90%`: state a provisional disposition, explain the strongest evidence,
+  name ruled-out alternatives, and choose the next maintainer action.
+- `60-89%`: do not anchor on a final disposition. Center the result on the
+  unresolved question and the next action that would most increase certainty.
+- `< 60%`: avoid hypotheses. Focus on evidence acquisition, not conclusions.
+
+If the answer to this question is "yes", you are not done routing:
+
+`Would the opposite repro or parity result change my recommendation?`
+
+When the answer is yes, stage the sharper discriminator instead of issuing a
+strong ownership call.
+
+Read `references/disposition-gates.md` before finalizing any strong routing or
+duplicate claim.
+
+## Workflow
+
+1. Read the issue carefully and classify the issue type.
+2. Do a 30-second repo layout probe before assuming paths.
+3. Identify the likely implementation family or boundary involved.
+4. Gather only enough evidence to choose the next best action.
+5. Estimate confidence and decide whether routing is settled.
+6. If routing is not settled, explicitly switch to the helper skill that best
+   reduces uncertainty.
+7. If routing is settled but the human still needs a practical path forward,
+   switch to workaround work.
+
+By default, stop after the triage artifact. Do not slide into implementation,
+PR work, or broad project planning unless:
+
+- the user explicitly asks to keep going beyond triage, or
+- you explicitly switch into a helper skill whose purpose is repro or
+  workaround work
+
+When you do continue past triage, say that triage is complete and name the new
+phase.
+
+If the issue is about generated provider docs, converted examples, or code
+sample casing, read `references/docs-example-conversion.md` before assigning
+ownership to a provider, bridge, converter, or core code generator.
+
+For provider repos, the initial probe should answer things like:
+
+- is the upstream provider present as a submodule, vendored module, or absent
+- where the effective Go module lives (`go.mod`, `provider/go.mod`, `sdk/go.mod`)
+- whether likely search roots such as `provider/`, `upstream/`, `examples/`, or
+  `tests/` actually exist in this checkout
+
+Do this before grepping guessed paths like `upstream/internal/...`,
+`tests/...`, or root `go.mod`. A fast `pwd`, `rg --files`, `find`, or targeted
+`ls` pass is cheaper than multiple `os error 2` misses.
+
+If the next best step belongs in another repo, move to that repo and continue.
+Do not stop just because the investigation crossed a repository boundary.
+When it is feasible in the current turn, actually continue into the selected
+helper skill and begin that work. Do not stop at "the next step should be X"
+unless execution is genuinely blocked.
+
+Read these references before finalizing:
+
+- `references/confidence-and-artifacts.md`
+- `references/docs-example-conversion.md` when generated docs or converted
+  examples are involved
+- `references/disposition-gates.md`
+- `references/helper-switches.md`
+
+## Helper Skills
+
+Switch explicitly rather than vaguely suggesting "more investigation."
+
+### `stage-pulumi-provider-repro`
+
+Use when the sharpest next action is to stage a durable Pulumi-side repro in a
+provider repo.
+
+Typical triggers:
+
+- the issue has a user repro but there is no maintainer-quality artifact yet
+- you need to verify update, refresh, import, or multi-step Pulumi behavior
+- `--refresh --run-program` is part of the discriminator
+
+### `stage-terraform-provider-repro`
+
+Use when the next best action is the Terraform discriminator or an upstream
+acceptance-style repro.
+
+Typical triggers:
+
+- ownership depends on whether Terraform reproduces
+- you need to test a narrow semantic variant such as `-refresh=false`
+- you need an upstream artifact instead of an ad hoc local run
+
+If the opposite Terraform result would change your routing recommendation,
+switch here before naming `awaiting-upstream` or `awaiting/bridge`.
+
+### `bridge-parity-investigation`
+
+Use only after the issue is understood as a real Pulumi-vs-Terraform parity
+gap and the right next step is a bridge cross-test investigation.
+
+Do not use it while parity is still unproven.
+
+### `pulumi-rpc-lifecycle-investigation`
+
+Use when the sharpest next action is to reconstruct Pulumi engine, bridge, and
+provider lifecycle behavior from gRPC logs, architecture docs, and provider
+code before assigning ownership.
+
+Typical triggers:
+
+- unexpected `Check`/`Diff`/`Read` ordering or payload contents
+- refresh/import/replacement behavior where old inputs, state, or `news`
+  polarity matters
+- provider upgrade regressions involving stale or surprising inputs/state
+- questions where engine, bridge, provider, and upstream Terraform behavior
+  all remain plausible owners
+
+### `workaround-investigation`
+
+Use when the likely ownership boundary is clear enough, but the human is not
+done until a workaround or practical mitigation is found.
+
+## Default Output
+
+Always leave a compact artifact the next pass can pick up:
+
+- current state
+- confidence
+- what is settled
+- what is not settled
+- next best action
+- artifacts prepared
+- blocked steps and required access
+- workaround status
+- closest related issues and whether they are duplicates, same-family, or only
+  background
+
+When a mechanism is not yet proven, label it plainly as one of:
+
+- proven by evidence
+- likely but unconfirmed
+- related but exact applicability unverified
+
+When the output cites repo evidence, keep the file references concise and
+clickable in the app. Prefer a few high-signal links over dense link spam.
+
+If you switch to a helper skill, restate the unresolved question in one line so
+the next pass knows exactly what it is trying to collapse.
+
+Do not treat "continue investigating" as a sufficient outcome. Always name the
+next action and the helper skill, if any, that should own it.
+
+Always present the triage artifact before mutating GitHub state or moving into
+implementation. Even when the answer is obvious or already fixed by upgrade,
+report first.

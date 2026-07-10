@@ -1,0 +1,4 @@
+interface:
+  display_name: "Memory Guard"
+  short_description: "Diagnose memrun memory kills"
+  default_prompt: "Use $memory-guard to inspect this memrun log and choose the next safe command."
