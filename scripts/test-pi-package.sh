@@ -51,6 +51,13 @@ for skill in selected:
 spec_to_goal = (root / "codex-skills/spec-to-goal").resolve()
 if spec_to_goal in selected:
     raise SystemExit("Codex-only spec-to-goal skill was exposed to Pi")
+
+extensions = manifest.get("pi", {}).get("extensions")
+if extensions != ["extensions/web-access/index.ts"]:
+    raise SystemExit(f"unexpected Pi extensions manifest: {extensions!r}")
+for extension in extensions:
+    if not (root / extension).is_file():
+        raise SystemExit(f"Pi extension does not exist: {extension}")
 PY
 
 pi install "${repo_root}"

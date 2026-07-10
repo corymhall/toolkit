@@ -1,8 +1,10 @@
 # Toolkit
 
-Shared Agent Skills for AI-assisted software engineering workflows. The same
-skill sources work in Pi, Codex, and other Agent-Skills-compatible harnesses.
+Shared Agent Skills and focused Pi extensions for AI-assisted software
+engineering workflows. The same skill sources work in Pi, Codex, and other
+Agent-Skills-compatible harnesses.
 
+- `extensions/` contains first-party Pi extensions.
 - `skills/` contains runtime-neutral skills.
 - `codex-skills/` contains workflows that require Codex-specific features.
 - `.agents/skills/` contains reviewed third-party skills managed by
@@ -48,10 +50,28 @@ Install the shared skills as a Pi Git package:
 pi install git:github.com/corymhall/toolkit
 ```
 
-The Pi manifest exposes first-party `skills/*` plus managed third-party
-`.agents/skills/*`. `codex-skills/spec-to-goal` is omitted because Pi does not
-provide Codex's `/goal` workflow. The package contains no Pi extensions and does
-not add background-process or subagent tools.
+The Pi manifest exposes first-party `skills/*`, managed third-party
+`.agents/skills/*`, and the focused `extensions/web-access` extension.
+`codex-skills/spec-to-goal` is omitted because Pi does not provide Codex's
+`/goal` workflow. The package does not add background-process or subagent tools.
+Git package installation installs the web-access extension's local parsing
+dependencies automatically.
+
+### Web Access extension
+
+`extensions/web-access` registers only `web_search` and `fetch_content`:
+
+- `web_search` uses Pi's OpenAI Codex subscription login exclusively.
+- Public GitHub repository, tree, and blob URLs use constrained read-only
+  `gh api` calls and never clone or execute repository content; private
+  repositories are rejected even when `gh` can access them.
+- Other HTTP(S) pages are fetched directly and HTML is converted locally with
+  Readability. Extraction failures are returned without external-service
+  fallbacks.
+
+The extension does not bundle an extension-owned skill or use Jina, Gemini,
+Parallel, Brave, Exa, Tavily, or Perplexity. See
+[extensions/web-access/README.md](extensions/web-access/README.md) for details.
 
 Package installation loads the `memory-guard` guidance but cannot create the
 `~/.local/bin/make` proxy. Run `scripts/install-local-skills.sh` from a local
@@ -143,7 +163,8 @@ installer does not edit agent settings.
 for skill in skills/* codex-skills/* .agents/skills/*; do
   python3 /Users/chall/.codex/skills/.system/skill-creator/scripts/quick_validate.py "$skill"
 done
-jq empty package.json skills-lock.json
+jq empty package.json package-lock.json skills-lock.json
+npm run test:web-access
 bash -n scripts/*.sh
 scripts/test-claude-review.sh
 scripts/test-local-installer.sh
