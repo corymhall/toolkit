@@ -26,15 +26,16 @@ run_installer >"${tmp_dir}/first.out"
 
 shared_expected=$(
   find "${repo_root}/skills" "${repo_root}/.agents/skills" \
-    -mindepth 1 -maxdepth 1 -type d -exec test -f '{}/SKILL.md' ';' -print | wc -l | tr -d ' '
+    -mindepth 2 -type f -name SKILL.md | wc -l | tr -d ' '
 )
 shared_actual=$(find "${home}/.agents/skills" -mindepth 1 -maxdepth 1 -type l | wc -l | tr -d ' ')
-codex_expected=$(find "${repo_root}/codex-skills" -mindepth 1 -maxdepth 1 -type d -exec test -f '{}/SKILL.md' ';' -print | wc -l | tr -d ' ')
+codex_expected=$(find "${repo_root}/codex-skills" -mindepth 2 -type f -name SKILL.md | wc -l | tr -d ' ')
 codex_actual=$(find "${codex_home}/skills" -mindepth 1 -maxdepth 1 -type l | wc -l | tr -d ' ')
 
 [[ "${shared_actual}" == "${shared_expected}" ]]
 [[ "${codex_actual}" == "${codex_expected}" ]]
 [[ "$(readlink "${home}/.agents/skills/herdr")" == "${repo_root}/.agents/skills/herdr" ]]
+[[ "$(readlink "${home}/.agents/skills/triage-provider-issue")" == "${repo_root}/skills/provider-issue-workbench/triage-provider-issue" ]]
 [[ "$(readlink "${home}/.local/bin/make")" == "${repo_root}/skills/memory-guard/scripts/make" ]]
 [[ ! -L "${legacy_link}" ]]
 [[ -L "${unrelated_link}" ]]

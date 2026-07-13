@@ -30,16 +30,32 @@ for_each_skill() {
   fi
 
   local count=0
-  while IFS= read -r -d '' skill_dir; do
-    if [[ ! -f "${skill_dir}/SKILL.md" ]]; then
-      continue
-    fi
+  while IFS= read -r -d '' skill_file; do
+    local skill_dir
+    skill_dir="$(dirname "${skill_file}")"
     "${callback}" "${skill_dir}" "${destination_root}/$(basename "${skill_dir}")"
     count=$((count + 1))
-  done < <(find "${source_root}" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
+  done < <(find "${source_root}" -mindepth 2 -type f -name SKILL.md -print0 | sort -z)
 
   if [[ "${count}" -eq 0 ]]; then
     echo "No ${label} skills found under ${source_root}" >&2
+    return 1
+  fi
+}
+
+check_duplicate_skill_names() {
+  local duplicates
+  duplicates=$(
+    for source_root in "$@"; do
+      find "${source_root}" -mindepth 2 -type f -name SKILL.md -print0
+    done \
+      | while IFS= read -r -d '' skill_file; do basename "$(dirname "${skill_file}")"; done \
+      | sort \
+      | uniq -d
+  )
+  if [[ -n "${duplicates}" ]]; then
+    echo "Duplicate skill destination names:" >&2
+    echo "${duplicates}" >&2
     return 1
   fi
 }
@@ -71,7 +87,10 @@ link_path() {
 }
 
 # Validate every destination before changing anything so a late collision does
-# not leave a partially installed skill set.
+# not leave a partially installed skill set. Nested source groups are flattened
+# by skill directory name, so reject duplicate names before linking.
+check_duplicate_skill_names "${shared_source}" "${managed_source}"
+check_duplicate_skill_names "${codex_source}"
 for_each_skill "${shared_source}" preflight_skill "${shared_dest}" "shared"
 for_each_skill "${managed_source}" preflight_skill "${shared_dest}" "managed third-party"
 for_each_skill "${codex_source}" preflight_skill "${codex_dest}" "Codex-only"

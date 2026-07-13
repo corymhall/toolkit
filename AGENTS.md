@@ -4,10 +4,11 @@
 
 This repository is organized around self-contained Agent Skills:
 
-- `skills/<skill-name>/` contains skills shared by Pi, Codex, and other
-  Agent-Skills-compatible harnesses.
-- `codex-skills/<skill-name>/` contains skills that depend on Codex-only
-  workflows.
+- `skills/` contains skills shared by Pi, Codex, and other
+  Agent-Skills-compatible harnesses. Skills may be grouped in nested
+  directories; each directory containing `SKILL.md` is an individual skill.
+- `codex-skills/` contains skills that depend on Codex-only workflows. Skills
+  may be grouped using the same convention.
 - `.agents/skills/<skill-name>/` contains reviewed third-party skills managed by
   `npx skills` and `skills-lock.json`; do not edit vendored copies by hand.
 - References, scripts, assets, and metadata owned by a skill belong inside that
@@ -40,16 +41,17 @@ npx skills update herdr --project -y
 
 Review the resulting skill and lockfile diff before committing it.
 
-The root `package.json` exposes `skills/*` and `.agents/skills/*` to Pi. Keep
-Codex-only skills out of that manifest. Pi also discovers shared local links
-from `~/.agents/skills`.
+The root `package.json` exposes the recursive `skills/` tree and
+`.agents/skills/*` to Pi. Keep Codex-only skills out of that manifest. The local
+installer discovers nested skill directories recursively but links each skill
+flat into `~/.agents/skills` for cross-harness compatibility.
 
 After editing skills, validate all shared and Codex-only skills:
 
 ```bash
-for skill in skills/* codex-skills/* .agents/skills/*; do
-  python3 /Users/chall/.codex/skills/.system/skill-creator/scripts/quick_validate.py "$skill"
-done
+while IFS= read -r -d '' skill_file; do
+  python3 /Users/chall/.codex/skills/.system/skill-creator/scripts/quick_validate.py "$(dirname "$skill_file")"
+done < <(find skills codex-skills .agents/skills -name SKILL.md -type f -print0)
 ```
 
 Also validate the Pi package and local installer:

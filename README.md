@@ -5,7 +5,8 @@ engineering workflows. The same skill sources work in Pi, Codex, and other
 Agent-Skills-compatible harnesses.
 
 - `extensions/` contains first-party Pi extensions.
-- `skills/` contains runtime-neutral skills.
+- `skills/` contains runtime-neutral skills, optionally grouped in nested
+  directories.
 - `codex-skills/` contains workflows that require Codex-specific features.
 - `.agents/skills/` contains reviewed third-party skills managed by
   `npx skills` and `skills-lock.json`.
@@ -29,9 +30,9 @@ scripts/install-local-skills.sh
 The installer maps:
 
 ```text
-skills/*               -> ~/.agents/skills/*
+skills/**/<skill>       -> ~/.agents/skills/<skill>
 .agents/skills/*        -> ~/.agents/skills/*
-codex-skills/*         -> ${CODEX_HOME:-~/.codex}/skills/*
+codex-skills/**/<skill> -> ${CODEX_HOME:-~/.codex}/skills/<skill>
 ```
 
 It also links the memory guard's `make` proxy to `~/.local/bin/make` and removes
@@ -50,8 +51,8 @@ Install the shared skills as a Pi Git package:
 pi install git:github.com/corymhall/toolkit
 ```
 
-The Pi manifest exposes first-party `skills/*`, managed third-party
-`.agents/skills/*`, and the focused `extensions/web-access` and
+The Pi manifest exposes the recursive first-party `skills/` tree, managed
+third-party `.agents/skills/*`, and the focused `extensions/web-access` and
 `extensions/status-footer` extensions. `codex-skills/spec-to-goal` is omitted
 because Pi does not provide Codex's `/goal` workflow. The package does not add
 background-process or subagent tools.
@@ -130,8 +131,10 @@ committing the update.
 | Area | Skills |
 |------|--------|
 | Review | `request-review`, `review-pr`, `explain-pr`, `claude-review` |
-| Engineering | `go-development`, `neovim-plugin-development`, `memory-guard` |
-| AI workflows | `collaborative-framing`, `multi-model-evaluate`, `ai-contribution-readiness-audit`, `ai-harness-bootstrap`, `ai-harness-retrospective`, `git-spice-stack-prs` |
+| AI harness | `ai-contribution-readiness-audit`, `ai-harness-bootstrap`, `ai-harness-retrospective` |
+| Development | `go-development`, `neovim-plugin-development` |
+| General workflows | `collaborative-framing`, `multi-model-evaluate`, `git-spice-stack-prs` |
+| Operations | `memory-guard` |
 | Provider work | `triage-provider-issue`, `pulumi-rpc-lifecycle-investigation`, `bridge-parity-investigation`, `stage-pulumi-provider-repro`, `stage-terraform-provider-repro`, `workaround-investigation` |
 | Pulumi audit | `pulumi-test-rationalization-audit` |
 | Codex-only | `spec-to-goal` |
@@ -171,9 +174,9 @@ installer does not edit agent settings.
 ## Validation
 
 ```bash
-for skill in skills/* codex-skills/* .agents/skills/*; do
-  python3 /Users/chall/.codex/skills/.system/skill-creator/scripts/quick_validate.py "$skill"
-done
+while IFS= read -r -d '' skill_file; do
+  python3 /Users/chall/.codex/skills/.system/skill-creator/scripts/quick_validate.py "$(dirname "$skill_file")"
+done < <(find skills codex-skills .agents/skills -name SKILL.md -type f -print0)
 jq empty package.json package-lock.json skills-lock.json
 npm run test:status-footer
 npm run test:web-access

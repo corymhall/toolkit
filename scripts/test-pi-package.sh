@@ -28,6 +28,13 @@ entries = manifest.get("pi", {}).get("skills")
 if not isinstance(entries, list) or not entries:
     raise SystemExit("package.json must expose Pi skills")
 
+def discover_skills(resource: pathlib.Path) -> set[pathlib.Path]:
+    if resource.is_file():
+        return {resource.parent} if resource.name == "SKILL.md" else set()
+    if not resource.is_dir():
+        return set()
+    return {skill_file.parent.resolve() for skill_file in resource.rglob("SKILL.md")}
+
 selected: set[pathlib.Path] = set()
 for entry in entries:
     if not isinstance(entry, str) or not entry:
@@ -37,14 +44,13 @@ for entry in entries:
     matches = {pathlib.Path(match).resolve() for match in glob.glob(str(root / pattern))}
     if not excluded and not matches:
         raise SystemExit(f"Pi skill pattern matched nothing: {entry}")
-    selected = selected - matches if excluded else selected | matches
+    discovered = {skill for match in matches for skill in discover_skills(match)}
+    selected = selected - discovered if excluded else selected | discovered
 
 if not selected:
-    raise SystemExit("Pi skill manifest resolves to no resources")
+    raise SystemExit("Pi skill manifest resolves to no skills")
 
 for skill in selected:
-    if not (skill / "SKILL.md").is_file():
-        raise SystemExit(f"Pi skill has no SKILL.md: {skill}")
     if root / "codex-skills" in skill.parents:
         raise SystemExit(f"Codex-only skill was exposed to Pi: {skill}")
 
@@ -84,12 +90,14 @@ for entry in manifest["pi"]["skills"]:
     if entry.startswith("!"):
         continue
     for match in glob.glob(str(root / entry)):
-        skill_file = pathlib.Path(match) / "SKILL.md"
-        frontmatter = skill_file.read_text()
-        name = re.search(r"^name:\s*[\"']?([^\"'\n]+)", frontmatter, re.MULTILINE)
-        if not name:
-            raise SystemExit(f"skill has no parseable name: {skill_file}")
-        expected.add(name.group(1).strip())
+        resource = pathlib.Path(match)
+        skill_files = [resource] if resource.is_file() and resource.name == "SKILL.md" else resource.rglob("SKILL.md")
+        for skill_file in skill_files:
+            frontmatter = skill_file.read_text()
+            name = re.search(r"^name:\s*[\"']?([^\"'\n]+)", frontmatter, re.MULTILINE)
+            if not name:
+                raise SystemExit(f"skill has no parseable name: {skill_file}")
+            expected.add(name.group(1).strip())
 
 command = {"id": "commands", "type": "get_commands"}
 result = subprocess.run(

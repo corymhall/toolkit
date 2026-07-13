@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-helper="${repo_root}/skills/claude-review/scripts/claude-review.mjs"
+helper="${repo_root}/skills/review/claude-review/scripts/claude-review.mjs"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "${tmp_dir}"' EXIT
 
