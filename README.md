@@ -51,9 +51,10 @@ pi install git:github.com/corymhall/toolkit
 ```
 
 The Pi manifest exposes first-party `skills/*`, managed third-party
-`.agents/skills/*`, and the focused `extensions/web-access` extension.
-`codex-skills/spec-to-goal` is omitted because Pi does not provide Codex's
-`/goal` workflow. The package does not add background-process or subagent tools.
+`.agents/skills/*`, and the focused `extensions/web-access` and
+`extensions/status-footer` extensions. `codex-skills/spec-to-goal` is omitted
+because Pi does not provide Codex's `/goal` workflow. The package does not add
+background-process or subagent tools.
 Git package installation installs the web-access extension's local parsing
 dependencies automatically.
 
@@ -72,6 +73,16 @@ dependencies automatically.
 The extension does not bundle an extension-owned skill or use Jina, Gemini,
 Parallel, Brave, Exa, Tavily, or Perplexity. See
 [extensions/web-access/README.md](extensions/web-access/README.md) for details.
+
+### Status Footer extension
+
+`extensions/status-footer` replaces Pi's default footer with a compact line that
+prioritizes remaining Codex weekly quota and remaining Pi context. It adds model,
+thinking level, and Git branch when space permits. Weekly quota comes from Pi's
+OpenAI response headers, with the locally authenticated Codex CLI providing the
+startup fallback; use `/status-refresh` to refresh that fallback manually. See
+[extensions/status-footer/README.md](extensions/status-footer/README.md) for
+requirements and account-matching caveats.
 
 Package installation loads the `memory-guard` guidance but cannot create the
 `~/.local/bin/make` proxy. Run `scripts/install-local-skills.sh` from a local
@@ -164,6 +175,7 @@ for skill in skills/* codex-skills/* .agents/skills/*; do
   python3 /Users/chall/.codex/skills/.system/skill-creator/scripts/quick_validate.py "$skill"
 done
 jq empty package.json package-lock.json skills-lock.json
+npm run test:status-footer
 npm run test:web-access
 bash -n scripts/*.sh
 scripts/test-claude-review.sh

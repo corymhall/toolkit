@@ -53,7 +53,11 @@ if spec_to_goal in selected:
     raise SystemExit("Codex-only spec-to-goal skill was exposed to Pi")
 
 extensions = manifest.get("pi", {}).get("extensions")
-if extensions != ["extensions/web-access/index.ts"]:
+expected_extensions = [
+    "extensions/web-access/index.ts",
+    "extensions/status-footer/index.ts",
+]
+if extensions != expected_extensions:
     raise SystemExit(f"unexpected Pi extensions manifest: {extensions!r}")
 for extension in extensions:
     if not (root / extension).is_file():
