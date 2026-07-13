@@ -1,0 +1,35 @@
+# Delegate extension
+
+`/delegate [goal]` transfers work from the current conversation into a normal,
+persisted Pi session in another local repository or a new Worktrunk worktree.
+
+The extension is intentionally dormant until the command is invoked. It then
+temporarily exposes `delegate_session` to the current agent so the agent can use
+the conversation to propose a destination, branch, and self-contained handoff.
+Before anything is created, Pi opens the handoff for editing and asks for
+confirmation.
+
+After confirmation the extension:
+
+1. writes the handoff under Pi's agent directory in `delegations/`;
+2. creates a Worktrunk worktree and runs its configured start hooks, unless the
+   existing checkout was explicitly requested;
+3. creates a non-focused Herdr workspace at the resulting checkout and starts
+   Pi in its root pane; and
+4. disables the temporary delegation tool.
+
+The launched process is an ordinary interactive Pi session with normal session
+persistence and configured model defaults. Worktrunk remains responsible for
+worktree layout and repository hooks.
+
+## Requirements
+
+- Pi must be running inside Herdr (`HERDR_ENV=1`).
+- `herdr`, `wt`, and `git` must be available on `PATH`; the delegated session
+  reuses the executable that launched the current Pi session.
+- The destination repository must already exist locally.
+
+Use `/delegate cancel` to disarm a delegation that is waiting for clarification.
+The extension does not automatically remove a workspace or worktree after a
+partial failure; the visible workspace and saved handoff are retained for
+inspection and recovery.

@@ -62,6 +62,7 @@ extensions = manifest.get("pi", {}).get("extensions")
 expected_extensions = [
     "extensions/web-access/index.ts",
     "extensions/status-footer/index.ts",
+    "extensions/delegate/index.ts",
 ]
 if extensions != expected_extensions:
     raise SystemExit(f"unexpected Pi extensions manifest: {extensions!r}")

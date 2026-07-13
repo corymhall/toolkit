@@ -54,10 +54,37 @@ while IFS= read -r -d '' skill_file; do
 done < <(find skills codex-skills .agents/skills -name SKILL.md -type f -print0)
 ```
 
+## Pi Extension Management
+
+- First-party Pi extensions live under `extensions/<name>/`, with `index.ts` as
+  the entry point, a focused README, and tests under `test/` when behavior can
+  be isolated.
+- Expose a new packaged extension in `package.json` under `pi.extensions`, add
+  its test script when applicable, and update the expected extension list in
+  `scripts/test-pi-package.sh`. Document user-facing commands or tools in the
+  root README.
+- A package-manifest change does not install an extension into an existing Pi
+  configuration that lists individual extension files. Distinguish package
+  development from local activation: inspect `~/.pi/agent/settings.json` or
+  `pi list`, use `pi install <package-or-extension-path>` only when the user
+  wants the configuration changed, and then reload or restart Pi.
+- Do not hardcode a global Pi installation path. If an extension launches a new
+  Pi process, support both standalone and Node-based installations by deriving
+  the command from the current process and testing both forms.
+- Prefer a command-only extension for workflows that must remain invisible to
+  the model until manual invocation. If the workflow needs an agent-callable
+  tool afterward, register or activate it only from the command and restore the
+  prior active tool set when the workflow ends.
+- Extensions run with full user permissions. Validate paths and structured
+  subprocess arguments, quote any command text sent through a terminal, and
+  require confirmation before creating worktrees, running repository hooks, or
+  starting external sessions.
+
 Also validate the Pi package and local installer:
 
 ```bash
 jq empty package.json skills-lock.json
+npm test
 bash -n scripts/*.sh
 scripts/test-claude-review.sh
 scripts/test-local-installer.sh
@@ -65,26 +92,13 @@ scripts/test-memory-guard.sh
 scripts/test-pi-package.sh
 ```
 
-## Process And Agent Coordination
+## Process Management
 
 - When `HERDR_ENV=1`, load the Herdr skill before managing long-running or
-  interactive processes and visible sidecar agents.
-- Give each sidecar its own non-focused Herdr tab in the current workspace. Use
-  a semantic label such as `agent-general-review` and add a short task suffix
-  when duplicate roles may coexist.
-- The main session owns sidecar tab creation and cleanup. A sidecar owns only its
-  tab and must not spawn additional agents.
+  interactive processes.
 - Herdr tab and pane IDs are not durable. Re-list tabs and panes before waiting,
-  reading, focusing, or closing. Never reuse a tab containing a working or
-  blocked agent.
-- Keep a sidecar tab through synthesis so its output remains inspectable. Close
-  it after findings are captured and reported unless the user asks to retain it.
+  reading, focusing, or closing.
 - Outside Herdr, use tmux for long-lived interactive processes.
-- One main agent session owns implementation and integration. Use sidecars only
-  for bounded research, independent review, or specialist checks; do not
-  delegate overlapping implementation work to multiple agents.
-- Preserve reusable context in a concise durable artifact. The main session
-  must verify material sidecar findings before acting on them.
 
 ## Evaluation Lens
 
@@ -95,5 +109,4 @@ read:
 - `docs/skill-prompting-lens.md`
 
 Do not assume a successful external workflow should be copied directly.
-Prefer the smallest valuable adaptation, one main implementation owner, and
-sidecars only when they materially improve research or review.
+Prefer the smallest valuable adaptation and one main implementation owner.

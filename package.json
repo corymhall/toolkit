@@ -5,6 +5,8 @@
   "type": "module",
   "description": "Shared Agent Skills and Pi extensions for AI-assisted software engineering workflows.",
   "scripts": {
+    "test": "npm run test:delegate && npm run test:status-footer && npm run test:web-access",
+    "test:delegate": "node --experimental-strip-types --test extensions/delegate/test/*.test.ts",
     "test:status-footer": "node --experimental-strip-types --test extensions/status-footer/test/*.test.ts",
     "test:web-access": "node --experimental-strip-types --test extensions/web-access/test/*.test.ts"
   },
@@ -28,7 +30,8 @@
   "pi": {
     "extensions": [
       "extensions/web-access/index.ts",
-      "extensions/status-footer/index.ts"
+      "extensions/status-footer/index.ts",
+      "extensions/delegate/index.ts"
     ],
     "skills": [
       "skills",

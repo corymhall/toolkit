@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { getWeeklyRemaining, getWeeklyRemainingFromHeaders } from "../codex-rate-limits.ts";
 import { contextColor, remainingPercent, renderStatusFooter, type FooterTheme } from "../footer.ts";
+import statusFooterExtension from "../index.ts";
 
 const plainTheme: FooterTheme = {
   fg: (_color, text) => text,
@@ -74,6 +76,35 @@ test("compacts both priority signals on very narrow terminals", () => {
   }, 20, plainTheme);
 
   assert.equal(line, "W98% · C53%");
+});
+
+test("status-refresh reinstalls the custom footer", async () => {
+  let command: { handler: (args: string, ctx: any) => Promise<void> } | undefined;
+  let footerInstallations = 0;
+  const notifications: string[] = [];
+  const pi = {
+    on() {},
+    registerCommand(_name: string, registered: typeof command) { command = registered; },
+    getThinkingLevel: () => "high",
+  } as unknown as ExtensionAPI;
+  statusFooterExtension(pi, {
+    fetchRateLimits: async () => ({
+      rateLimits: { primary: { usedPercent: 5, windowDurationMins: 10_080 } },
+    }),
+  });
+
+  await command!.handler("", {
+    mode: "tui",
+    model: undefined,
+    getContextUsage: () => undefined,
+    ui: {
+      setFooter() { footerInstallations++; },
+      notify(message: string) { notifications.push(message); },
+    },
+  });
+
+  assert.equal(footerInstallations, 1);
+  assert.deepEqual(notifications, ["Weekly Codex limit: 95% left"]);
 });
 
 test("includes model and branch when space permits", () => {

@@ -25,8 +25,9 @@ active account.
 
 For an initial value before the first response, the extension asks the locally
 installed Codex CLI for `account/rateLimits/read` through `codex app-server`,
-then selects its seven-day window. `/status-refresh` repeats that fallback
-request.
+then selects its seven-day window. `/status-refresh` reinstalls the custom
+footer and repeats that fallback request, so it can also recover UI state after
+a problematic resource reload.
 
 This means:
 

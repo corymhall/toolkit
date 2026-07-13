@@ -52,10 +52,11 @@ pi install git:github.com/corymhall/toolkit
 ```
 
 The Pi manifest exposes the recursive first-party `skills/` tree, managed
-third-party `.agents/skills/*`, and the focused `extensions/web-access` and
-`extensions/status-footer` extensions. `codex-skills/spec-to-goal` is omitted
-because Pi does not provide Codex's `/goal` workflow. The package does not add
-background-process or subagent tools.
+third-party `.agents/skills/*`, and the focused `extensions/web-access`,
+`extensions/status-footer`, and `extensions/delegate` extensions.
+`codex-skills/spec-to-goal` is omitted because Pi does not provide Codex's
+`/goal` workflow. The package does not add background-process or generic
+subagent tools.
 Git package installation installs the web-access extension's local parsing
 dependencies automatically.
 
@@ -81,9 +82,20 @@ Parallel, Brave, Exa, Tavily, or Perplexity. See
 prioritizes remaining Codex weekly quota and remaining Pi context. It adds model,
 thinking level, and Git branch when space permits. Weekly quota comes from Pi's
 OpenAI response headers, with the locally authenticated Codex CLI providing the
-startup fallback; use `/status-refresh` to refresh that fallback manually. See
+startup fallback; use `/status-refresh` to reinstall the custom footer and
+refresh that fallback manually. See
 [extensions/status-footer/README.md](extensions/status-footer/README.md) for
 requirements and account-matching caveats.
+
+### Delegate extension
+
+`/delegate [goal]` asks the current agent to prepare a destination and
+self-contained handoff, then—after user confirmation—starts a normal Pi session
+in a non-focused Herdr workspace. A new Worktrunk worktree is the default; the
+existing destination checkout is used only when explicitly requested. The
+agent-facing tool is registered only after `/delegate` is invoked and is
+disabled again after use. See [extensions/delegate/README.md](extensions/delegate/README.md)
+for requirements and failure behavior.
 
 Package installation loads the `memory-guard` guidance but cannot create the
 `~/.local/bin/make` proxy. Run `scripts/install-local-skills.sh` from a local
@@ -178,8 +190,7 @@ while IFS= read -r -d '' skill_file; do
   python3 /Users/chall/.codex/skills/.system/skill-creator/scripts/quick_validate.py "$(dirname "$skill_file")"
 done < <(find skills codex-skills .agents/skills -name SKILL.md -type f -print0)
 jq empty package.json package-lock.json skills-lock.json
-npm run test:status-footer
-npm run test:web-access
+npm test
 bash -n scripts/*.sh
 scripts/test-claude-review.sh
 scripts/test-local-installer.sh
