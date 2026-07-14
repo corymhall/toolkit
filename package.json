@@ -5,10 +5,11 @@
   "type": "module",
   "description": "Shared Agent Skills and Pi extensions for AI-assisted software engineering workflows.",
   "scripts": {
-    "test": "npm run test:codex-commentary && npm run test:codex-fast-mode && npm run test:delegate && npm run test:status-footer && npm run test:web-access",
+    "test": "npm run test:codex-commentary && npm run test:codex-fast-mode && npm run test:delegate && npm run test:skill-autocomplete && npm run test:status-footer && npm run test:web-access",
     "test:codex-commentary": "node --experimental-strip-types --test extensions/codex-commentary/test/*.test.ts",
     "test:codex-fast-mode": "node --experimental-strip-types --test extensions/codex-fast-mode/test/*.test.ts",
     "test:delegate": "node --experimental-strip-types --test extensions/delegate/test/*.test.ts",
+    "test:skill-autocomplete": "node --experimental-strip-types --test extensions/skill-autocomplete/test/*.test.ts",
     "test:status-footer": "node --experimental-strip-types --test extensions/status-footer/test/*.test.ts",
     "test:web-access": "node --experimental-strip-types --test extensions/web-access/test/*.test.ts"
   },
@@ -34,6 +35,7 @@
       "extensions/web-access/index.ts",
       "extensions/codex-commentary/index.ts",
       "extensions/codex-fast-mode/index.ts",
+      "extensions/skill-autocomplete/index.ts",
       "extensions/status-footer/index.ts",
       "extensions/delegate/index.ts"
     ],

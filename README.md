@@ -54,7 +54,8 @@ pi install git:github.com/corymhall/toolkit
 The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
 `extensions/codex-commentary`, `extensions/codex-fast-mode`,
-`extensions/status-footer`, and `extensions/delegate` extensions.
+`extensions/skill-autocomplete`, `extensions/status-footer`, and
+`extensions/delegate` extensions.
 `codex-skills/spec-to-goal` is omitted because Pi does not provide Codex's
 `/goal` workflow. The package does not add background-process or generic
 subagent tools.
@@ -92,6 +93,15 @@ models that advertise Fast mode. The extension leaves reasoning and verbosity
 unchanged, defaults to off, and ignores unsupported models. See
 [extensions/codex-fast-mode/README.md](extensions/codex-fast-mode/README.md) for
 the current capability allowlist and validation behavior.
+
+### Skill Autocomplete extension
+
+Type `$` at a token boundary to fuzzy-pick an available Pi skill anywhere in a
+prompt. Model-invocable skills remain ordinary exact-name mentions. Skills with
+`disable-model-invocation: true` are labeled as explicit and moved to Pi's
+required leading `/skill:name` form when submitted. See
+[extensions/skill-autocomplete/README.md](extensions/skill-autocomplete/README.md)
+for behavior and limitations.
 
 ### Status Footer extension
 
