@@ -30,6 +30,8 @@ details.
 Use [references/reviewer-lenses.md](references/reviewer-lenses.md) as the source
 of truth for lens selection and each lens contract. Choose the smallest set that
 answers the user's actual question. Do not add lanes merely because they exist.
+The `references/` links are relative to this `request-review` skill directory;
+do not probe a sibling or parent `skills/review/references/` directory.
 
 Inspect enough of the target in the main session to frame precise sidecar
 prompts. Do not use sidecars to outsource baseline repository understanding.
@@ -102,6 +104,11 @@ Start Codex in its actual read-only sandbox:
 herdr pane run "$PANE_ID" \
   "codex -C $CWD_Q --sandbox read-only"
 ```
+
+Read-only Codex lanes must stick to inspection commands. Do not ask them to
+create temporary checkouts, run tests from extracted archives, or otherwise
+write to `/tmp`; perform that verification in the main session when it is
+needed.
 
 For either harness, wait for startup, send the prompt without interpreting it as
 a shell command, and wait for the review turn:
