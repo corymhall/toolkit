@@ -84,10 +84,12 @@ test("status-refresh reinstalls the custom footer", async () => {
   const notifications: string[] = [];
   const pi = {
     on() {},
+    events: { on: () => () => {}, emit() {} },
     registerCommand(_name: string, registered: typeof command) { command = registered; },
     getThinkingLevel: () => "high",
   } as unknown as ExtensionAPI;
   statusFooterExtension(pi, {
+    loadFastModeState: () => ({ enabled: false }),
     fetchRateLimits: async () => ({
       rateLimits: { primary: { usedPercent: 5, windowDurationMins: 10_080 } },
     }),
@@ -117,4 +119,58 @@ test("includes model and branch when space permits", () => {
   }, 100, plainTheme);
 
   assert.equal(line, "gpt-5.3-codex high · main · weekly 98% left · context 53% left");
+});
+
+test("shows Fast mode next to the model and thinking level", () => {
+  const [line] = renderStatusFooter({
+    model: "gpt-5.5",
+    thinking: "high",
+    fastMode: true,
+    branch: "main",
+    weeklyRemaining: 98,
+    contextRemaining: 53,
+  }, 100, plainTheme);
+
+  assert.equal(line, "gpt-5.5 high fast · main · weekly 98% left · context 53% left");
+});
+
+test("updates the footer when the Fast mode extension broadcasts a toggle", async () => {
+  const eventHandlers = new Map<string, (event: any, ctx: any) => any>();
+  let fastModeHandler: ((value: unknown) => void) | undefined;
+  let footerFactory: ((tui: any, theme: any, data: any) => { render(width: number): string[] }) | undefined;
+  let rendersRequested = 0;
+  const pi = {
+    on(name: string, handler: (event: any, ctx: any) => any) { eventHandlers.set(name, handler); },
+    events: {
+      on(_channel: string, handler: (value: unknown) => void) {
+        fastModeHandler = handler;
+        return () => {};
+      },
+      emit() {},
+    },
+    registerCommand() {},
+    getThinkingLevel: () => "high",
+  } as unknown as ExtensionAPI;
+  statusFooterExtension(pi, {
+    loadFastModeState: () => ({ enabled: false }),
+    fetchRateLimits: async () => ({ rateLimits: null }),
+  });
+  const ctx = {
+    mode: "tui",
+    model: { provider: "openai-codex", api: "openai-codex-responses", id: "gpt-5.5", reasoning: true },
+    getContextUsage: () => ({ percent: 47 }),
+    ui: { setFooter(factory: typeof footerFactory) { footerFactory = factory; } },
+  };
+
+  await eventHandlers.get("session_start")!({}, ctx);
+  const footer = footerFactory!(
+    { requestRender() { rendersRequested++; } },
+    plainTheme,
+    { onBranchChange: () => () => {}, getGitBranch: () => "main" },
+  );
+  assert.equal(footer.render(100)[0], "gpt-5.5 high · main · weekly ? · context 53% left");
+
+  fastModeHandler!({ enabled: true });
+  assert.equal(footer.render(100)[0], "gpt-5.5 high fast · main · weekly ? · context 53% left");
+  assert.equal(rendersRequested, 1);
 });

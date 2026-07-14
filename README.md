@@ -53,6 +53,7 @@ pi install git:github.com/corymhall/toolkit
 
 The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
+`extensions/codex-commentary`, `extensions/codex-fast-mode`,
 `extensions/status-footer`, and `extensions/delegate` extensions.
 `codex-skills/spec-to-goal` is omitted because Pi does not provide Codex's
 `/goal` workflow. The package does not add background-process or generic
@@ -76,12 +77,28 @@ The extension does not bundle an extension-owned skill or use Jina, Gemini,
 Parallel, Brave, Exa, Tavily, or Perplexity. See
 [extensions/web-access/README.md](extensions/web-access/README.md) for details.
 
+### Codex Commentary extension
+
+`extensions/codex-commentary` adds Codex CLI-style progress instructions only
+for `openai-codex` Responses models. Commentary is shown before and between tool
+calls as ordinary assistant text; final answers remain self-contained. See
+[extensions/codex-commentary/README.md](extensions/codex-commentary/README.md)
+for the Pi-specific prompt adaptations.
+
+### Codex Fast Mode extension
+
+`/codex-fast on|off|status` toggles OpenAI Codex's `priority` service tier for
+models that advertise Fast mode. The extension leaves reasoning and verbosity
+unchanged, defaults to off, and ignores unsupported models. See
+[extensions/codex-fast-mode/README.md](extensions/codex-fast-mode/README.md) for
+the current capability allowlist and validation behavior.
+
 ### Status Footer extension
 
 `extensions/status-footer` replaces Pi's default footer with a compact line that
 prioritizes remaining Codex weekly quota and remaining Pi context. It adds model,
-thinking level, and Git branch when space permits. Weekly quota comes from Pi's
-OpenAI response headers, with the locally authenticated Codex CLI providing the
+thinking level, active Codex Fast mode, and Git branch when space permits. Weekly
+quota comes from Pi's OpenAI response headers, with the locally authenticated Codex CLI providing the
 startup fallback; use `/status-refresh` to reinstall the custom footer and
 refresh that fallback manually. See
 [extensions/status-footer/README.md](extensions/status-footer/README.md) for

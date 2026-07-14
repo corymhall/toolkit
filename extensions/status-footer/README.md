@@ -6,14 +6,16 @@ A compact, Codex-inspired Pi footer that prioritizes two signals:
 - `context N% left`: remaining context in the current Pi session.
 
 When space permits, the footer also shows the active model, thinking level,
-and Git branch. On narrow terminals it drops those optional fields before quota
-or context. Context remaining is green above 75%, yellow from 45% through 75%,
+Codex Fast mode, and Git branch. `fast` appears next to the model and thinking
+level only when the packaged Codex Fast Mode extension is enabled and active for
+the selected model. On narrow terminals it drops those optional fields before
+quota or context. Context remaining is green above 75%, yellow from 45% through 75%,
 and red below 45%.
 
 Example:
 
 ```text
-gpt-5.3-codex high · main · weekly 98% left · context 53% left
+gpt-5.5 high fast · main · weekly 98% left · context 53% left
 ```
 
 ## Weekly-limit source

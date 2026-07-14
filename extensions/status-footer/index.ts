@@ -1,5 +1,11 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
+  CODEX_FAST_MODE_CHANGED_EVENT,
+  isCodexFastModeActive,
+  isCodexFastModeChanged,
+  loadCodexFastModeState,
+} from "../codex-fast-mode/index.ts";
+import {
   fetchCodexRateLimits,
   getWeeklyRemaining,
   getWeeklyRemainingFromHeaders,
@@ -8,10 +14,15 @@ import { remainingPercent, renderStatusFooter } from "./footer.ts";
 
 export default function statusFooterExtension(
   pi: ExtensionAPI,
-  dependencies: { fetchRateLimits?: typeof fetchCodexRateLimits } = {},
+  dependencies: {
+    fetchRateLimits?: typeof fetchCodexRateLimits;
+    loadFastModeState?: typeof loadCodexFastModeState;
+  } = {},
 ) {
   const fetchRateLimits = dependencies.fetchRateLimits ?? fetchCodexRateLimits;
+  const loadFastModeState = dependencies.loadFastModeState ?? loadCodexFastModeState;
   let active = false;
+  let fastModeEnabled = loadFastModeState().enabled;
   let sawProviderRateLimit = false;
   let weeklyRemaining: number | undefined;
   let refreshAbort: AbortController | undefined;
@@ -53,6 +64,7 @@ export default function statusFooterExtension(
           return renderStatusFooter({
             model: ctx.model?.id,
             thinking: ctx.model?.reasoning ? pi.getThinkingLevel() : undefined,
+            fastMode: isCodexFastModeActive(ctx.model, fastModeEnabled),
             branch: footerData.getGitBranch(),
             weeklyRemaining,
             contextRemaining: remainingPercent(usage?.percent),
@@ -63,7 +75,15 @@ export default function statusFooterExtension(
     if (refresh) void refreshWeeklyLimit().catch(() => requestRender?.());
   };
 
+  const unsubscribeFastMode = pi.events.on(CODEX_FAST_MODE_CHANGED_EVENT, value => {
+    if (!isCodexFastModeChanged(value)) return;
+    fastModeEnabled = value.enabled;
+    requestRender?.();
+  });
+
   pi.on("session_start", (_event, ctx) => installFooter(ctx));
+  pi.on("model_select", () => requestRender?.());
+  pi.on("thinking_level_select", () => requestRender?.());
 
   pi.on("after_provider_response", event => {
     const remaining = getWeeklyRemainingFromHeaders(event.headers);
@@ -84,6 +104,7 @@ export default function statusFooterExtension(
     refreshAbort?.abort();
     refreshAbort = undefined;
     requestRender = undefined;
+    unsubscribeFastMode();
   });
 
   pi.registerCommand("status-refresh", {

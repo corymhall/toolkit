@@ -7,6 +7,7 @@ export type FooterTheme = {
 export type StatusFooterData = {
   model?: string;
   thinking?: string;
+  fastMode?: boolean;
   branch?: string | null;
   weeklyRemaining?: number;
   contextRemaining?: number;
@@ -69,7 +70,9 @@ function lineWidth(items: FooterItem[], separator: string): number {
 export function renderStatusFooter(data: StatusFooterData, width: number, theme: FooterTheme): string[] {
   if (width <= 0) return [];
 
-  const modelText = data.model ? `${data.model}${data.thinking ? ` ${data.thinking}` : ""}` : undefined;
+  const modelText = data.model
+    ? `${data.model}${data.thinking ? ` ${data.thinking}` : ""}${data.fastMode ? " fast" : ""}`
+    : undefined;
   const model = optionalItem(modelText, "muted");
   const branch = optionalItem(data.branch ?? undefined, "accent");
   const weekly = quotaItem("weekly", data.weeklyRemaining, weeklyColor);
