@@ -64,9 +64,13 @@ dependencies automatically.
 
 ### Web Access extension
 
-`extensions/web-access` registers only `web_search` and `fetch_content`:
+`extensions/web-access` registers `web_search`, `github_search`, and
+`fetch_content`:
 
 - `web_search` uses Pi's OpenAI Codex subscription login exclusively.
+- `github_search` performs authenticated GitHub issue, pull-request, and code
+  searches with structured scope and filter fields. Private repository results
+  work when the authenticated `gh` account can access them.
 - GitHub repository, tree, and blob URLs use constrained read-only `gh api`
   calls and never clone or execute repository content. Private repositories
   work when the authenticated `gh` account can access them.

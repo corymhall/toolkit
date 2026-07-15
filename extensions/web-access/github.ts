@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { fetchGitHubApiJson } from "./github-api.ts";
 import type { FetchedContent } from "./types.ts";
 
-const GH_TIMEOUT_MS = 20_000;
 const MAX_FILE_BYTES = 1_000_000;
 const MAX_LIST_ENTRIES = 200;
 
@@ -43,25 +43,6 @@ function endpointPath(path: string): string {
   return path.split("/").filter(Boolean).map(encodeURIComponent).join("/");
 }
 
-async function ghJson(pi: ExtensionAPI, endpoint: string, signal?: AbortSignal): Promise<unknown> {
-  const result = await pi.exec("gh", ["api", "--hostname", "github.com", endpoint, "-H", "Accept: application/vnd.github+json", "-H", "X-GitHub-Api-Version: 2022-11-28"], {
-    signal,
-    timeout: GH_TIMEOUT_MS,
-  });
-  if (result.code !== 0) {
-    const message = (result.stderr || result.stdout || "gh api failed").replace(/\s+/g, " ").trim().slice(0, 500);
-    if (/\bENOENT\b|\bgh:\s*command not found\b|\bcommand not found:\s*gh\b/i.test(message)) {
-      throw new Error("GitHub fetching requires the gh CLI");
-    }
-    throw new Error(`GitHub API request failed: ${message}`);
-  }
-  try {
-    return JSON.parse(result.stdout);
-  } catch {
-    throw new Error("GitHub API returned invalid JSON");
-  }
-}
-
 function decodeFile(record: Record<string, unknown>): string {
   const size = typeof record.size === "number" ? record.size : 0;
   if (size > MAX_FILE_BYTES) throw new Error(`GitHub file is too large (${size} bytes; limit ${MAX_FILE_BYTES})`);
@@ -91,7 +72,7 @@ function listing(value: unknown): { content: string; truncated: boolean } {
 
 async function fetchReadme(pi: ExtensionAPI, owner: string, repo: string, ref: string, signal?: AbortSignal): Promise<string | null> {
   try {
-    const value = await ghJson(pi, `repos/${owner}/${repo}/readme?ref=${encodeURIComponent(ref)}`, signal);
+    const value = await fetchGitHubApiJson(pi, `repos/${owner}/${repo}/readme?ref=${encodeURIComponent(ref)}`, { signal });
     if (!value || typeof value !== "object") return null;
     return decodeFile(value as Record<string, unknown>);
   } catch (error) {
@@ -105,14 +86,14 @@ export async function fetchGitHubContent(raw: string, pi: ExtensionAPI, signal?:
   const parsed = parseGitHubUrl(raw);
   if (!parsed) return null;
   const { owner, repo } = parsed;
-  const metadata = await ghJson(pi, `repos/${owner}/${repo}`, signal);
+  const metadata = await fetchGitHubApiJson(pi, `repos/${owner}/${repo}`, { signal });
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) throw new Error("GitHub repository response was invalid");
   const record = metadata as Record<string, unknown>;
 
   if (parsed.kind === "blob") {
     if (!parsed.path) throw new Error("GitHub blob URL does not contain a file path");
     const endpoint = `repos/${owner}/${repo}/contents/${endpointPath(parsed.path)}?ref=${encodeURIComponent(parsed.ref!)}`;
-    const value = await ghJson(pi, endpoint, signal);
+    const value = await fetchGitHubApiJson(pi, endpoint, { signal });
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("GitHub file response was invalid");
     return { url: raw, title: `${owner}/${repo}: ${parsed.path}`, content: decodeFile(value as Record<string, unknown>), truncated: false };
   }
@@ -120,14 +101,14 @@ export async function fetchGitHubContent(raw: string, pi: ExtensionAPI, signal?:
   if (parsed.kind === "tree") {
     const suffix = parsed.path ? `/${endpointPath(parsed.path)}` : "";
     const endpoint = `repos/${owner}/${repo}/contents${suffix}?ref=${encodeURIComponent(parsed.ref!)}`;
-    const value = await ghJson(pi, endpoint, signal);
+    const value = await fetchGitHubApiJson(pi, endpoint, { signal });
     const directory = listing(value);
     return { url: raw, title: `${owner}/${repo}: ${parsed.path || "/"}`, content: directory.content, truncated: directory.truncated };
   }
 
   const defaultBranch = typeof record.default_branch === "string" ? record.default_branch : "HEAD";
   const [root, readme] = await Promise.all([
-    ghJson(pi, `repos/${owner}/${repo}/contents?ref=${encodeURIComponent(defaultBranch)}`, signal),
+    fetchGitHubApiJson(pi, `repos/${owner}/${repo}/contents?ref=${encodeURIComponent(defaultBranch)}`, { signal }),
     fetchReadme(pi, owner, repo, defaultBranch, signal),
   ]);
   const rootListing = listing(root);

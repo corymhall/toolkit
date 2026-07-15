@@ -3,6 +3,7 @@ import test from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import webAccessExtension, { formatSearchSources } from "../index.ts";
 import { fetchGitHubContent, parseGitHubUrl } from "../github.ts";
+import { buildGitHubSearchQuery, searchGitHub } from "../github-search.ts";
 import { fetchHttpContent } from "../http.ts";
 import { parseOpenAIResponse } from "../openai-search.ts";
 import { createPinnedDispatcher, fetchRemoteUrl, validateRemoteUrl } from "../ssrf.ts";
@@ -134,10 +135,116 @@ test("fetches private GitHub repositories available to gh", async () => {
   assert.deepEqual(calls[0].slice(0, 4), ["gh", "api", "--hostname", "github.com"]);
 });
 
-test("registers exactly the two intended Pi tools", () => {
+test("builds GitHub API search queries from structured scope and filters", () => {
+  assert.equal(buildGitHubSearchQuery({
+    kind: "pull_requests",
+    query: "timeout waiter",
+    repos: ["pulumi/pulumi-aws"],
+    owners: ["pulumi"],
+    state: "closed",
+    labels: ["kind/bug"],
+    language: "go",
+  }), 'timeout waiter is:pr repo:"pulumi/pulumi-aws" user:"pulumi" state:closed label:"kind/bug" language:"go"');
+  assert.throws(
+    () => buildGitHubSearchQuery({ kind: "issues", query: "repo:acme/widgets timeout" }),
+    /repos or owners fields/,
+  );
+  assert.throws(
+    () => buildGitHubSearchQuery({ kind: "code", query: "timeout", state: "open" }),
+    /does not support state or labels/,
+  );
+});
+
+test("searches GitHub through gh api and normalizes issue results", async () => {
+  const calls: string[][] = [];
+  const pi = {
+    async exec(command: string, args: string[]) {
+      calls.push([command, ...args]);
+      return {
+        code: 0,
+        stdout: JSON.stringify({
+          total_count: 3,
+          incomplete_results: false,
+          items: [{
+            repository_url: "https://api.github.com/repos/acme/widgets",
+            number: 42,
+            title: "Fix timeout",
+            state: "open",
+            labels: [{ name: "bug" }],
+            user: { login: "octocat" },
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-02T00:00:00Z",
+            html_url: "https://github.com/acme/widgets/issues/42",
+          }],
+        }),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+  const result = await searchGitHub(pi, {
+    kind: "issues",
+    query: "timeout",
+    repos: ["acme/widgets"],
+    state: "open",
+    limit: 10,
+  });
+  assert.equal(calls[0][0], "gh");
+  assert.deepEqual(calls[0].slice(1, 4), ["api", "--hostname", "github.com"]);
+  assert.match(decodeURIComponent(calls[0][4]), /^search\/issues\?q=timeout is:issue repo:"acme\/widgets" state:open&per_page=10$/);
+  assert.equal(result.details.totalCount, 3);
+  assert.equal(result.details.resultCount, 1);
+  assert.match(result.fetched.content, /"returnedCount": 1/);
+  assert.match(result.fetched.content, /"repository": "acme\/widgets"/);
+  assert.match(result.fetched.content, /"number": 42/);
+  assert.doesNotMatch(result.fetched.content, /body/);
+});
+
+test("registers exactly the three intended Pi tools", () => {
   const tools: Array<{ name: string }> = [];
   webAccessExtension({ registerTool: tool => tools.push(tool) } as unknown as ExtensionAPI);
-  assert.deepEqual(tools.map(tool => tool.name), ["web_search", "fetch_content"]);
+  assert.deepEqual(tools.map(tool => tool.name), ["web_search", "github_search", "fetch_content"]);
+});
+
+test("labels GitHub code search results as untrusted and bounds fragments", async () => {
+  const tools: Array<{ name: string; execute: (...args: any[]) => Promise<any> }> = [];
+  const calls: string[][] = [];
+  const pi = {
+    registerTool: (tool: { name: string; execute: (...args: any[]) => Promise<any> }) => tools.push(tool),
+    async exec(command: string, args: string[]) {
+      calls.push([command, ...args]);
+      return {
+        code: 0,
+        stdout: JSON.stringify({
+          total_count: 1,
+          incomplete_results: false,
+          items: [{
+            repository: { full_name: "acme/private" },
+            path: "src/index.ts",
+            sha: "abc123",
+            html_url: "https://github.com/acme/private/blob/abc123/src/index.ts",
+            text_matches: [{ fragment: "x".repeat(800) }],
+          }],
+        }),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+  webAccessExtension(pi);
+  const tool = tools.find(candidate => candidate.name === "github_search");
+  assert.ok(tool);
+  const result = await tool.execute("call", {
+    kind: "code",
+    query: "searchGitHub",
+    repos: ["acme/private"],
+    path: "src",
+    limit: 5,
+  }, undefined, undefined);
+  assert.match(decodeURIComponent(calls[0][4]), /^search\/code\?q=/);
+  assert.match(result.content[0].text, /^\[Untrusted remote content follows\./);
+  assert.match(result.content[0].text, /"repository": "acme\/private"/);
+  assert.doesNotMatch(result.content[0].text, /x{501}/);
 });
 
 test("labels fetched GitHub content as untrusted", async () => {
