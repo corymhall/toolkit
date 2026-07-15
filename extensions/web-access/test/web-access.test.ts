@@ -5,7 +5,7 @@ import webAccessExtension, { formatSearchSources } from "../index.ts";
 import { fetchGitHubContent, parseGitHubUrl } from "../github.ts";
 import { fetchHttpContent } from "../http.ts";
 import { parseOpenAIResponse } from "../openai-search.ts";
-import { fetchRemoteUrl, validateRemoteUrl } from "../ssrf.ts";
+import { createPinnedDispatcher, fetchRemoteUrl, validateRemoteUrl } from "../ssrf.ts";
 
 test("parses supported GitHub URLs and rejects unrelated pages", () => {
   assert.deepEqual(parseGitHubUrl("https://github.com/acme/widgets"), {
@@ -49,6 +49,15 @@ test("blocks non-public network targets", async () => {
   }
   await assert.rejects(() => validateRemoteUrl("https://user:secret@example.com/test"), /containing credentials/);
   assert.equal((await validateRemoteUrl("https://public.example/test", async () => [{ address: "2606:4700:4700::1111", family: 6 }])).hostname, "public.example");
+});
+
+test("loads the real npm undici dispatcher under Bun and Node", async () => {
+  const dispatcher = createPinnedDispatcher((_hostname, _options, callback) => {
+    callback(new Error("lookup should not run"));
+  });
+  assert.equal(typeof dispatcher.dispatch, "function");
+  assert.equal(typeof dispatcher.close, "function");
+  await dispatcher.close();
 });
 
 test("closes the dispatcher when initial validation fails", async () => {

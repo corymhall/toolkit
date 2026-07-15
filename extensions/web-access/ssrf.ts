@@ -1,12 +1,14 @@
 import { lookup as dnsLookup } from "node:dns/promises";
 import net from "node:net";
 import ipaddr from "ipaddr.js";
-import { Agent, fetch as undiciFetch } from "undici";
+// Bun shadows bare "undici" imports with an incomplete compatibility module.
+// The explicit package entrypoint is required for a real Dispatcher with DNS pinning.
+import { Agent, fetch as undiciFetch } from "undici/index.js";
 
 export type LookupAddress = { address: string; family: number };
 export type Lookup = (hostname: string) => Promise<LookupAddress[]>;
 
-type PinnedLookup = (
+export type PinnedLookup = (
   hostname: string,
   options: { family?: number; all?: boolean },
   callback: (...args: unknown[]) => void,
@@ -65,6 +67,10 @@ export async function validateRemoteUrl(raw: string | URL, lookup?: Lookup): Pro
   return (await resolveValidatedUrl(raw, lookup)).url;
 }
 
+export function createPinnedDispatcher(lookup: PinnedLookup): Agent {
+  return new Agent({ connect: { lookup } });
+}
+
 export async function fetchRemoteUrl(url: string | URL, init: RequestInit = {}, options: FetchOptions = {}): Promise<RemoteResponse> {
   const pinned = new Map<string, LookupAddress[]>();
   const pinnedLookup: PinnedLookup = (hostname, lookupOptions, callback) => {
@@ -81,7 +87,7 @@ export async function fetchRemoteUrl(url: string | URL, init: RequestInit = {}, 
     }
     callback(null, matching[0].address, matching[0].family);
   };
-  const dispatcher = options.fetch ? null : (options.agentFactory?.(pinnedLookup) ?? new Agent({ connect: { lookup: pinnedLookup } }));
+  const dispatcher = options.fetch ? null : (options.agentFactory?.(pinnedLookup) ?? createPinnedDispatcher(pinnedLookup));
   const close = async () => { if (dispatcher) await dispatcher.close(); };
   const fetchImpl = options.fetch ?? ((input: URL | RequestInfo, requestInit?: RequestInit) =>
     undiciFetch(input as URL, { ...(requestInit as object), dispatcher }) as unknown as Promise<Response>);
