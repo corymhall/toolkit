@@ -38,6 +38,40 @@ test("fetches GitHub files through a constrained gh API invocation", async () =>
   assert.equal(calls.flat().includes("clone"), false);
 });
 
+test("does not mistake a GitHub API 404 for a missing gh CLI", async () => {
+  const pi = {
+    async exec() {
+      return {
+        code: 1,
+        stdout: "",
+        stderr: "gh: Not Found (HTTP 404)",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+  await assert.rejects(
+    () => fetchGitHubContent("https://github.com/acme/missing", pi),
+    /GitHub API request failed: gh: Not Found \(HTTP 404\)/,
+  );
+});
+
+test("reports a missing gh CLI clearly", async () => {
+  const pi = {
+    async exec() {
+      return {
+        code: 1,
+        stdout: "",
+        stderr: "spawn gh ENOENT",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+  await assert.rejects(
+    () => fetchGitHubContent("https://github.com/acme/widgets", pi),
+    /GitHub fetching requires the gh CLI/,
+  );
+});
+
 test("blocks non-public network targets", async () => {
   await assert.rejects(() => validateRemoteUrl("http://127.0.0.1/test"), /Blocked non-public address/);
   await assert.rejects(

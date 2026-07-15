@@ -50,7 +50,9 @@ async function ghJson(pi: ExtensionAPI, endpoint: string, signal?: AbortSignal):
   });
   if (result.code !== 0) {
     const message = (result.stderr || result.stdout || "gh api failed").replace(/\s+/g, " ").trim().slice(0, 500);
-    if (/not found|ENOENT/i.test(message)) throw new Error("GitHub fetching requires the gh CLI");
+    if (/\bENOENT\b|\bgh:\s*command not found\b|\bcommand not found:\s*gh\b/i.test(message)) {
+      throw new Error("GitHub fetching requires the gh CLI");
+    }
     throw new Error(`GitHub API request failed: ${message}`);
   }
   try {
