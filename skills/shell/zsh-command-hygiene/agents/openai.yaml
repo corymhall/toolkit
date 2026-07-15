@@ -1,0 +1,4 @@
+interface:
+  display_name: "Zsh Command Hygiene"
+  short_description: "Write safe multi-line zsh commands"
+  default_prompt: "Use $zsh-command-hygiene to write a safe multi-line zsh command with temp files and exit-status cleanup."

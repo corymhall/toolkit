@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Search CLI"
+  short_description: "Use gh search without malformed qualifiers"
+  default_prompt: "Search GitHub with gh CLI using safe qualifier and quoting patterns."
