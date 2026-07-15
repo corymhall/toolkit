@@ -1,20 +1,20 @@
 # Toolkit
 
 Shared Agent Skills and focused Pi extensions for AI-assisted software
-engineering workflows. The same skill sources work in Pi, Codex, and other
+engineering workflows. The same skill sources work in Pi, Codex CLI, and other
 Agent-Skills-compatible harnesses.
 
 - `extensions/` contains first-party Pi extensions.
 - `skills/` contains runtime-neutral skills, optionally grouped in nested
   directories.
-- `codex-skills/` contains workflows that require Codex-specific features.
+- `codex-skills/` contains workflows that require Codex CLI-specific features.
 - `.agents/skills/` contains reviewed third-party skills managed by
   `npx skills` and `skills-lock.json`.
 - Each first-party skill owns its references, scripts, assets, and agent
   metadata.
 
-The repository does not use a Codex plugin marketplace. Long-running processes
-and visible review sidecars are coordinated through Herdr when available rather
+The repository does not use a Codex CLI plugin marketplace. Long-running
+processes and visible review sidecars are coordinated through Herdr when available rather
 than hidden background-process or generic subagent abstractions.
 
 ## Local Installation
@@ -40,8 +40,8 @@ legacy toolkit reviewer-role symlinks left by the former plugin installer. The
 script is idempotent and refuses to replace non-symlink destinations. Restart
 the agent or reload its resources after installation.
 
-Pi discovers shared skills from `~/.agents/skills`; Codex loads those shared
-skills plus the Codex-only skills from its own skill directory.
+Pi discovers shared skills from `~/.agents/skills`; Codex CLI loads those shared
+skills plus the Codex CLI-only skills from its own skill directory.
 
 ## Install for Pi
 
@@ -56,7 +56,7 @@ third-party `.agents/skills/*`, and the focused `extensions/web-access`,
 `extensions/codex-commentary`, `extensions/codex-fast-mode`,
 `extensions/skill-autocomplete`, `extensions/status-footer`, and
 `extensions/delegate` extensions.
-`codex-skills/spec-to-goal` is omitted because Pi does not provide Codex's
+`codex-skills/spec-to-goal` is omitted because Pi does not provide Codex CLI's
 `/goal` workflow. The package does not add background-process or generic
 subagent tools.
 Git package installation installs the web-access extension's local parsing
@@ -149,15 +149,15 @@ For a skill-only installation, inspect and select skills with:
 npx skills add corymhall/toolkit --list --full-depth
 ```
 
-Install Codex-only skills into Codex's private skill directory rather than a
-shared directory that Pi also scans. The local link script remains the canonical
+Install Codex CLI-only skills into Codex CLI's private skill directory rather
+than a shared directory that Pi also scans. The local link script remains the canonical
 workflow for developing this checkout.
 
 ## Managed Herdr Skill
 
 The Herdr skill is installed project-locally under `.agents/skills/herdr` and
 linked globally by `scripts/install-local-skills.sh`. This lets both Pi and
-Codex discover it while the repository retains update provenance in
+Codex CLI discover it while the repository retains update provenance in
 `skills-lock.json`.
 
 Refresh it from the upstream repository with:
@@ -180,7 +180,7 @@ committing the update.
 | Operations | `memory-guard` |
 | Provider work | `triage-provider-issue`, `pulumi-rpc-lifecycle-investigation`, `bridge-parity-investigation`, `stage-pulumi-provider-repro`, `stage-terraform-provider-repro`, `workaround-investigation` |
 | Pulumi audit | `pulumi-test-rationalization-audit` |
-| Codex-only | `spec-to-goal` |
+| Codex CLI-only | `spec-to-goal` |
 
 ## Review Coordination
 
@@ -199,8 +199,8 @@ of overlapping implementation work.
 
 `memory-guard` is harness-independent. After local installation,
 `~/.local/bin/make` points to its proxy, which runs the real `make` process tree
-under `memrun`. No Codex hook or Pi extension is required. A Pi or `npx skills`
-package installation by itself does not create this proxy.
+under `memrun`. No Codex CLI hook or Pi extension is required. A Pi or
+`npx skills` package installation by itself does not create this proxy.
 
 The proxy only covers `make` resolved through `PATH`; an explicit path such as
 `/usr/bin/make` bypasses it. Logs default to

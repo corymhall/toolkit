@@ -4,17 +4,17 @@
 
 This repository is organized around self-contained Agent Skills:
 
-- `skills/` contains skills shared by Pi, Codex, and other
+- `skills/` contains skills shared by Pi, Codex CLI, and other
   Agent-Skills-compatible harnesses. Skills may be grouped in nested
   directories; each directory containing `SKILL.md` is an individual skill.
-- `codex-skills/` contains skills that depend on Codex-only workflows. Skills
+- `codex-skills/` contains skills that depend on Codex CLI-only workflows. Skills
   may be grouped using the same convention.
 - `.agents/skills/<skill-name>/` contains reviewed third-party skills managed by
   `npx skills` and `skills-lock.json`; do not edit vendored copies by hand.
 - References, scripts, assets, and metadata owned by a skill belong inside that
   skill directory.
 
-Do not recreate the old Codex plugin marketplace structure. Runtime-neutral
+Do not recreate the old Codex CLI plugin marketplace structure. Runtime-neutral
 skills are the primary product; avoid harness hooks and extensions when a normal
 CLI or externally managed process provides the same capability. Skill-owned CLI
 helpers are appropriate when they provide repeatable context collection,
@@ -27,7 +27,7 @@ scripts/install-local-skills.sh
 ```
 
 The installer links first-party and managed third-party shared skills into
-`~/.agents/skills`, Codex-only skills into `${CODEX_HOME:-~/.codex}/skills`, and
+`~/.agents/skills`, Codex CLI-only skills into `${CODEX_HOME:-~/.codex}/skills`, and
 the memory guard's `make` proxy into `~/.local/bin`. It may remove only legacy
 toolkit-owned reviewer symlinks from the former plugin layout. It must not edit
 agent settings or package caches, and it must refuse to replace non-symlink
@@ -42,11 +42,11 @@ npx skills update herdr --project -y
 Review the resulting skill and lockfile diff before committing it.
 
 The root `package.json` exposes the recursive `skills/` tree and
-`.agents/skills/*` to Pi. Keep Codex-only skills out of that manifest. The local
+`.agents/skills/*` to Pi. Keep Codex CLI-only skills out of that manifest. The local
 installer discovers nested skill directories recursively but links each skill
 flat into `~/.agents/skills` for cross-harness compatibility.
 
-After editing skills, validate all shared and Codex-only skills:
+After editing skills, validate all shared and Codex CLI-only skills:
 
 ```bash
 while IFS= read -r -d '' skill_file; do
@@ -102,11 +102,12 @@ scripts/test-pi-package.sh
 
 ## Evaluation Lens
 
-When adapting skills, formulas, or workflows from other agent systems, first
-read:
+Before creating, editing, reviewing, importing, or retiring any skill, read
+`docs/skill-prompting-lens.md`.
 
-- `docs/codex-evaluation-lens.md`
-- `docs/skill-prompting-lens.md`
+When adapting an external agent workflow, or introducing orchestration involving
+subagents, session handoffs, durable plans, or repeated review loops, also read
+`docs/codex-model-workflow-lens.md`.
 
 Do not assume a successful external workflow should be copied directly.
 Prefer the smallest valuable adaptation and one main implementation owner.

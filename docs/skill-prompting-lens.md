@@ -1,7 +1,7 @@
 # Skill Prompting Lens
 
-Use this lens when authoring, importing, reviewing, or retiring Codex skills and
-reusable prompts.
+Use this lens when creating, editing, importing, reviewing, or retiring Agent
+Skills and reusable prompts.
 
 ## Core Principle
 
@@ -22,6 +22,22 @@ effect may be positive, neutral, or harmful.
 - unresolved ambiguity should return to the conversation, even during
   implementation or review
 
+## Authoring A New Skill
+
+Start with the behavior to preserve, not the package shape.
+
+1. Identify the recurring failure, human correction, or expert behavior the
+   skill should address.
+2. Ground the skill in real requests, repository evidence, or field experience.
+   Inspect available context before asking the user for examples.
+3. State what the agent would otherwise miss: evidence, decisions, boundaries,
+   counterfactuals, stopping conditions, or required artifacts.
+4. Separate domain judgment from generic behavior the model already performs.
+5. Write only instructions that change likely behavior. If no meaningful
+   behavioral difference remains, do not create the skill.
+6. Use realistic invocation and non-trigger examples to catch obvious trigger or
+   instruction failures, not as proof that the skill improves outcomes.
+
 ## General Skills
 
 General skills include planning, collaborative framing, review, implementation loops,
@@ -31,8 +47,8 @@ Keep them minimal. They should encode posture, useful boundaries, collaboration
 rules, stopping conditions, and a few high-value checks. They should not force
 every task through the same rigid framework.
 
-Good general skills help Codex notice what kind of conversation or review is
-needed. They do not replace the conversation.
+Good general skills help the model notice what kind of conversation or review
+is needed. They do not replace the conversation.
 
 Treat a broad general skill skeptically when it:
 
@@ -47,7 +63,7 @@ Treat a broad general skill skeptically when it:
 For fuzzy, high-context, or domain-heavy work, the goal is not to make the user
 happy in the moment by moving quickly. The goal is to build the thing that works.
 
-Codex should be willing to work back and forth with the user until there is
+The agent should be willing to work back and forth with the user until there is
 shared understanding good enough for the next responsible step. That may mean
 asking more questions than feels convenient, inspecting the repo before asking,
 bringing concrete options back to the user, or pausing implementation when new
@@ -90,18 +106,23 @@ on top.
 Do not assume a skill written for another model, agent runtime, or year transfers
 unchanged.
 
-Skills written for Claude, older Codex models, or another agent environment may
-encode assumptions that are harmful in Codex: more rigid planning, more
-subagent-first execution, different verbosity, different tool expectations, or a
-different balance between autonomy and collaboration.
+Skills written for Claude models, older Codex-family models, or another agent
+environment may encode assumptions that are harmful for the active model or
+current harness: more rigid planning, more subagent-first execution, different
+verbosity, different tool expectations, or a different balance between autonomy
+and collaboration.
+
+Name model and harness assumptions separately. A Codex-family model may run
+through Codex CLI, Pi, or another harness; do not attribute a harness feature or
+constraint to the model.
 
 Before adopting an external skill, ask:
 
-1. What model and runtime shaped this skill?
+1. What model and harness shaped this skill?
 2. What failure mode was it trying to prevent?
-3. Does Codex still have that failure mode?
+3. Does the active model or current harness still have that failure mode?
 4. Does the skill improve the outcome, or mostly add ritual?
-5. What is the smallest Codex-native adaptation?
+5. What is the smallest model- and harness-appropriate adaptation?
 
 ## Trust And Evidence
 
@@ -158,7 +179,7 @@ would otherwise be lost.
 - large templates whose main effect is verbosity
 - eval claims based on a few cherry-picked examples
 
-## Questions To Ask Before Keeping A Skill
+## Questions To Ask Before Creating Or Keeping A Skill
 
 1. What decision or behavior does this skill improve?
 2. Would the agent likely do the right thing without it?
@@ -174,8 +195,8 @@ These docs and examples shaped this lens:
 
 - [OpenAI GPT-5.5 latest model guide](https://developers.openai.com/api/docs/guides/latest-model)
 - [OpenAI prompt guidance](https://developers.openai.com/api/docs/guides/prompt-guidance)
-- [OpenAI Codex skills docs](https://developers.openai.com/codex/skills)
+- [OpenAI Codex CLI skills docs](https://developers.openai.com/codex/skills)
 - [Using PLANS.md for multi-hour problem solving](https://developers.openai.com/cookbook/articles/codex_exec_plans)
-- [Codex Plan Mode prompt](https://github.com/openai/codex/blob/87bc72408c5ef08f8d21f2cdd00c55451c3be33f/codex-rs/collaboration-mode-templates/templates/plan.md)
-- [Codex code review skill examples](https://github.com/openai/codex/tree/main/.codex/skills)
+- [Codex CLI Plan Mode prompt](https://github.com/openai/codex/blob/87bc72408c5ef08f8d21f2cdd00c55451c3be33f/codex-rs/collaboration-mode-templates/templates/plan.md)
+- [Codex CLI code review skill examples](https://github.com/openai/codex/tree/main/.codex/skills)
 - [obra/superpowers](https://github.com/obra/superpowers)
