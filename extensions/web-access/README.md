@@ -8,6 +8,10 @@ A deliberately narrow Pi extension with three tools:
 
 It does not contain skills and does not use third-party search or extraction fallbacks. In particular, it does not use Jina Reader, Gemini, Parallel, Brave, Exa, Tavily, or Perplexity.
 
+`fetch_content` opts into Pi's sequential tool execution. A turn containing it
+runs sibling tool calls serially, trading parallel fetch throughput for
+reliability after observed parallel custom-tool batch stalls.
+
 ## Requirements
 
 - Sign into the `openai-codex` provider using Pi's `/login` command.

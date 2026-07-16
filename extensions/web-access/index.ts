@@ -119,6 +119,7 @@ export default function webAccessExtension(pi: ExtensionAPI) {
     parameters: Type.Object({
       url: Type.String({ description: "Public HTTP(S) URL to fetch" }),
     }),
+    executionMode: "sequential",
     async execute(_toolCallId, params, signal) {
       let result: FetchedContent;
       if (isGitHubHost(params.url)) {

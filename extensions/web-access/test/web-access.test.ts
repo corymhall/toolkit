@@ -200,10 +200,11 @@ test("searches GitHub through gh api and normalizes issue results", async () => 
   assert.doesNotMatch(result.fetched.content, /body/);
 });
 
-test("registers exactly the three intended Pi tools", () => {
-  const tools: Array<{ name: string }> = [];
+test("registers the intended tools and serializes fetch_content", () => {
+  const tools: Array<{ name: string; executionMode?: "parallel" | "sequential" }> = [];
   webAccessExtension({ registerTool: tool => tools.push(tool) } as unknown as ExtensionAPI);
   assert.deepEqual(tools.map(tool => tool.name), ["web_search", "github_search", "fetch_content"]);
+  assert.equal(tools.find(tool => tool.name === "fetch_content")?.executionMode, "sequential");
 });
 
 test("labels GitHub code search results as untrusted and bounds fragments", async () => {
