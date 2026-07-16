@@ -5,13 +5,14 @@ import { Type } from "typebox";
 import { getAgentDir, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   buildDelegatePrompt,
+  buildHerdrWorktreeOpenArgs,
   buildPiLaunchCommand,
   buildWorktrunkArgs,
   DELEGATE_TOOL_NAME,
   detectPiCommand,
-  normalizeWorkspaceLabel,
+  normalizeSessionName,
   paneStillBelongsToWorkspace,
-  parseCreatedWorkspace,
+  parseOpenedWorktree,
   parseWorktreeResult,
   type DelegationProposal,
   validateProposal,
@@ -21,7 +22,7 @@ const DELEGATE_PARAMETERS = Type.Object({
   repository: Type.String({ description: "Absolute path to the local destination Git repository" }),
   branch: Type.Optional(Type.String({ description: "Concise branch name for the new worktree" })),
   base: Type.Optional(Type.String({ description: "Optional base branch; omit to use Worktrunk's default" })),
-  workspaceLabel: Type.Optional(Type.String({ description: "Short semantic label for the Herdr workspace and Pi session" })),
+  sessionName: Type.Optional(Type.String({ description: "Short semantic name for the delegated Pi session; Herdr labels the worktree with its branch" })),
   handoff: Type.String({ description: "Self-contained handoff prompt for the new Pi session" }),
   useExistingCheckout: Type.Optional(Type.Boolean({ description: "Use the destination checkout directly instead of creating a Worktrunk worktree" })),
 });
@@ -73,7 +74,7 @@ export default function delegateExtension(
     pi.registerTool({
       name: DELEGATE_TOOL_NAME,
       label: "Delegate Session",
-      description: "Create a confirmed Herdr workspace and launch a normal Pi session in a destination repository or new Worktrunk worktree. Available only after the user invokes /delegate.",
+      description: "Open a confirmed checkout as a Herdr worktree and launch a normal Pi session there. Available only after the user invokes /delegate.",
       promptSnippet: "Finish a user-requested cross-repository or cross-worktree handoff.",
       promptGuidelines: [
         "Call delegate_session only to complete the delegation explicitly armed by the user's /delegate command; resolve uncertainty with the user before calling it.",
@@ -86,7 +87,7 @@ export default function delegateExtension(
           repository: rawProposal.repository.trim(),
           branch: rawProposal.branch?.trim() || undefined,
           base: rawProposal.base?.trim() || undefined,
-          workspaceLabel: rawProposal.workspaceLabel?.trim() || undefined,
+          sessionName: rawProposal.sessionName?.trim() || undefined,
           handoff: rawProposal.handoff,
           useExistingCheckout: rawProposal.useExistingCheckout === true,
         };
@@ -116,7 +117,7 @@ export default function delegateExtension(
             if (branchResult.code !== 0) throw new Error(`Invalid branch name: ${proposal.branch}`);
           }
 
-          const label = normalizeWorkspaceLabel(proposal.workspaceLabel, proposal.branch, repository);
+          const sessionName = normalizeSessionName(proposal.sessionName, proposal.branch, repository);
           const editedHandoff = await ctx.ui.editor("Edit delegation handoff", proposal.handoff.trim());
           if (editedHandoff === undefined || !editedHandoff.trim()) {
             shouldDisarm = true;
@@ -132,7 +133,7 @@ export default function delegateExtension(
             : `New worktree: ${proposal.branch} (base: ${proposal.base ?? "repository default"})\nRepository: ${repository}`;
           const confirmed = await ctx.ui.confirm(
             "Create delegated Pi session?",
-            `${destinationSummary}\nWorkspace: ${label}\n\nWorktrunk may run configured repository hooks. The workspace will remain unfocused.`,
+            `${destinationSummary}\nPi session: ${sessionName}\n\nWorktrunk may run configured repository hooks. The Herdr worktree will remain unfocused.`,
           );
           if (!confirmed) {
             shouldDisarm = true;
@@ -144,11 +145,12 @@ export default function delegateExtension(
           }
 
           onUpdate?.({ content: [{ type: "text", text: "Writing handoff..." }] });
-          const handoffFile = await writeHandoffFile(label, editedHandoff);
+          const handoffFile = await writeHandoffFile(sessionName, editedHandoff);
+          shouldDisarm = true;
           let destination = repository;
+          let worktreeLabel: string;
           if (!proposal.useExistingCheckout) {
             onUpdate?.({ content: [{ type: "text", text: "Creating Worktrunk worktree and running its start hooks..." }] });
-            shouldDisarm = true;
             const worktreeResult = await pi.exec(
               "wt",
               buildWorktrunkArgs(repository, proposal.branch!, proposal.base),
@@ -156,17 +158,24 @@ export default function delegateExtension(
             );
             if (worktreeResult.code !== 0) throw execFailure("wt switch --create", worktreeResult.stderr);
             destination = parseWorktreeResult(worktreeResult.stdout).path;
+            worktreeLabel = proposal.branch!;
+          } else {
+            const branchResult = await pi.exec("git", ["-C", repository, "branch", "--show-current"], {
+              signal,
+              timeout: 5_000,
+            });
+            if (branchResult.code !== 0) throw execFailure("git branch --show-current", branchResult.stderr);
+            worktreeLabel = branchResult.stdout.trim() || sessionName;
           }
 
-          onUpdate?.({ content: [{ type: "text", text: "Creating Herdr workspace and starting Pi..." }] });
-          shouldDisarm = true;
-          const createResult = await pi.exec(
+          onUpdate?.({ content: [{ type: "text", text: "Opening Herdr worktree and starting Pi..." }] });
+          const openResult = await pi.exec(
             "herdr",
-            ["workspace", "create", "--cwd", destination, "--label", label, "--no-focus"],
+            buildHerdrWorktreeOpenArgs(repository, destination, worktreeLabel),
             { signal, timeout: 10_000 },
           );
-          if (createResult.code !== 0) throw execFailure("herdr workspace create", createResult.stderr);
-          const workspace = parseCreatedWorkspace(createResult.stdout);
+          if (openResult.code !== 0) throw execFailure("herdr worktree open", openResult.stderr);
+          const workspace = parseOpenedWorktree(openResult.stdout);
 
           // Herdr IDs are live identifiers. Re-list immediately before using the
           // returned pane so a concurrent close cannot redirect the launch.
@@ -176,7 +185,7 @@ export default function delegateExtension(
             throw new Error(`The new Herdr pane is no longer present. Handoff preserved at ${handoffFile}`);
           }
 
-          const launchCommand = buildPiLaunchCommand(handoffFile, label, piCommand);
+          const launchCommand = buildPiLaunchCommand(handoffFile, sessionName, piCommand);
           const runResult = await pi.exec("herdr", ["pane", "run", workspace.paneId, launchCommand], {
             signal,
             timeout: 10_000,
@@ -185,18 +194,18 @@ export default function delegateExtension(
             throw new Error(`Could not start Pi in Herdr workspace ${workspace.workspaceId}. Handoff preserved at ${handoffFile}: ${runResult.stderr.trim()}`);
           }
 
-          ctx.ui.notify(`Delegated session starting in workspace “${label}”`, "info");
+          ctx.ui.notify(`Delegated session “${sessionName}” starting in Herdr worktree “${worktreeLabel}”`, "info");
           return {
             content: [{
               type: "text",
-              text: `Delegated session started in the non-focused Herdr workspace “${label}”. The handoff is preserved at ${handoffFile}.`,
+              text: `Delegated session “${sessionName}” started in the non-focused Herdr worktree “${worktreeLabel}”. The handoff is preserved at ${handoffFile}.`,
             }],
             details: {
               workspaceId: workspace.workspaceId,
               paneId: workspace.paneId,
               repository,
               destination,
-              branch: proposal.branch,
+              branch: worktreeLabel,
               handoffFile,
             },
             terminate: true,

@@ -7,13 +7,14 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import delegateExtension from "../index.ts";
 import {
   buildDelegatePrompt,
+  buildHerdrWorktreeOpenArgs,
   buildPiLaunchCommand,
   buildWorktrunkArgs,
   DELEGATE_TOOL_NAME,
   detectPiCommand,
-  normalizeWorkspaceLabel,
+  normalizeSessionName,
   paneStillBelongsToWorkspace,
-  parseCreatedWorkspace,
+  parseOpenedWorktree,
   parseWorktreeResult,
   shellQuote,
   validateProposal,
@@ -24,6 +25,17 @@ test("builds argument-safe Worktrunk and Pi launches", () => {
   assert.deepEqual(
     buildWorktrunkArgs("/tmp/repo with spaces", "fix/auth", "release"),
     ["-C", "/tmp/repo with spaces", "switch", "--create", "fix/auth", "--base", "release", "--no-cd", "--format", "json"],
+  );
+  assert.deepEqual(
+    buildHerdrWorktreeOpenArgs("/tmp/repo", "/tmp/worktrees/fix-auth", "fix/auth"),
+    [
+      "worktree", "open",
+      "--cwd", "/tmp/repo",
+      "--path", "/tmp/worktrees/fix-auth",
+      "--label", "fix/auth",
+      "--no-focus",
+      "--json",
+    ],
   );
   assert.equal(
     buildPiLaunchCommand("/tmp/handoff's.md", "fix auth", ["/opt/pi bin/pi"]),
@@ -42,10 +54,10 @@ test("builds a narrow delegation prompt and defaults to a new worktree", () => {
   assert.match(prompt, /\/tmp\/source/);
 });
 
-test("normalizes workspace labels", () => {
-  assert.equal(normalizeWorkspaceLabel("  fix\n signer   refresh ", "ignored", "/tmp/repo"), "fix signer refresh");
-  assert.equal(normalizeWorkspaceLabel(undefined, "fix/auth", "/tmp/repo"), "fix/auth");
-  assert.equal(normalizeWorkspaceLabel(undefined, undefined, "/tmp/widgets"), "widgets");
+test("normalizes Pi session names", () => {
+  assert.equal(normalizeSessionName("  fix\n signer   refresh ", "ignored", "/tmp/repo"), "fix signer refresh");
+  assert.equal(normalizeSessionName(undefined, "fix/auth", "/tmp/repo"), "fix/auth");
+  assert.equal(normalizeSessionName(undefined, undefined, "/tmp/widgets"), "widgets");
 });
 
 test("validates delegation proposals", () => {
@@ -65,20 +77,20 @@ test("parses Worktrunk output", () => {
   assert.throws(() => parseWorktreeResult(JSON.stringify({ path: "relative" })), /absolute/);
 });
 
-test("parses and revalidates Herdr workspace identifiers", () => {
-  const created = parseCreatedWorkspace(JSON.stringify({
+test("parses and revalidates Herdr worktree workspace identifiers", () => {
+  const opened = parseOpenedWorktree(JSON.stringify({
     result: {
       workspace: { workspace_id: "w2" },
       root_pane: { pane_id: "w2:p1" },
     },
   }));
-  assert.deepEqual(created, { workspaceId: "w2", paneId: "w2:p1" });
+  assert.deepEqual(opened, { workspaceId: "w2", paneId: "w2:p1" });
   assert.equal(paneStillBelongsToWorkspace(JSON.stringify({
     result: { panes: [{ pane_id: "w2:p1", workspace_id: "w2" }] },
-  }), created), true);
+  }), opened), true);
   assert.equal(paneStillBelongsToWorkspace(JSON.stringify({
     result: { panes: [{ pane_id: "w2:p1", workspace_id: "w3" }] },
-  }), created), false);
+  }), opened), false);
 });
 
 test("does not register an agent tool until /delegate is invoked", async () => {
@@ -120,7 +132,7 @@ test("does not register an agent tool until /delegate is invoked", async () => {
   assert.match(sentMessages[0], /continue in the provider repo/);
 });
 
-test("confirms and starts Worktrunk plus Pi in a non-focused Herdr workspace", async () => {
+test("opens new and existing checkouts as non-focused Herdr worktrees", async () => {
   const temp = await mkdtemp(join(tmpdir(), "pi-delegate-test-"));
   const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
   const previousHerdrEnv = process.env.HERDR_ENV;
@@ -132,7 +144,7 @@ test("confirms and starts Worktrunk plus Pi in a non-focused Herdr workspace", a
   const activeTools: string[][] = [];
   const paneRuns: string[] = [];
   const worktrunkCalls: string[][] = [];
-  const workspaceCwds: string[] = [];
+  const herdrWorktreeCalls: string[][] = [];
   const pi = {
     registerCommand(name: string, command: { handler: (args: string, ctx: any) => Promise<void> }) {
       commands.set(name, command);
@@ -150,6 +162,9 @@ test("confirms and starts Worktrunk plus Pi in a non-focused Herdr workspace", a
       if (command === "git" && args.includes("check-ref-format")) {
         return { code: 0, stdout: "", stderr: "", killed: false };
       }
+      if (command === "git" && args.includes("branch") && args.includes("--show-current")) {
+        return { code: 0, stdout: "main\n", stderr: "", killed: false };
+      }
       if (command === "wt") {
         worktrunkCalls.push(args);
         return {
@@ -163,8 +178,8 @@ test("confirms and starts Worktrunk plus Pi in a non-focused Herdr workspace", a
           killed: false,
         };
       }
-      if (command === "herdr" && args[0] === "workspace") {
-        workspaceCwds.push(args[3]);
+      if (command === "herdr" && args[0] === "worktree" && args[1] === "open") {
+        herdrWorktreeCalls.push(args);
         return {
           code: 0,
           stdout: JSON.stringify({ result: {
@@ -210,7 +225,7 @@ test("confirms and starts Worktrunk plus Pi in a non-focused Herdr workspace", a
     const result = await tool.execute("call", {
       repository: "/tmp/target",
       branch: "fix/delegation",
-      workspaceLabel: "delegated fix",
+      sessionName: "delegated fix",
       handoff: "Draft handoff",
     }, undefined, undefined, { ui });
 
@@ -218,11 +233,45 @@ test("confirms and starts Worktrunk plus Pi in a non-focused Herdr workspace", a
     assert.deepEqual(worktrunkCalls, [[
       "-C", "/tmp/target", "switch", "--create", "fix/delegation", "--no-cd", "--format", "json",
     ]]);
-    assert.deepEqual(workspaceCwds, ["/tmp/target/.worktrees/fix-delegation"]);
+    assert.deepEqual(herdrWorktreeCalls, [[
+      "worktree", "open",
+      "--cwd", "/tmp/target",
+      "--path", "/tmp/target/.worktrees/fix-delegation",
+      "--label", "fix/delegation",
+      "--no-focus",
+      "--json",
+    ]]);
     assert.equal(paneRuns.length, 1);
     assert.match(paneRuns[0], /^'pi' --name 'delegated fix' '@.*delegations.*\.md'$/);
     assert.deepEqual(activeTools.at(-1), ["read", "bash"]);
     assert.equal(await readFile(result.details.handoffFile, "utf8"), "Self-contained handoff\n");
+
+    await commands.get("delegate")!.handler("continue in existing checkout", {
+      mode: "tui",
+      cwd: "/tmp/source",
+      waitForIdle: async () => {},
+      ui,
+    });
+    const existingResult = await tool.execute("call-existing", {
+      repository: "/tmp/target",
+      sessionName: "existing checkout task",
+      handoff: "Draft existing handoff",
+      useExistingCheckout: true,
+    }, undefined, undefined, { ui });
+
+    assert.equal(existingResult.terminate, true);
+    assert.equal(existingResult.details.branch, "main");
+    assert.equal(worktrunkCalls.length, 1);
+    assert.deepEqual(herdrWorktreeCalls[1], [
+      "worktree", "open",
+      "--cwd", "/tmp/target",
+      "--path", "/tmp/target",
+      "--label", "main",
+      "--no-focus",
+      "--json",
+    ]);
+    assert.match(paneRuns[1], /^'pi' --name 'existing checkout task' '@.*delegations.*\.md'$/);
+    assert.equal(await readFile(existingResult.details.handoffFile, "utf8"), "Self-contained handoff\n");
   } finally {
     if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
     else process.env.PI_CODING_AGENT_DIR = previousAgentDir;

@@ -127,9 +127,10 @@ requirements and account-matching caveats.
 
 `/delegate [goal]` asks the current agent to prepare a destination and
 self-contained handoff, then—after user confirmation—starts a normal Pi session
-in a non-focused Herdr workspace. A new Worktrunk worktree is the default; the
-existing destination checkout is used only when explicitly requested. The
-agent-facing tool is registered only after `/delegate` is invoked and is
+in a checkout opened as a non-focused native Herdr worktree. A new Worktrunk
+worktree is the default; the existing destination checkout is used only when
+explicitly requested. The agent-facing tool is registered only after
+`/delegate` is invoked and is
 disabled again after use. See [extensions/delegate/README.md](extensions/delegate/README.md)
 for requirements and failure behavior.
 

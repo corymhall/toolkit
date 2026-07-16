@@ -14,8 +14,9 @@ After confirmation the extension:
 1. writes the handoff under Pi's agent directory in `delegations/`;
 2. creates a Worktrunk worktree and runs its configured start hooks, unless the
    existing checkout was explicitly requested;
-3. creates a non-focused Herdr workspace at the resulting checkout and starts
-   Pi in its root pane; and
+3. opens the resulting checkout as a non-focused native Herdr worktree, labels
+   it with the branch name, and starts Pi in its root pane using the semantic
+   delegation label as the Pi session name; and
 4. disables the temporary delegation tool.
 
 The launched process is an ordinary interactive Pi session with normal session
@@ -30,6 +31,6 @@ worktree layout and repository hooks.
 - The destination repository must already exist locally.
 
 Use `/delegate cancel` to disarm a delegation that is waiting for clarification.
-The extension does not automatically remove a workspace or worktree after a
-partial failure; the visible workspace and saved handoff are retained for
-inspection and recovery.
+The extension does not automatically remove a Herdr workspace or Git worktree
+after a partial failure; the visible workspace and saved handoff are retained
+for inspection and recovery.

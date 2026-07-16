@@ -7,11 +7,11 @@ export interface DelegationProposal {
   handoff: string;
   branch?: string;
   base?: string;
-  workspaceLabel?: string;
+  sessionName?: string;
   useExistingCheckout?: boolean;
 }
 
-export interface CreatedWorkspace {
+export interface OpenedWorktree {
   workspaceId: string;
   paneId: string;
 }
@@ -34,13 +34,13 @@ When the destination and task are clear, call ${DELEGATE_TOOL_NAME} exactly once
 - an absolute path to the local destination repository
 - a concise new branch name; a new Worktrunk worktree is the default
 - an optional base branch only when the default branch is not appropriate
-- a short workspace label
+- a short semantic Pi session name
 - a self-contained handoff covering the problem, material findings and evidence, decisions already made, relevant files or symbols, the exact next task, constraints, and useful validation
 
 Set useExistingCheckout only when I explicitly asked not to create a worktree or a new worktree is clearly inappropriate. If destination, branch, or scope is materially uncertain, ask me before calling the tool. The tool will show me the final proposal before creating anything.`;
 }
 
-export function normalizeWorkspaceLabel(value: string | undefined, branch: string | undefined, repository: string): string {
+export function normalizeSessionName(value: string | undefined, branch: string | undefined, repository: string): string {
   const candidate = value?.trim() || branch?.trim() || basename(repository) || "delegated-work";
   const normalized = candidate.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
   return (normalized || "delegated-work").slice(0, 80);
@@ -55,6 +55,21 @@ export function buildWorktrunkArgs(repository: string, branch: string, base?: st
   if (base) args.push("--base", base);
   args.push("--no-cd", "--format", "json");
   return args;
+}
+
+export function buildHerdrWorktreeOpenArgs(
+  repository: string,
+  path: string,
+  branchLabel: string,
+): string[] {
+  return [
+    "worktree", "open",
+    "--cwd", repository,
+    "--path", path,
+    "--label", branchLabel,
+    "--no-focus",
+    "--json",
+  ];
 }
 
 export function detectPiCommand(execPath = process.execPath, argvEntry = process.argv[1]): string[] {
@@ -87,30 +102,30 @@ export function parseWorktreeResult(stdout: string): WorktreeResult {
   };
 }
 
-export function parseCreatedWorkspace(stdout: string): CreatedWorkspace {
+export function parseOpenedWorktree(stdout: string): OpenedWorktree {
   let value: unknown;
   try {
     value = JSON.parse(stdout);
   } catch {
-    throw new Error("Herdr returned invalid JSON while creating the workspace");
+    throw new Error("Herdr returned invalid JSON while opening the worktree");
   }
 
   const result = (value as { result?: { workspace?: { workspace_id?: unknown }; root_pane?: { pane_id?: unknown } } }).result;
   const workspaceId = result?.workspace?.workspace_id;
   const paneId = result?.root_pane?.pane_id;
   if (typeof workspaceId !== "string" || typeof paneId !== "string") {
-    throw new Error("Herdr workspace response did not include workspace and root pane IDs");
+    throw new Error("Herdr worktree response did not include workspace and root pane IDs");
   }
   return { workspaceId, paneId };
 }
 
-export function paneStillBelongsToWorkspace(stdout: string, created: CreatedWorkspace): boolean {
+export function paneStillBelongsToWorkspace(stdout: string, opened: OpenedWorktree): boolean {
   try {
     const value = JSON.parse(stdout) as {
       result?: { panes?: Array<{ pane_id?: unknown; workspace_id?: unknown }> };
     };
     return value.result?.panes?.some(pane =>
-      pane.pane_id === created.paneId && pane.workspace_id === created.workspaceId
+      pane.pane_id === opened.paneId && pane.workspace_id === opened.workspaceId
     ) ?? false;
   } catch {
     return false;
