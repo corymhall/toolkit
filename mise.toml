@@ -1,0 +1,42 @@
+[tools]
+node = "26.5.0"
+bun = "1.3.13"
+"npm:skills" = "1.5.17"
+
+[tasks.test]
+description = "Run the extension test suite"
+run = "npm test"
+
+[tasks."skills:list"]
+description = "List project-managed Agent Skills"
+run = "skills list --json"
+
+[tasks."skills:update"]
+description = "Update project-managed Agent Skills with the pinned CLI"
+run = '''
+set -eu
+skills update --project -y
+
+for skill in browser-tools herdr; do
+  link=".claude/skills/$skill"
+  expected="../../.agents/skills/$skill"
+  if [ -L "$link" ]; then
+    actual="$(readlink "$link")"
+    if [ "$actual" != "$expected" ]; then
+      echo "refusing to remove unexpected symlink $link -> $actual" >&2
+      exit 1
+    fi
+    rm "$link"
+  elif [ -e "$link" ]; then
+    echo "refusing to remove non-symlink path: $link" >&2
+    exit 1
+  fi
+done
+rmdir .claude/skills .claude 2>/dev/null || true
+
+unexpected="$(find .agents/skills/herdr -mindepth 1 -maxdepth 1 ! -name SKILL.md -print -quit)"
+if [ -n "$unexpected" ]; then
+  echo "skills update copied unexpected Herdr repository content: $unexpected" >&2
+  exit 1
+fi
+'''

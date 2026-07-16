@@ -19,13 +19,18 @@ than hidden background-process or generic subagent abstractions.
 
 ## Local Installation
 
-The supported local-development workflow uses direct skill links:
+The supported local-development workflow uses mise for repository tools and
+direct skill links:
 
 ```bash
 git clone https://github.com/corymhall/toolkit.git
 cd toolkit
+mise install
 scripts/install-local-skills.sh
 ```
+
+List available tasks with `mise tasks`. Common entry points include
+`mise run test`, `mise run skills:list`, and `mise run skills:update`.
 
 The installer maps:
 
@@ -160,14 +165,16 @@ linked globally by `scripts/install-local-skills.sh`. This lets both Pi and
 Codex CLI discover it while the repository retains update provenance in
 `skills-lock.json`.
 
-Refresh it from the upstream repository with:
+Refresh all managed third-party skills from their upstream repositories with:
 
 ```bash
-npx skills update herdr --project -y
+mise run skills:update
 ```
 
-Review changes to `.agents/skills/herdr/SKILL.md` and `skills-lock.json` before
-committing the update.
+The mise-managed `skills@1.5.17` pin avoids newer CLI versions copying Herdr's
+entire root-level application repository into the managed skill directory.
+Review managed skill and `skills-lock.json` changes before committing the
+update.
 
 ## Skills
 

@@ -33,13 +33,20 @@ toolkit-owned reviewer symlinks from the former plugin layout. It must not edit
 agent settings or package caches, and it must refuse to replace non-symlink
 destinations.
 
-Update the managed Herdr skill from this repository with:
+Repository tool versions and common tasks are managed by `mise.toml`. Run
+`mise install` before using them.
+
+Update all managed third-party skills with:
 
 ```bash
-npx skills update herdr --project -y
+mise run skills:update
 ```
 
-Review the resulting skill and lockfile diff before committing it.
+The task pins `skills@1.5.17` intentionally. Herdr's `SKILL.md` is at its
+repository root, and `skills@1.5.18` copies that entire application repository
+into the managed skill directory. Keep the pin until the CLI supports a
+file-only root-skill update. Review managed skill and lockfile diffs before
+committing them.
 
 The root `package.json` exposes the recursive `skills/` tree and
 `.agents/skills/*` to Pi. Keep Codex CLI-only skills out of that manifest. The local
