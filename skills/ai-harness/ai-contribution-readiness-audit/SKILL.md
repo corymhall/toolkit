@@ -1,6 +1,7 @@
 ---
 name: ai-contribution-readiness-audit
 description: Evaluate a repository's first-rung readiness for high-quality AI code contributions and produce concrete, copy-pasteable file changes that make the repo AI-ready. Use when asked to audit AI contribution quality, diagnose why AI PRs are low quality, prepare a repo for AI-assisted engineering, or move a repo from no harness toward a basic v0.5 contribution harness.
+disable-model-invocation: true
 ---
 
 # AI Contribution Readiness Audit

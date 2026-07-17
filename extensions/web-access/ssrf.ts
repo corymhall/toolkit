@@ -1,24 +1,17 @@
 import { lookup as dnsLookup } from "node:dns/promises";
+import http, { type IncomingMessage, type RequestOptions as HttpRequestOptions } from "node:http";
+import https from "node:https";
 import net from "node:net";
+import { Readable } from "node:stream";
 import ipaddr from "ipaddr.js";
-// Bun shadows bare "undici" imports with an incomplete compatibility module.
-// The explicit package entrypoint is required for a real Dispatcher with DNS pinning.
-import { Agent, fetch as undiciFetch } from "undici/index.js";
 
 export type LookupAddress = { address: string; family: number };
 export type Lookup = (hostname: string) => Promise<LookupAddress[]>;
-
-export type PinnedLookup = (
-  hostname: string,
-  options: { family?: number; all?: boolean },
-  callback: (...args: unknown[]) => void,
-) => void;
 
 interface FetchOptions {
   fetch?: typeof fetch;
   lookup?: Lookup;
   maxRedirects?: number;
-  agentFactory?: (lookup: PinnedLookup) => Agent;
 }
 
 export interface RemoteResponse {
@@ -47,7 +40,21 @@ function assertPublic(address: string, hostname: string): void {
   if (!globallyRoutable) throw new Error(`Blocked non-public address for ${hostname}: ${normalized}`);
 }
 
-async function resolveValidatedUrl(raw: string | URL, lookup?: Lookup): Promise<{ url: URL; addresses: LookupAddress[] }> {
+function abortError(signal: AbortSignal): Error {
+  return signal.reason instanceof Error ? signal.reason : new DOMException("The operation was aborted", "AbortError");
+}
+
+export async function waitWithSignal<T>(promise: Promise<T>, signal?: AbortSignal | null): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) throw abortError(signal);
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(abortError(signal));
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
+  });
+}
+
+async function resolveValidatedUrl(raw: string | URL, lookup?: Lookup, signal?: AbortSignal | null): Promise<{ url: URL; addresses: LookupAddress[] }> {
   const url = raw instanceof URL ? raw : new URL(raw);
   if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("Only HTTP and HTTPS URLs are supported");
   if (url.username || url.password) throw new Error("URLs containing credentials are not supported");
@@ -57,7 +64,7 @@ async function resolveValidatedUrl(raw: string | URL, lookup?: Lookup): Promise<
   const version = net.isIP(hostname);
   const addresses = version
     ? [{ address: hostname, family: version }]
-    : await (lookup ?? (host => dnsLookup(host, { all: true, verbatim: true })))(hostname);
+    : await waitWithSignal((lookup ?? (host => dnsLookup(host, { all: true, verbatim: true })))(hostname), signal);
   if (!addresses.length) throw new Error(`Failed to resolve ${hostname}: no addresses returned`);
   for (const { address } of addresses) assertPublic(address, hostname);
   return { url, addresses };
@@ -67,55 +74,111 @@ export async function validateRemoteUrl(raw: string | URL, lookup?: Lookup): Pro
   return (await resolveValidatedUrl(raw, lookup)).url;
 }
 
-export function createPinnedDispatcher(lookup: PinnedLookup): Agent {
-  return new Agent({ connect: { lookup } });
+export function createPinnedRequestOptions(url: URL, address: LookupAddress, init: RequestInit = {}): HttpRequestOptions {
+  if (init.body != null) throw new Error("HTTP request bodies are not supported");
+  const headers = new Headers(init.headers);
+  headers.set("host", url.host);
+  return {
+    protocol: url.protocol,
+    hostname: address.address,
+    port: url.port || undefined,
+    path: `${url.pathname}${url.search}`,
+    method: init.method ?? "GET",
+    headers: Object.fromEntries(headers),
+    agent: false,
+    ...(url.protocol === "https:" ? { servername: url.hostname } : {}),
+  };
+}
+
+function responseHeaders(message: IncomingMessage): Headers {
+  const headers = new Headers();
+  for (let index = 0; index < message.rawHeaders.length; index += 2) {
+    headers.append(message.rawHeaders[index], message.rawHeaders[index + 1]);
+  }
+  return headers;
+}
+
+/** The caller must validate every address before using this transport. Exported for transport-level tests. */
+export async function requestPinnedUrl(url: URL, addresses: LookupAddress[], init: RequestInit): Promise<RemoteResponse> {
+  let lastError: unknown;
+  for (const address of addresses) {
+    if (init.signal?.aborted) throw abortError(init.signal);
+    try {
+      return await new Promise<RemoteResponse>((resolve, reject) => {
+        const transport = url.protocol === "https:" ? https : http;
+        const request = transport.request(createPinnedRequestOptions(url, address, init));
+        const onAbort = () => {
+          const error = abortError(init.signal!);
+          request.destroy(error);
+          reject(error);
+        };
+        init.signal?.addEventListener("abort", onAbort, { once: true });
+        const cleanup = () => init.signal?.removeEventListener("abort", onAbort);
+        request.once("error", error => {
+          cleanup();
+          reject(error);
+        });
+        request.once("response", message => {
+          try {
+            const status = message.statusCode ?? 500;
+            const method = (init.method ?? "GET").toUpperCase();
+            const hasBody = method !== "HEAD" && status !== 204 && status !== 205 && status !== 304;
+            const body = hasBody ? Readable.toWeb(message) as ReadableStream<Uint8Array> : null;
+            const response = new Response(body, {
+              status,
+              statusText: message.statusMessage,
+              headers: responseHeaders(message),
+            });
+            Object.defineProperty(response, "url", { value: url.toString() });
+            resolve({
+              response,
+              close: async () => {
+                cleanup();
+                message.destroy();
+              },
+            });
+          } catch (error) {
+            cleanup();
+            message.destroy();
+            reject(error);
+          }
+        });
+        request.end();
+      });
+    } catch (error) {
+      if (init.signal?.aborted) throw abortError(init.signal);
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(`Failed to connect to ${url.hostname}`);
 }
 
 export async function fetchRemoteUrl(url: string | URL, init: RequestInit = {}, options: FetchOptions = {}): Promise<RemoteResponse> {
-  const pinned = new Map<string, LookupAddress[]>();
-  const pinnedLookup: PinnedLookup = (hostname, lookupOptions, callback) => {
-    const candidates = pinned.get(normalizeHostname(hostname)) ?? [];
-    const requestedFamily = Number(lookupOptions.family ?? 0);
-    const matching = candidates.filter(candidate => !requestedFamily || candidate.family === requestedFamily);
-    if (!matching.length) {
-      callback(new Error(`No validated address available for ${hostname}`));
-      return;
-    }
-    if (lookupOptions.all) {
-      callback(null, matching.map(candidate => ({ address: candidate.address, family: candidate.family })));
-      return;
-    }
-    callback(null, matching[0].address, matching[0].family);
-  };
-  const dispatcher = options.fetch ? null : (options.agentFactory?.(pinnedLookup) ?? createPinnedDispatcher(pinnedLookup));
-  const close = async () => { if (dispatcher) await dispatcher.close(); };
-  const fetchImpl = options.fetch ?? ((input: URL | RequestInfo, requestInit?: RequestInit) =>
-    undiciFetch(input as URL, { ...(requestInit as object), dispatcher }) as unknown as Promise<Response>);
   const maxRedirects = options.maxRedirects ?? 5;
-
-  try {
-    let resolved = await resolveValidatedUrl(url, options.lookup);
-    let current = resolved.url;
-    pinned.set(normalizeHostname(current.hostname), resolved.addresses);
-    let requestInit = init;
-    for (let redirects = 0; redirects <= maxRedirects; redirects++) {
-      const response = await fetchImpl(current, { ...requestInit, redirect: "manual" });
-      if (!REDIRECTS.has(response.status)) return { response, close };
-      const location = response.headers.get("location");
-      if (!location) return { response, close };
-      if (redirects === maxRedirects) throw new Error(`Too many redirects fetching ${current}`);
-      await response.body?.cancel();
-      resolved = await resolveValidatedUrl(new URL(location, current), options.lookup);
-      current = resolved.url;
-      pinned.set(normalizeHostname(current.hostname), resolved.addresses);
-      if (response.status === 303 || ((response.status === 301 || response.status === 302) && requestInit.method?.toUpperCase() === "POST")) {
-        const { body: _body, ...rest } = requestInit;
-        requestInit = { ...rest, method: "GET" };
-      }
+  let resolved = await resolveValidatedUrl(url, options.lookup, init.signal);
+  let current = resolved.url;
+  let requestInit = init;
+  for (let redirects = 0; redirects <= maxRedirects; redirects++) {
+    const remote = options.fetch
+      ? { response: await options.fetch(current, { ...requestInit, redirect: "manual" }), close: async () => {} }
+      : await requestPinnedUrl(current, resolved.addresses, requestInit);
+    const { response } = remote;
+    if (!REDIRECTS.has(response.status)) return remote;
+    const location = response.headers.get("location");
+    if (!location) return remote;
+    if (redirects === maxRedirects) {
+      void response.body?.cancel().catch(() => {});
+      await remote.close();
+      throw new Error(`Too many redirects fetching ${current}`);
     }
-    throw new Error("Too many redirects");
-  } catch (error) {
-    await close();
-    throw error;
+    void response.body?.cancel().catch(() => {});
+    await remote.close();
+    resolved = await resolveValidatedUrl(new URL(location, current), options.lookup, init.signal);
+    current = resolved.url;
+    if (response.status === 303 || ((response.status === 301 || response.status === 302) && requestInit.method?.toUpperCase() === "POST")) {
+      const { body: _body, ...rest } = requestInit;
+      requestInit = { ...rest, method: "GET" };
+    }
   }
+  throw new Error("Too many redirects");
 }

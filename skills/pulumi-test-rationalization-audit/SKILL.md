@@ -1,6 +1,7 @@
 ---
 name: pulumi-test-rationalization-audit
 description: Audit and rationalize Go-heavy Pulumi provider or component test suites by producing a row-level inventory, provenance scan, ownership analysis, and decision-bucket report. Use when working in Pulumi bridged providers, native providers, or component libraries and you need to classify expensive, legacy, example, integration, or regression tests into keep, remove, rewrite-cheaper, move-upstream, conditional-run, or always-run buckets.
+disable-model-invocation: true
 ---
 
 # Pulumi Test Rationalization Audit

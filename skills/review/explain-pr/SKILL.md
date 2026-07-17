@@ -1,6 +1,7 @@
 ---
 name: explain-pr
 description: Generate a visual local webpage that explains a GitHub PR as a decision and behavior change, not a defect-finding review. Use when the user asks to understand a PR, asks what a PR is doing, wants a walkthrough, wants a plan-review-style assessment, or wants root problem, before/after examples, tradeoffs, compatibility risks, proof gaps, and reviewer questions.
+disable-model-invocation: true
 ---
 
 # Explain PR

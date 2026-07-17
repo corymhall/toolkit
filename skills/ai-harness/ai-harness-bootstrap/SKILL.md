@@ -1,6 +1,7 @@
 ---
 name: ai-harness-bootstrap
 description: Bootstrap a small, deterministic repo-local AI harness by adding only the docs, skills, or checks that have concrete repo-specific content. Use when a repo already has basic AI contribution readiness and the user wants continuous harness improvement without placeholder process.
+disable-model-invocation: true
 ---
 
 # AI Harness Bootstrap

@@ -1,6 +1,7 @@
 ---
 name: review-pr
 description: "Review a GitHub PR by loading PR context, running or reusing the core request-review findings, drafting comments for approval, and posting only after explicit go-ahead."
+disable-model-invocation: true
 ---
 
 # Review PR

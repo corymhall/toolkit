@@ -112,6 +112,13 @@ scripts/test-pi-package.sh
 Before creating, editing, reviewing, importing, or retiring any skill, read
 `docs/skill-prompting-lens.md`.
 
+Before changing a skill to address observed friction, identify the layer that
+owns the failure. If the behavior comes from a harness tool's description,
+schema, validation, or runtime implementation, fix and test that harness
+boundary instead of teaching a shared skill a harness-specific workaround.
+Add harness-specific skill guidance only when the owning interface cannot be
+fixed and the guidance remains necessary and durable.
+
 When adapting an external agent workflow, or introducing orchestration involving
 subagents, session handoffs, durable plans, or repeated review loops, also read
 `docs/codex-model-workflow-lens.md`.

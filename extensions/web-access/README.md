@@ -10,7 +10,11 @@ It does not contain skills and does not use third-party search or extraction fal
 
 `fetch_content` opts into Pi's sequential tool execution. A turn containing it
 runs sibling tool calls serially, trading parallel fetch throughput for
-reliability after observed parallel custom-tool batch stalls.
+reliability after observed parallel custom-tool batch stalls. Direct HTTP reads
+use a pinned `node:http`/`node:https` transport because npm Undici response
+bodies can stall indefinitely when the standalone Bun-based Pi runtime consumes
+them. A ref-counted 5-second deadline rejects reads even when a Web Stream's
+read or cancellation promise never settles.
 
 ## Requirements
 

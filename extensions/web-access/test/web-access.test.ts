@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import http from "node:http";
 import test from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import webAccessExtension, { formatSearchSources } from "../index.ts";
@@ -6,7 +7,7 @@ import { fetchGitHubContent, parseGitHubUrl } from "../github.ts";
 import { buildGitHubSearchQuery, searchGitHub } from "../github-search.ts";
 import { fetchHttpContent } from "../http.ts";
 import { parseOpenAIResponse } from "../openai-search.ts";
-import { createPinnedDispatcher, fetchRemoteUrl, validateRemoteUrl } from "../ssrf.ts";
+import { createPinnedRequestOptions, fetchRemoteUrl, requestPinnedUrl, validateRemoteUrl } from "../ssrf.ts";
 
 test("parses supported GitHub URLs and rejects unrelated pages", () => {
   assert.deepEqual(parseGitHubUrl("https://github.com/acme/widgets"), {
@@ -86,22 +87,79 @@ test("blocks non-public network targets", async () => {
   assert.equal((await validateRemoteUrl("https://public.example/test", async () => [{ address: "2606:4700:4700::1111", family: 6 }])).hostname, "public.example");
 });
 
-test("loads the real npm undici dispatcher under Bun and Node", async () => {
-  const dispatcher = createPinnedDispatcher((_hostname, _options, callback) => {
-    callback(new Error("lookup should not run"));
-  });
-  assert.equal(typeof dispatcher.dispatch, "function");
-  assert.equal(typeof dispatcher.close, "function");
-  await dispatcher.close();
+test("builds requests that connect to a validated address while preserving Host and TLS SNI", () => {
+  const options = createPinnedRequestOptions(
+    new URL("https://docs.example.com:8443/guide?q=one"),
+    { address: "93.184.216.34", family: 4 },
+    { headers: { Accept: "text/plain" } },
+  );
+  assert.equal(options.hostname, "93.184.216.34");
+  assert.equal(options.servername, "docs.example.com");
+  assert.equal(options.path, "/guide?q=one");
+  assert.deepEqual(options.headers, { accept: "text/plain", host: "docs.example.com:8443" });
+  assert.equal(options.agent, false);
 });
 
-test("closes the dispatcher when initial validation fails", async () => {
-  let closed = false;
-  const dispatcher = { close: async () => { closed = true; } };
-  await assert.rejects(() => fetchRemoteUrl("http://127.0.0.1/test", {}, {
-    agentFactory: () => dispatcher as any,
-  }), /Blocked non-public address/);
-  assert.equal(closed, true);
+test("streams pinned HTTP response bodies under the active runtime", async t => {
+  const server = http.createServer((request, response) => {
+    assert.match(request.headers.host ?? "", /^public\.example:/);
+    response.writeHead(200, { "content-type": "text/plain" });
+    response.end("stream completed");
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  t.after(() => new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())));
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+
+  const remote = await requestPinnedUrl(
+    new URL(`http://public.example:${address.port}/content`),
+    [{ address: "127.0.0.1", family: 4 }],
+    { signal: AbortSignal.timeout(2_000) },
+  );
+  try {
+    assert.equal(await remote.response.text(), "stream completed");
+  } finally {
+    await remote.close();
+  }
+});
+
+test("aborts DNS resolution that outlives the request deadline", async () => {
+  const signal = AbortSignal.timeout(20);
+  await assert.rejects(
+    () => fetchRemoteUrl("https://public.example/content", { signal }, {
+      lookup: async () => new Promise(() => {}),
+    }),
+    error => error === signal.reason,
+  );
+});
+
+test("aborts a pinned response body that stops making progress", async t => {
+  const server = http.createServer((_request, response) => {
+    response.writeHead(200, { "content-type": "text/plain" });
+    response.flushHeaders();
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  t.after(() => new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())));
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  const signal = AbortSignal.timeout(50);
+
+  const remote = await requestPinnedUrl(
+    new URL(`http://public.example:${address.port}/stall`),
+    [{ address: "127.0.0.1", family: 4 }],
+    { signal },
+  );
+  try {
+    await assert.rejects(() => remote.response.text(), error => error === signal.reason || /abort|timeout/i.test(String(error)));
+  } finally {
+    await remote.close();
+  }
 });
 
 test("rejects redirects to private addresses before the second fetch", async () => {
@@ -200,11 +258,13 @@ test("searches GitHub through gh api and normalizes issue results", async () => 
   assert.doesNotMatch(result.fetched.content, /body/);
 });
 
-test("registers the intended tools and serializes fetch_content", () => {
-  const tools: Array<{ name: string; executionMode?: "parallel" | "sequential" }> = [];
+test("registers the intended tools and describes fetch_content boundaries", () => {
+  const tools: Array<{ name: string; description: string; executionMode?: "parallel" | "sequential" }> = [];
   webAccessExtension({ registerTool: tool => tools.push(tool) } as unknown as ExtensionAPI);
   assert.deepEqual(tools.map(tool => tool.name), ["web_search", "github_search", "fetch_content"]);
-  assert.equal(tools.find(tool => tool.name === "fetch_content")?.executionMode, "sequential");
+  const fetchContent = tools.find(tool => tool.name === "fetch_content");
+  assert.equal(fetchContent?.executionMode, "sequential");
+  assert.match(fetchContent?.description ?? "", /do not use this tool for GitHub issues, pull requests, commits, releases/);
 });
 
 test("labels GitHub code search results as untrusted and bounds fragments", async () => {
@@ -306,11 +366,57 @@ test("reports the final URL and resolves relative HTML links", async () => {
   assert.match(result.content, /https:\/\/docs\.example\.com\/guide/);
 });
 
-test("cancels unread HTTP error bodies", async () => {
+test("enforces the deadline when a response stream ignores cancellation", { timeout: 1_000 }, async () => {
+  let cancelled = false;
+  const never = () => new Promise<void>(() => {});
+  const body = new ReadableStream<Uint8Array>({
+    pull: never,
+    cancel() {
+      cancelled = true;
+      return never();
+    },
+  });
+  const fakeFetch: typeof fetch = async () => new Response(body, {
+    status: 200,
+    headers: { "content-type": "text/plain" },
+  });
+  await assert.rejects(() => fetchHttpContent("https://example.com/stall", new AbortController().signal, {
+    fetch: fakeFetch,
+    lookup: async () => [{ address: "93.184.216.34", family: 4 }],
+    timeoutMs: 20,
+  }), /abort|timeout/i);
+  assert.equal(cancelled, true);
+});
+
+test("does not await non-settling cleanup after the response exceeds the byte limit", { timeout: 1_000 }, async () => {
+  let cancelled = false;
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) { controller.enqueue(new Uint8Array(5 * 1024 * 1024 + 1)); },
+    cancel() {
+      cancelled = true;
+      return new Promise<void>(() => {});
+    },
+  });
+  const fakeFetch: typeof fetch = async () => new Response(body, {
+    status: 200,
+    headers: { "content-type": "text/plain" },
+  });
+  await assert.rejects(() => fetchHttpContent("https://example.com/large", new AbortController().signal, {
+    fetch: fakeFetch,
+    lookup: async () => [{ address: "93.184.216.34", family: 4 }],
+    timeoutMs: 200,
+  }), /exceeds 5MB limit/);
+  assert.equal(cancelled, true);
+});
+
+test("does not await non-settling cleanup of unread HTTP error bodies", { timeout: 1_000 }, async () => {
   let cancelled = false;
   const body = new ReadableStream({
     start(controller) { controller.enqueue(new TextEncoder().encode("error body")); },
-    cancel() { cancelled = true; },
+    cancel() {
+      cancelled = true;
+      return new Promise<void>(() => {});
+    },
   });
   const fakeFetch: typeof fetch = async () => new Response(body, { status: 500, statusText: "Failure", headers: { "content-type": "text/plain" } });
   await assert.rejects(() => fetchHttpContent("https://example.com/failure", undefined, {

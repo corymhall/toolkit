@@ -1,6 +1,7 @@
 ---
 name: claude-review
 description: Run Claude Code as a chat-only reviewer for a local diff or branch, including adversarial pressure-testing when requested. Use when the user explicitly wants a Claude second opinion without posting GitHub comments.
+disable-model-invocation: true
 ---
 
 # Claude Review

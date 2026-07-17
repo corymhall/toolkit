@@ -1,6 +1,7 @@
 ---
 name: multi-model-evaluate
 description: "Use when the user explicitly wants multiple model perspectives on a document, plan, or decision, or when independent comparison would materially change a high-risk judgment."
+disable-model-invocation: true
 ---
 
 # Multi-Model Evaluate

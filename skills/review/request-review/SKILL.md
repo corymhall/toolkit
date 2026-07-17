@@ -1,6 +1,7 @@
 ---
 name: request-review
 description: Run a focused manual review of a diff, branch, file set, or spec-aligned implementation using the smallest useful set of independent review lenses, then synthesize verified findings.
+disable-model-invocation: true
 ---
 
 # Request Review

@@ -1,6 +1,7 @@
 ---
 name: collaborative-framing
 description: Work back and forth with the user to understand intent, success criteria, constraints, and open questions before or during implementation. Use explicitly when the task is fuzzy, high-context, or benefits from shared thinking rather than immediate execution.
+disable-model-invocation: true
 ---
 
 # Collaborative Framing

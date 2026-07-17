@@ -1,6 +1,7 @@
 ---
 name: ai-harness-retrospective
 description: Evaluate a real AI-assisted work session against the repo-local harness, classify reusable misses, and update or propose updates to docs, skills, scripts, MCP/tooling, or sensors. Use after substantial work, review feedback, failed validation, or human correction in a repo with an AI harness.
+disable-model-invocation: true
 ---
 
 # AI Harness Retrospective
