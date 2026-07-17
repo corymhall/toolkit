@@ -66,6 +66,7 @@ expected_extensions = [
     "extensions/skill-autocomplete/index.ts",
     "extensions/status-footer/index.ts",
     "extensions/delegate/index.ts",
+    "extensions/herdr-command/index.ts",
 ]
 if extensions != expected_extensions:
     raise SystemExit(f"unexpected Pi extensions manifest: {extensions!r}")

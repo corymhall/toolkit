@@ -59,10 +59,10 @@ pi install git:github.com/corymhall/toolkit
 The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
 `extensions/codex-commentary`, `extensions/codex-fast-mode`,
-`extensions/skill-autocomplete`, `extensions/status-footer`, and
-`extensions/delegate` extensions.
+`extensions/skill-autocomplete`, `extensions/status-footer`,
+`extensions/delegate`, and `extensions/herdr-command` extensions.
 `codex-skills/spec-to-goal` is omitted because Pi does not provide Codex CLI's
-`/goal` workflow. The package does not add background-process or generic
+`/goal` workflow. The package does not add hidden background-process or generic
 subagent tools.
 Git package installation installs the web-access extension's local parsing
 dependencies automatically.
@@ -133,6 +133,16 @@ explicitly requested. The agent-facing tool is registered only after
 `/delegate` is invoked and is
 disabled again after use. See [extensions/delegate/README.md](extensions/delegate/README.md)
 for requirements and failure behavior.
+
+### Herdr command extension
+
+When Pi runs inside Herdr, `herdr_run_command` executes an ordinary long-running
+command in one reusable, non-focused pane and waits for its actual exit status.
+It reports nonzero exits immediately, sends ten-second progress heartbeats, and
+keeps timed-out commands visible without killing them. Explicit working
+directories prevent the persistent pane shell from drifting between commands.
+See [extensions/herdr-command/README.md](extensions/herdr-command/README.md) for
+the command protocol and requirements.
 
 Package installation loads the `memory-guard` guidance but cannot create the
 `~/.local/bin/make` proxy. Run `scripts/install-local-skills.sh` from a local
