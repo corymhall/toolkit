@@ -136,13 +136,14 @@ for requirements and failure behavior.
 
 ### Herdr command extension
 
-When Pi runs inside Herdr, `herdr_run_command` executes an ordinary long-running
-command in one reusable, non-focused pane and waits for its actual exit status.
-It reports nonzero exits immediately, sends ten-second progress heartbeats, and
-keeps timed-out commands visible without killing them. Explicit working
-directories prevent the persistent pane shell from drifting between commands.
-See [extensions/herdr-command/README.md](extensions/herdr-command/README.md) for
-the command protocol and requirements.
+When Pi runs inside Herdr, `herdr_start_command` starts an ordinary long-running
+command in one reusable, non-focused pane and returns immediately so the agent
+can continue independent work. `herdr_command_status` later reports completion,
+exit status, foreground processes, and recent pane output, with an optional
+bounded wait. Explicit working directories prevent the persistent pane shell
+from drifting between commands. See
+[extensions/herdr-command/README.md](extensions/herdr-command/README.md) for the
+command protocol and requirements.
 
 Package installation loads the `memory-guard` guidance but cannot create the
 `~/.local/bin/make` proxy. Run `scripts/install-local-skills.sh` from a local

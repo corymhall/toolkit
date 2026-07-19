@@ -1,15 +1,35 @@
 import { resolve } from "node:path";
 
-export const HERDR_COMMAND_TOOL_NAME = "herdr_run_command";
+export const HERDR_START_COMMAND_TOOL_NAME = "herdr_start_command";
+export const HERDR_COMMAND_STATUS_TOOL_NAME = "herdr_command_status";
 export const HERDR_COMMAND_PANE_ENTRY = "herdr-command-pane";
-export const DEFAULT_COMMAND_TIMEOUT_MS = 30 * 60 * 1000;
-export const DEFAULT_HEARTBEAT_MS = 10_000;
+export const HERDR_COMMAND_RUN_ENTRY = "herdr-command-run";
 
 export interface ManagedPane {
   paneId: string;
   terminalId: string;
   workspaceId: string;
   tabId: string;
+}
+
+export interface ManagedRun {
+  runId: string;
+  terminalId: string;
+  command: string;
+  cwd: string;
+  startedAt: number;
+}
+
+export interface ForegroundProcess {
+  pid: number;
+  name?: string;
+  cmdline?: string;
+}
+
+export interface PaneProcessInfo {
+  shellPid: number;
+  foregroundProcesses: ForegroundProcess[];
+  idle: boolean;
 }
 
 export interface PaneRecord {
@@ -55,19 +75,23 @@ export function buildRunMarkers(runId: string): RunMarkers {
   };
 }
 
+export function validateCommandText(command: string): void {
+  if (!command.trim()) throw new Error("command must not be empty");
+  if (/[\r\n\t]/.test(command)) {
+    throw new Error("herdr_start_command accepts one physical command line; use shell separators or a script file instead of tabs or newlines");
+  }
+}
+
 export function buildPaneCommand(command: string, cwd: string, markers: RunMarkers): string {
+  validateCommandText(command);
+  const terminator = /[;&]\s*$/.test(command) ? "" : ";";
   return [
-    "{",
-    `  printf '%s\\n' ${shellQuote(markers.start)}`,
-    "  (",
-    `    cd ${shellQuote(cwd)} || exit 125`,
-    command,
-    "  )",
-    "  __pi_herdr_exit=$?",
-    `  printf '\\n%s%d\\n' ${shellQuote(markers.endPrefix)} "$__pi_herdr_exit"`,
-    "  unset __pi_herdr_exit",
-    "}",
-  ].join("\n");
+    `printf '%s\\n' ${shellQuote(markers.start)}`,
+    `( builtin cd ${shellQuote(cwd)} || exit 125; ${command}${terminator} )`,
+    "__pi_herdr_exit=$?",
+    `printf '\\n%s%d\\n' ${shellQuote(markers.endPrefix)} "$__pi_herdr_exit"`,
+    "unset __pi_herdr_exit",
+  ].join("; ");
 }
 
 function parseJson(stdout: string, operation: string): any {
@@ -106,12 +130,12 @@ export function parseSplitPane(stdout: string): ManagedPane {
   return pane;
 }
 
-export function parsePaneIdle(stdout: string): boolean {
+export function parsePaneProcessInfo(stdout: string): PaneProcessInfo {
   const value = parseJson(stdout, "pane process-info") as {
     result?: {
       process_info?: {
         shell_pid?: unknown;
-        foreground_processes?: Array<{ pid?: unknown }>;
+        foreground_processes?: Array<{ pid?: unknown; name?: unknown; cmdline?: unknown }>;
       };
     };
   };
@@ -119,21 +143,23 @@ export function parsePaneIdle(stdout: string): boolean {
   if (typeof info?.shell_pid !== "number" || !Array.isArray(info.foreground_processes)) {
     throw new Error("Herdr pane process-info response was incomplete");
   }
-  return info.foreground_processes.every(process => process.pid === info.shell_pid);
+  const foregroundProcesses = info.foreground_processes.map(process => {
+    if (typeof process.pid !== "number") throw new Error("Herdr pane process-info contained an invalid process");
+    return {
+      pid: process.pid,
+      ...(typeof process.name === "string" ? { name: process.name } : {}),
+      ...(typeof process.cmdline === "string" ? { cmdline: process.cmdline } : {}),
+    };
+  });
+  return {
+    shellPid: info.shell_pid,
+    foregroundProcesses,
+    idle: foregroundProcesses.every(process => process.pid === info.shell_pid),
+  };
 }
 
-export function parseMatchedLine(stdout: string): string {
-  const value = parseJson(stdout, "wait output") as { result?: { matched_line?: unknown } };
-  const line = value.result?.matched_line;
-  if (typeof line !== "string") throw new Error("Herdr wait response did not contain a matched line");
-  return line;
-}
-
-export function exitCodeFromMatchedLine(line: string, markers: RunMarkers): number {
-  if (!line.startsWith(markers.endPrefix)) throw new Error("Herdr matched an unexpected completion line");
-  const raw = line.slice(markers.endPrefix.length);
-  if (!/^[0-9]+$/.test(raw)) throw new Error("Herdr completion marker did not contain an exit code");
-  return Number.parseInt(raw, 10);
+export function parsePaneIdle(stdout: string): boolean {
+  return parsePaneProcessInfo(stdout).idle;
 }
 
 export function isWaitTimeout(stdout: string, stderr: string): boolean {
@@ -178,6 +204,16 @@ export function extractTranscript(text: string, markers: RunMarkers): Transcript
   };
 }
 
+export function exitCodeFromTranscript(text: string, markers: RunMarkers): number | undefined {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  for (let index = lines.length - 1; index >= 0; index--) {
+    if (!lines[index].startsWith(markers.endPrefix)) continue;
+    const raw = lines[index].slice(markers.endPrefix.length);
+    if (/^[0-9]+$/.test(raw)) return Number.parseInt(raw, 10);
+  }
+  return undefined;
+}
+
 export function isManagedPane(value: unknown): value is ManagedPane {
   const pane = value as Partial<ManagedPane> | undefined;
   return Boolean(
@@ -186,5 +222,19 @@ export function isManagedPane(value: unknown): value is ManagedPane {
     typeof pane.terminalId === "string" &&
     typeof pane.workspaceId === "string" &&
     typeof pane.tabId === "string",
+  );
+}
+
+export function isManagedRun(value: unknown): value is ManagedRun {
+  const run = value as Partial<ManagedRun> | undefined;
+  return Boolean(
+    run &&
+    typeof run.runId === "string" &&
+    /^[a-f0-9-]+$/i.test(run.runId) &&
+    typeof run.terminalId === "string" &&
+    typeof run.command === "string" &&
+    typeof run.cwd === "string" &&
+    typeof run.startedAt === "number" &&
+    Number.isFinite(run.startedAt),
   );
 }

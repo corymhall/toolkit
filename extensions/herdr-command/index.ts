@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { stat } from "node:fs/promises";
-import { Type } from "typebox";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   DEFAULT_MAX_BYTES,
@@ -8,57 +7,76 @@ import {
   formatSize,
   truncateTail,
 } from "@earendil-works/pi-coding-agent";
+import { Type } from "typebox";
 import {
   buildPaneCommand,
   buildRunMarkers,
-  DEFAULT_COMMAND_TIMEOUT_MS,
-  DEFAULT_HEARTBEAT_MS,
-  exitCodeFromMatchedLine,
+  exitCodeFromTranscript,
   extractTranscript,
   HERDR_COMMAND_PANE_ENTRY,
-  HERDR_COMMAND_TOOL_NAME,
+  HERDR_COMMAND_RUN_ENTRY,
+  HERDR_COMMAND_STATUS_TOOL_NAME,
+  HERDR_START_COMMAND_TOOL_NAME,
   isManagedPane,
+  isManagedRun,
   isWaitTimeout,
   type ManagedPane,
+  type ManagedRun,
   normalizeLabel,
   paneRecordToManagedPane,
-  parseMatchedLine,
-  parsePaneIdle,
   parsePaneList,
+  parsePaneProcessInfo,
   parsePaneRead,
   parseSplitPane,
   resolveCommandCwd,
   type RunMarkers,
+  validateCommandText,
 } from "./herdr-command.ts";
 
-const START_TIMEOUT_MS = 10_000;
+const DEFAULT_STATUS_LINES = 120;
+const MAX_STATUS_WAIT_MS = 30_000;
+const SUBMISSION_GRACE_MS = 2_000;
 
-const PARAMETERS = Type.Object({
-  command: Type.String({ description: "Shell command to run in the visible Herdr command pane" }),
+const START_PARAMETERS = Type.Object({
+  command: Type.String({ description: "Single-line shell command to start in the visible Herdr command pane" }),
   cwd: Type.Optional(Type.String({ description: "Working directory; relative paths resolve from the Pi session cwd" })),
-  timeoutMs: Type.Optional(Type.Integer({
-    description: "Overall command timeout in milliseconds (default: 30 minutes)",
-    minimum: 1_000,
-    maximum: 7_200_000,
-  })),
   label: Type.Optional(Type.String({ description: "Short label for the managed command pane" })),
 });
 
-type ExecResult = { code: number; stdout: string; stderr: string; killed: boolean };
+const STATUS_PARAMETERS = Type.Object({
+  waitMs: Type.Optional(Type.Integer({
+    description: "Optionally wait up to this many milliseconds for the current command to finish (default: return immediately)",
+    minimum: 1_000,
+    maximum: MAX_STATUS_WAIT_MS,
+  })),
+  lines: Type.Optional(Type.Integer({
+    description: `Number of recent output lines to return (default: ${DEFAULT_STATUS_LINES}, maximum: ${DEFAULT_MAX_LINES})`,
+    minimum: 1,
+    maximum: DEFAULT_MAX_LINES,
+  })),
+});
 
-interface RunDetails {
-  paneId: string;
-  terminalId: string;
-  workspaceId: string;
-  exitCode?: number;
+type ExecResult = { code: number; stdout: string; stderr: string; killed: boolean };
+type RunState = "submitted" | "running" | "completed" | "lost" | "busy" | "none";
+
+interface CommandDetails {
+  state: RunState;
+  paneId?: string;
+  terminalId?: string;
+  workspaceId?: string;
+  runId?: string;
+  command?: string;
+  cwd?: string;
+  startedAt?: number;
   durationMs?: number;
-  timedOut: boolean;
+  exitCode?: number;
   busy?: boolean;
+  foregroundProcesses?: Array<{ pid: number; name?: string; cmdline?: string }>;
   outputTruncated?: boolean;
+  outputStartUnavailable?: boolean;
 }
 
 interface Dependencies {
-  heartbeatMs?: number;
   now?: () => number;
   randomUUID?: () => string;
 }
@@ -68,54 +86,37 @@ function execFailure(operation: string, result: ExecResult): Error {
   return new Error(detail ? `${operation} failed: ${detail}` : `${operation} failed with code ${result.code}`);
 }
 
-function progressText(paneId: string, output: string): string {
-  const lines = output.split("\n");
-  let tail = lines.slice(-20).join("\n").trimEnd();
-  if (Buffer.byteLength(tail, "utf8") > 8 * 1024) tail = tail.slice(-8 * 1024);
-  return tail ? `Command still running in ${paneId}. Latest output:\n${tail}` : `Command still running in ${paneId}...`;
+function recentOutput(text: string, markers: RunMarkers): { output: string; startUnavailable: boolean } {
+  const transcript = extractTranscript(text, markers);
+  if (transcript.started) return { output: transcript.output, startUnavailable: false };
+
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const end = lines.findLastIndex(line => {
+    if (!line.startsWith(markers.endPrefix)) return false;
+    return /^[0-9]+$/.test(line.slice(markers.endPrefix.length));
+  });
+  return {
+    output: lines.slice(0, end >= 0 ? end : lines.length).join("\n").trimEnd(),
+    startUnavailable: true,
+  };
 }
 
-function finalResult(
-  pane: ManagedPane,
-  output: string,
-  options: { exitCode?: number; durationMs: number; timedOut: boolean },
-) {
-  const truncation = truncateTail(output || "(no output)", {
-    maxBytes: DEFAULT_MAX_BYTES,
-    maxLines: DEFAULT_MAX_LINES,
-  });
-  const status = options.timedOut
-    ? `Command timed out after ${Math.round(options.durationMs / 1000)}s`
-    : options.exitCode === 0
-      ? `Command completed successfully in ${(options.durationMs / 1000).toFixed(1)}s`
-      : `Command failed with exit code ${options.exitCode} after ${(options.durationMs / 1000).toFixed(1)}s`;
-  const truncationNotice = truncation.truncated
-    ? `\n\n[Output truncated to ${truncation.outputLines} lines / ${formatSize(truncation.outputBytes)}. Full output remains visible in Herdr pane ${pane.paneId}.]`
-    : "";
-  return {
-    content: [{ type: "text" as const, text: `${status} in Herdr pane ${pane.paneId}.\n\n${truncation.content}${truncationNotice}` }],
-    details: {
-      paneId: pane.paneId,
-      terminalId: pane.terminalId,
-      workspaceId: pane.workspaceId,
-      exitCode: options.exitCode,
-      durationMs: options.durationMs,
-      timedOut: options.timedOut,
-      outputTruncated: truncation.truncated,
-    } satisfies RunDetails,
-  };
+function processSummary(processes: Array<{ pid: number; name?: string; cmdline?: string }>): string {
+  const visible = processes.filter(process => process.name || process.cmdline);
+  if (!visible.length) return "";
+  return `\nForeground: ${visible.map(process => process.name || process.cmdline).join(", ")}`;
 }
 
 export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: Dependencies = {}) {
   if (process.env.HERDR_ENV !== "1") return;
 
-  const heartbeatMs = dependencies.heartbeatMs ?? DEFAULT_HEARTBEAT_MS;
   const now = dependencies.now ?? Date.now;
   const makeRunId = dependencies.randomUUID ?? randomUUID;
   const callerPaneId = process.env.HERDR_PANE_ID;
   const callerWorkspaceId = process.env.HERDR_WORKSPACE_ID;
   let managedPane: ManagedPane | undefined;
-  let queue = Promise.resolve();
+  let latestRun: ManagedRun | undefined;
+  let launchQueue = Promise.resolve();
 
   const herdr = async (
     args: string[],
@@ -171,8 +172,6 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     ], { signal, timeout: 10_000 });
     if (split.code !== 0) throw execFailure("herdr pane split", split);
     const pane = parseSplitPane(split.stdout);
-    // Record ownership before cosmetic setup so a rename failure cannot leave
-    // an untracked pane that a later call duplicates.
     managedPane = pane;
     pi.appendEntry(HERDR_COMMAND_PANE_ENTRY, pane);
 
@@ -199,185 +198,284 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     const result = await herdr([
       "pane", "read", current.paneId,
       "--source", "recent-unwrapped",
-      "--lines", "2000",
+      "--lines", String(DEFAULT_MAX_LINES),
       "--format", "text",
     ], { signal, timeout: 10_000 });
     if (result.code !== 0) throw execFailure("herdr pane read", result);
     return parsePaneRead(result.stdout);
   };
 
-  const waitForMarker = async (
-    pane: ManagedPane,
-    match: string,
-    timeout: number,
-    signal?: AbortSignal,
-  ): Promise<ExecResult> => {
+  const paneProcessInfo = async (pane: ManagedPane, signal?: AbortSignal) => {
     const current = await refreshManagedPane(signal);
     if (!current || current.terminalId !== pane.terminalId) {
       throw new Error(`Herdr command pane ${pane.paneId} is no longer present`);
     }
-    return herdr([
-      "wait", "output", current.paneId,
-      "--match", match,
-      "--source", "recent-unwrapped",
-      "--lines", "2000",
-      "--timeout", String(timeout),
-      "--regex",
-    ], { signal, timeout: timeout + 5_000 });
-  };
-
-  const paneIsIdle = async (pane: ManagedPane, signal?: AbortSignal): Promise<boolean> => {
-    const current = await refreshManagedPane(signal);
-    if (!current || current.terminalId !== pane.terminalId) return false;
     const result = await herdr(["pane", "process-info", "--pane", current.paneId], {
       signal,
       timeout: 10_000,
     });
     if (result.code !== 0) throw execFailure("herdr pane process-info", result);
-    return parsePaneIdle(result.stdout);
+    return parsePaneProcessInfo(result.stdout);
   };
 
-  const executeRun = async (
-    raw: { command: string; cwd?: string; timeoutMs?: number; label?: string },
-    signal: AbortSignal | undefined,
-    onUpdate: ((result: { content: Array<{ type: "text"; text: string }>; details?: RunDetails }) => void) | undefined,
-    ctx: ExtensionContext,
-  ) => {
-    const command = raw.command.trim();
-    if (!command) throw new Error("command must not be empty");
-    const cwd = resolveCommandCwd(ctx.cwd, raw.cwd);
-    const cwdStat = await stat(cwd).catch(() => undefined);
-    if (!cwdStat?.isDirectory()) throw new Error(`cwd is not a directory: ${cwd}`);
-    const timeoutMs = raw.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS;
-    const label = normalizeLabel(raw.label);
-
-    const { pane, created } = await ensurePane(cwd, label, signal);
-    if (!created && !await paneIsIdle(pane, signal)) {
-      return {
-        content: [{
-          type: "text" as const,
-          text: `Herdr command pane ${pane.paneId} is still busy. Inspect or stop that command before starting another one.`,
-        }],
-        details: {
-          paneId: pane.paneId,
-          terminalId: pane.terminalId,
-          workspaceId: pane.workspaceId,
-          timedOut: false,
-          busy: true,
-        } satisfies RunDetails,
-      };
-    }
-
-    if (!created && label !== "pi command") {
-      const rename = await herdr(["pane", "rename", pane.paneId, label], { signal, timeout: 10_000 });
-      if (rename.code !== 0) throw execFailure("herdr pane rename", rename);
-    }
-
-    const markers = buildRunMarkers(makeRunId());
-    const paneCommand = buildPaneCommand(command, cwd, markers);
-    const startedAt = now();
+  const waitForCompletion = async (
+    pane: ManagedPane,
+    markers: RunMarkers,
+    waitMs: number,
+    signal?: AbortSignal,
+  ): Promise<void> => {
     const current = await refreshManagedPane(signal);
     if (!current || current.terminalId !== pane.terminalId) {
       throw new Error(`Herdr command pane ${pane.paneId} is no longer present`);
     }
-    const run = await herdr(["pane", "run", current.paneId, paneCommand], { signal, timeout: 10_000 });
-    if (run.code !== 0) throw execFailure("herdr pane run", run);
+    const result = await herdr([
+      "wait", "output", current.paneId,
+      "--match", markers.endRegex,
+      "--source", "recent-unwrapped",
+      "--lines", String(DEFAULT_MAX_LINES),
+      "--timeout", String(waitMs),
+      "--regex",
+    ], { signal, timeout: waitMs + 5_000 });
+    if (result.code === 0 || isWaitTimeout(result.stdout, result.stderr)) return;
+    if (signal?.aborted) throw new Error(`Status wait cancelled; the command remains visible in ${current.paneId}`);
+    throw execFailure("waiting for Herdr command", result);
+  };
 
-    const start = await waitForMarker(pane, `^${markers.start}$`, START_TIMEOUT_MS, signal);
-    if (start.code !== 0) {
-      const output = signal?.aborted ? "" : await readPane(pane);
-      throw new Error(
-        isWaitTimeout(start.stdout, start.stderr)
-          ? `Herdr command did not start within 10 seconds in ${pane.paneId}${output ? `:\n${output}` : ""}`
-          : execFailure("waiting for Herdr command start", start).message,
-      );
-    }
+  const startCommand = async (
+    raw: { command: string; cwd?: string; label?: string },
+    signal: AbortSignal | undefined,
+    ctx: ExtensionContext,
+  ) => {
+    const command = raw.command.trim();
+    validateCommandText(command);
+    const cwd = resolveCommandCwd(ctx.cwd, raw.cwd);
+    const cwdStat = await stat(cwd).catch(() => undefined);
+    if (!cwdStat?.isDirectory()) throw new Error(`cwd is not a directory: ${cwd}`);
+    const label = normalizeLabel(raw.label);
 
-    const deadline = startedAt + timeoutMs;
-    while (true) {
-      if (signal?.aborted) throw new Error(`Command wait cancelled; the command remains visible in ${pane.paneId}`);
-      const remaining = deadline - now();
-      if (remaining <= 0) {
-        const text = await readPane(pane);
-        const transcript = extractTranscript(text, markers);
-        return finalResult(pane, transcript.output, {
-          exitCode: transcript.exitCode,
-          durationMs: now() - startedAt,
-          timedOut: !transcript.completed,
-        });
-      }
-
-      const interval = Math.max(1, Math.min(heartbeatMs, remaining));
-      const wait = await waitForMarker(pane, markers.endRegex, interval, signal);
-      if (wait.code === 0) {
-        const exitCode = exitCodeFromMatchedLine(parseMatchedLine(wait.stdout), markers);
+    const { pane, created } = await ensurePane(cwd, label, signal);
+    if (!created) {
+      const info = await paneProcessInfo(pane, signal);
+      let submissionPending = false;
+      if (info.idle && latestRun?.terminalId === pane.terminalId) {
         const text = await readPane(pane, signal);
-        const transcript = extractTranscript(text, markers);
-        return finalResult(pane, transcript.output, {
-          exitCode,
-          durationMs: now() - startedAt,
-          timedOut: false,
-        });
+        const markers = buildRunMarkers(latestRun.runId);
+        submissionPending = exitCodeFromTranscript(text, markers) === undefined
+          && now() - latestRun.startedAt < SUBMISSION_GRACE_MS;
       }
-      if (!isWaitTimeout(wait.stdout, wait.stderr)) throw execFailure("waiting for Herdr command", wait);
-
-      const text = await readPane(pane, signal);
-      const transcript = extractTranscript(text, markers);
-      if (transcript.completed && transcript.exitCode !== undefined) {
-        return finalResult(pane, transcript.output, {
-          exitCode: transcript.exitCode,
-          durationMs: now() - startedAt,
-          timedOut: false,
-        });
+      if (!info.idle || submissionPending) {
+        return {
+          content: [{
+            type: "text" as const,
+            text: `Herdr command pane ${pane.paneId} is already busy. Use ${HERDR_COMMAND_STATUS_TOOL_NAME} to inspect the current command before starting another.${processSummary(info.foregroundProcesses)}`,
+          }],
+          details: {
+            state: "busy",
+            paneId: pane.paneId,
+            terminalId: pane.terminalId,
+            workspaceId: pane.workspaceId,
+            runId: latestRun?.runId,
+            busy: true,
+            foregroundProcesses: info.foregroundProcesses,
+          } satisfies CommandDetails,
+        };
       }
-      onUpdate?.({
-        content: [{ type: "text", text: progressText(pane.paneId, transcript.output) }],
-        details: {
-          paneId: pane.paneId,
-          terminalId: pane.terminalId,
-          workspaceId: pane.workspaceId,
-          durationMs: now() - startedAt,
-          timedOut: false,
-        },
-      });
 
-      if (await paneIsIdle(pane, signal)) {
-        throw new Error(`The command process exited in ${pane.paneId} without reporting a completion marker`);
+      if (label !== "pi command") {
+        const rename = await herdr(["pane", "rename", pane.paneId, label], { signal, timeout: 10_000 });
+        if (rename.code !== 0) throw execFailure("herdr pane rename", rename);
       }
     }
+
+    const runId = makeRunId();
+    const markers = buildRunMarkers(runId);
+    const paneCommand = buildPaneCommand(command, cwd, markers);
+    const current = await refreshManagedPane(signal);
+    if (!current || current.terminalId !== pane.terminalId) {
+      throw new Error(`Herdr command pane ${pane.paneId} is no longer present`);
+    }
+
+    const result = await herdr(["pane", "run", current.paneId, paneCommand], { signal, timeout: 10_000 });
+    if (result.code !== 0) throw execFailure("herdr pane run", result);
+
+    latestRun = {
+      runId,
+      terminalId: current.terminalId,
+      command,
+      cwd,
+      startedAt: now(),
+    };
+    pi.appendEntry(HERDR_COMMAND_RUN_ENTRY, latestRun);
+
+    return {
+      content: [{
+        type: "text" as const,
+        text: `Started command ${runId} in Herdr pane ${current.paneId}. It is running independently; continue other work and use ${HERDR_COMMAND_STATUS_TOOL_NAME} when its result is needed.`,
+      }],
+      details: {
+        state: "submitted",
+        paneId: current.paneId,
+        terminalId: current.terminalId,
+        workspaceId: current.workspaceId,
+        runId,
+        command,
+        cwd,
+        startedAt: latestRun.startedAt,
+      } satisfies CommandDetails,
+    };
+  };
+
+  const commandStatus = async (
+    raw: { waitMs?: number; lines?: number },
+    signal?: AbortSignal,
+  ) => {
+    if (!latestRun) {
+      return {
+        content: [{ type: "text" as const, text: "No Herdr command is tracked for this Pi session." }],
+        details: { state: "none" } satisfies CommandDetails,
+      };
+    }
+
+    const pane = await refreshManagedPane(signal);
+    if (!pane || pane.terminalId !== latestRun.terminalId) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: `The pane for Herdr command ${latestRun.runId} is no longer present.`,
+        }],
+        details: {
+          state: "lost",
+          runId: latestRun.runId,
+          terminalId: latestRun.terminalId,
+          command: latestRun.command,
+          cwd: latestRun.cwd,
+          startedAt: latestRun.startedAt,
+          durationMs: now() - latestRun.startedAt,
+        } satisfies CommandDetails,
+      };
+    }
+
+    const markers = buildRunMarkers(latestRun.runId);
+    let text = await readPane(pane, signal);
+    let exitCode = exitCodeFromTranscript(text, markers);
+    let info = await paneProcessInfo(pane, signal);
+
+    if (
+      exitCode === undefined &&
+      raw.waitMs &&
+      (!info.idle || now() - latestRun.startedAt < SUBMISSION_GRACE_MS)
+    ) {
+      await waitForCompletion(pane, markers, raw.waitMs, signal);
+      text = await readPane(pane, signal);
+      exitCode = exitCodeFromTranscript(text, markers);
+      info = await paneProcessInfo(pane, signal);
+    }
+
+    const transcript = extractTranscript(text, markers);
+    const durationMs = now() - latestRun.startedAt;
+    const state: RunState = exitCode !== undefined
+      ? "completed"
+      : !info.idle
+        ? "running"
+        : !transcript.started && durationMs < SUBMISSION_GRACE_MS
+          ? "submitted"
+          : "lost";
+    const output = recentOutput(text, markers);
+    const lines = raw.lines ?? DEFAULT_STATUS_LINES;
+    const truncation = truncateTail(output.output || "(no output yet)", {
+      maxBytes: DEFAULT_MAX_BYTES,
+      maxLines: lines,
+    });
+    const truncationNotice = truncation.truncated
+      ? `\n\n[Recent output truncated to ${truncation.outputLines} lines / ${formatSize(truncation.outputBytes)}. Full output remains visible in Herdr pane ${pane.paneId}.]`
+      : "";
+    const startNotice = output.startUnavailable
+      ? `\n\n[The run's start marker is outside recent terminal scrollback; output may begin mid-stream.]`
+      : "";
+    const status = state === "completed"
+      ? exitCode === 0
+        ? `Command ${latestRun.runId} completed successfully in ${(durationMs / 1000).toFixed(1)}s`
+        : `Command ${latestRun.runId} failed with exit code ${exitCode} after ${(durationMs / 1000).toFixed(1)}s`
+      : state === "running"
+        ? `Command ${latestRun.runId} is still running after ${(durationMs / 1000).toFixed(1)}s`
+        : state === "submitted"
+          ? `Command ${latestRun.runId} was submitted ${(durationMs / 1000).toFixed(1)}s ago and has not emitted its start marker yet`
+          : `Command ${latestRun.runId} is no longer running, but no completion marker was found`;
+
+    return {
+      content: [{
+        type: "text" as const,
+        text: `${status} in Herdr pane ${pane.paneId}.${processSummary(info.foregroundProcesses)}\n\n${truncation.content}${truncationNotice}${startNotice}`,
+      }],
+      details: {
+        state,
+        paneId: pane.paneId,
+        terminalId: pane.terminalId,
+        workspaceId: pane.workspaceId,
+        runId: latestRun.runId,
+        command: latestRun.command,
+        cwd: latestRun.cwd,
+        startedAt: latestRun.startedAt,
+        durationMs,
+        exitCode,
+        foregroundProcesses: info.foregroundProcesses,
+        outputTruncated: truncation.truncated,
+        outputStartUnavailable: output.startUnavailable,
+      } satisfies CommandDetails,
+    };
   };
 
   pi.on("session_start", (_event, ctx) => {
     managedPane = undefined;
-    const entries = ctx.sessionManager.getBranch();
-    for (let index = entries.length - 1; index >= 0; index--) {
-      const entry = entries[index] as { type?: string; customType?: string; data?: unknown };
-      if (entry.type === "custom" && entry.customType === HERDR_COMMAND_PANE_ENTRY && isManagedPane(entry.data)) {
-        managedPane = entry.data;
-        break;
+    latestRun = undefined;
+    for (const entry of ctx.sessionManager.getBranch()) {
+      const candidate = entry as { type?: string; customType?: string; data?: unknown };
+      if (candidate.type !== "custom") continue;
+      if (candidate.customType === HERDR_COMMAND_PANE_ENTRY && isManagedPane(candidate.data)) {
+        managedPane = candidate.data;
+      }
+      if (candidate.customType === HERDR_COMMAND_RUN_ENTRY && isManagedRun(candidate.data)) {
+        latestRun = candidate.data;
       }
     }
   });
 
   pi.registerTool({
-    name: HERDR_COMMAND_TOOL_NAME,
-    label: "Herdr Run Command",
-    description: "Run one ordinary long-running shell command in a visible, reusable Herdr pane and wait for its actual exit status. Nonzero exits return immediately. The command pane remains available for inspection. Output is truncated to 2000 lines or 50KB.",
-    promptSnippet: "Run and monitor ordinary long-running commands in a visible Herdr pane",
+    name: HERDR_START_COMMAND_TOOL_NAME,
+    label: "Herdr Start Command",
+    description: "Start one ordinary long-running shell command in a visible reusable Herdr pane and return immediately after submission. Use for builds, long test suites, code generation, or other work that can continue while the agent does independent tasks. Use bash instead for short commands or when the result is required before the next action. Only one command can occupy the managed pane at a time.",
+    promptSnippet: "Start a long-running command in a visible Herdr pane without waiting for completion",
     promptGuidelines: [
-      "Use herdr_run_command instead of composing herdr pane run with herdr wait output for ordinary long-running commands; keep raw Herdr commands for agents and explicit tab, workspace, or worktree control.",
+      "Use herdr_start_command for long-running builds, test suites, generation, or similar commands that should remain visible while independent work continues; use bash for short commands or results needed immediately.",
+      "After herdr_start_command returns, continue useful independent work instead of polling; call herdr_command_status only when the result is needed.",
     ],
-    parameters: PARAMETERS,
-    async execute(_toolCallId, params, signal, onUpdate, ctx) {
+    parameters: START_PARAMETERS,
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       let release!: () => void;
-      const previous = queue;
-      queue = new Promise<void>(resolve => { release = resolve; });
+      const previous = launchQueue;
+      launchQueue = new Promise<void>(resolve => { release = resolve; });
       await previous;
       try {
-        return await executeRun(params, signal, onUpdate, ctx);
+        return await startCommand(params, signal, ctx);
       } finally {
         release();
       }
+    },
+  });
+
+  pi.registerTool({
+    name: HERDR_COMMAND_STATUS_TOOL_NAME,
+    label: "Herdr Command Status",
+    description: "Inspect the latest command started by herdr_start_command. Returns its running or completed state, exit code, foreground processes, and recent pane output. Returns immediately unless waitMs requests a bounded wait of at most 30 seconds. Check status before relying on command artifacts or reporting success.",
+    promptSnippet: "Inspect or briefly wait for the latest command in the managed Herdr pane",
+    promptGuidelines: [
+      "Use herdr_command_status to inspect a previously started Herdr command when its result becomes relevant; omit waitMs for an immediate check or use a bounded wait instead of rapid polling.",
+      "Before relying on artifacts or claiming success from herdr_start_command, confirm completion with herdr_command_status.",
+    ],
+    parameters: STATUS_PARAMETERS,
+    async execute(_toolCallId, params, signal) {
+      await launchQueue;
+      return commandStatus(params, signal);
     },
   });
 }
