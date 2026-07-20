@@ -1,0 +1,6 @@
+interface:
+  display_name: "Prepare For Review"
+  short_description: "Run an author-side simplicity and quality pass"
+  default_prompt: "Use $prepare-for-review to reconcile this implementation with our conversation, simplify it, apply relevant implementation guidance, document non-obvious code, and verify it before independent review."
+policy:
+  allow_implicit_invocation: false

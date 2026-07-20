@@ -1,0 +1,6 @@
+{"type":"session","version":3,"id":"branched","timestamp":"2026-01-01T00:00:00Z","cwd":"/tmp/branched"}
+{"type":"message","id":"b1","parentId":null,"timestamp":"2026-01-03T10:00:00Z","message":{"role":"user","content":[{"type":"text","text":"Original request"}]}}
+{"type":"message","id":"abandoned-call","parentId":"b1","timestamp":"2026-01-03T10:01:00Z","message":{"role":"assistant","content":[{"type":"toolCall","id":"call-1","name":"bash","arguments":{"command":"false"}}]}}
+{"type":"message","id":"abandoned-error","parentId":"abandoned-call","timestamp":"2026-01-03T10:01:01Z","message":{"role":"toolResult","toolCallId":"call-1","toolName":"bash","content":[{"type":"text","text":"Command exited with code 1"}],"isError":true}}
+{"type":"message","id":"b2","parentId":"b1","timestamp":"2026-01-03T11:00:00Z","message":{"role":"assistant","content":[{"type":"text","text":"Taking a different approach"}]}}
+{"type":"session_info","id":"b3","parentId":"b2","timestamp":"2026-01-03T11:00:01Z","name":"active branch"}

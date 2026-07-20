@@ -73,11 +73,11 @@ Use the core review flow for technical findings.
 - If the user already provided findings, use those.
 - Otherwise invoke or follow `request-review` against the PR diff and relevant
   local context.
-- Include the `repo_instructions_reviewer` lane when applicable instructions
-  exist.
 
-Do not duplicate the generic review rubric here. `request-review` owns reviewer
-lens selection and findings synthesis.
+The main session must read applicable repository instructions and include only
+material constraints in reviewer prompts. Do not create a separate compliance
+lane. Do not duplicate the generic review rubric here; `request-review` owns
+reviewer lens selection and findings synthesis.
 
 ## Draft Comments
 

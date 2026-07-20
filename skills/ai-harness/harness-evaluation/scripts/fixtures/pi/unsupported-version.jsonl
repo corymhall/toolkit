@@ -1,0 +1,2 @@
+{"type":"session","version":99,"id":"future","timestamp":"2026-01-01T00:00:00Z","cwd":"/tmp/future"}
+{"type":"message","id":"u1","parentId":null,"timestamp":"2026-01-03T07:00:00Z","message":{"role":"user","content":[{"type":"text","text":"Future format request"}]}}

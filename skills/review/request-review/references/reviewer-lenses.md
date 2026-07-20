@@ -1,8 +1,8 @@
 # Reviewer Lenses
 
-Use this file as the source of truth for selecting review lenses and framing
-independent reviewer prompts. Choose the smallest set that answers the user's
-question.
+Use this file as the source of truth for selecting independent review lenses and
+framing sidecar prompts. Start with one lane and add another only when it answers
+a distinct unresolved question.
 
 ## Contents
 
@@ -10,165 +10,156 @@ question.
 - [Additional lenses](#additional-lenses)
 - [Lens contracts](#lens-contracts)
 - [Lane rules](#lane-rules)
-- [Good default combinations](#good-default-combinations)
+- [Common combinations](#common-combinations)
 
 ## Baseline
 
-Always start with `general_reviewer`.
+Use `general_reviewer` by default. A normal repository change does not also need
+separate repository-instruction, documentation, specification, and language
+lanes merely because those concerns exist.
 
-Also use `repo_instructions_reviewer` when the target is a repository change and
-an applicable `AGENTS.md` exists. This lens is required for skill, workflow,
-generated output, release process, validation, or file-placement changes.
+The main session owns:
+
+- the user's intent and conversation history
+- repository instructions and required workflow checks
+- code documentation and other author responsibilities
+- deciding whether a finding fits the agreed scope
+
+Give each sidecar a concise statement of the intended observable behavior and
+important accepted constraints. Plans and design notes are context by default,
+not an authoritative requirement set for a context-free reviewer to enforce. An
+explicitly user-designated specification or an external protocol,
+compatibility, security, or policy contract may be authoritative.
 
 ## Additional Lenses
 
-### `spec_alignment_reviewer`
+### `contract_alignment_reviewer`
 
-Add when a spec, plan, PRD, task, or acceptance criteria defines the intended
-outcome, or when scope drift matters as much as correctness.
+Add only when the user explicitly asks for independent alignment against a
+named authoritative document, or when an external protocol, compatibility,
+security, or policy contract is the central unresolved question. Do not add it
+for an ordinary issue, task, implementation plan, or decision note. The main
+session must identify the authoritative portions, accepted limitations, and
+relevant observable behavior in the prompt.
 
 ### `test_reviewer`
 
-Add when behavior changed, tests or proof are central to the request, the diff
-touches tests, or the main uncertainty is whether verification is strong
-enough.
-
-### `documentation_reviewer`
-
-Add for public APIs, exported declarations, important internal contracts,
-non-obvious helpers, commands, configuration, workflows, generated docs,
-examples, or user-visible behavior.
+Add when the user explicitly asks for a test review, the central uncertainty is
+whether the proof is meaningful, or tests could plausibly pass without
+exercising the claimed behavior. Do not add this lane solely because the diff
+contains tests or changes behavior.
 
 ### `go_reviewer`
 
-Add when the target is mostly Go or the uncertainty is Go API design,
-dependency ownership, error policy, concurrency lifecycle, modernization, or
-Go-specific test quality.
+Add for non-trivial Go changes when an independent idiom and API-quality pass
+has distinct value, or when the user asks for it. This reviewer applies current
+Go guidance rather than assuming existing repository patterns are idiomatic.
+Small mechanical Go changes normally need only the general lane.
 
 ### `error_handling_reviewer`
 
-Add for retries, recovery, fallbacks, logging, incident-prone behavior, or an
-explicit resilience and failure-handling review.
+Add when retries, recovery, destructive operations, fallbacks, or operational
+failure behavior are the main risk and deserve a dedicated pass. Do not add it
+for ordinary error returns already covered by general review.
 
-### Neovim plugin reviews
+### Other domain expertise
 
-There is no dedicated Neovim lane. Start with normal lenses. When the target
-touches runtimepath layout, startup or lazy-loading, keymaps, autocmds,
-`vim.uv`, health checks, vimdoc, or release behavior, the main session should
-load `../../neovim-plugin-development/references/reviewer-deep.md` and
-synthesize that domain pass with other findings.
-
-### Optional outside perspective
-
-Add one external-model perspective only when the user asks or independent model
-diversity materially improves a risky decision. Do not duplicate the entire
-lens stack across runtimes.
+Use a focused domain contract only when generic review is likely to miss a
+material domain-specific failure. For Neovim runtime behavior, load
+`../../neovim-plugin-development/references/reviewer-deep.md` and include that
+contract in one focused lane. Do not create a broad lane stack around it.
 
 ## Lens Contracts
 
-Every sidecar prompt must include the shared target and the relevant contract
-below. All lenses are read-only and return findings rather than fixes.
+Every sidecar prompt must include the exact target, concise intended behavior,
+relevant constraints, and the selected contract below. All lanes are read-only
+and return findings rather than fixes.
 
 ### `general_reviewer`
 
-Review like an owner. Find correctness bugs, behavioral regressions, missing or
-weak tests, and maintainability risks likely to hurt future work. Lead with the
-most important evidence-backed findings, include file references, and avoid
+Review like an owner. Find correctness bugs, behavioral regressions, unsafe
+assumptions, and maintainability problems likely to hurt future work. Look for
+accidental complexity when a simpler implementation would preserve the claimed
+behavior, but do not turn hypothetical unsupported cases into new requirements.
+Lead with evidence-backed findings, include file references, and avoid
 style-only comments. Return blocking findings, important non-blocking findings,
-and residual risks or test gaps.
+and residual risks.
 
-### `repo_instructions_reviewer`
+### `contract_alignment_reviewer`
 
-Read applicable `AGENTS.md` files and check concrete workflow, validation, file
-placement, tool usage, ownership, generated-output, and versioning requirements.
-Cite both the instruction source and affected change or missing action. Do not
-invent rules or drift into generic code review. Return instruction violations,
-missing required validation or generated updates, and residual compliance risk.
-
-### `spec_alignment_reviewer`
-
-Map the implementation and tests against the named spec, plan, task, or
-acceptance criteria. Identify missing or partial requirements, scope drift, and
-underspecified decisions. Treat implementation differences as informational
-unless they break the intended outcome. Return a requirement-by-requirement
-completion assessment and unresolved ambiguities.
+Compare the implementation and tests with the named authoritative contract.
+Distinguish required observable behavior from examples, advisory guidance, open
+questions, and accepted non-goals. Report concrete mismatches and unresolved
+contract ambiguities without expanding beyond the contract or turning residual
+risk into a new requirement.
 
 ### `test_reviewer`
 
-Evaluate proof quality rather than test count. Find important untested behavior,
-weak assertions, happy-path-only coverage, missing error and boundary cases, and
-false confidence. Distinguish no tests, weak tests, and sufficient tests. Return
-missing or misleading tests, uncovered edge cases, and residual verification
-risk.
-
-### `documentation_reviewer`
-
-Check whether public and important internal behavior is understandable and safe
-to change. Find missing, stale, misleading, or detached docs and comments,
-especially around purpose, invariants, edge cases, errors, concurrency,
-lifecycle, cleanup, compatibility, and examples. Do not request comments that
-merely narrate obvious code. Return missing or misleading contracts and residual
-documentation risk.
+Evaluate proof quality rather than test count. Check whether tests exercise and
+assert the behavior the change actually claims to support, including meaningful
+fallback or failure behavior. Find misleading tests, weak assertions, and
+important untested branches introduced by the implementation. Do not demand an
+exhaustive matrix of theoretical cases or broaden product scope. Distinguish
+insufficient proof from an explicitly accepted limitation.
 
 ### `go_reviewer`
 
 Load the `go-development` skill and its
-`references/reviewer-deep.md` contract. Run the practical tooling gate first,
-then inspect API design, dependency ownership, error boundaries, concurrency
-lifecycle, test quality, and modernization judgment. For each finding include
-severity, `automated`/`mixed`/`review-only`, source rule, required action, and
-verification evidence.
+`references/reviewer-deep.md` contract. Review manual Go design judgment:
+simplicity, package and API boundaries, dependency and data ownership, errors,
+external effects, concurrency lifecycle, semantic tests, and behavioral
+documentation. Do not reproduce formatter, linter, compiler, or analyzer
+findings. Treat local precedent as evidence: follow hard repository constraints,
+tolerate legacy that requires broader migration, and challenge newly introduced
+avoidable complexity. For each finding include severity, location, concrete
+cost, the smallest responsible correction, and verification evidence.
 
 ### `error_handling_reviewer`
 
 Review operational failure behavior. Find swallowed errors, dangerous silent
 failures, weak observability, unsafe recovery or fallback logic, and mismatches
-between documented and actual error behavior. Prioritize paths that can corrupt
-state, hide bad outcomes, or make incidents hard to diagnose. Return dangerous
-failure modes, observability gaps, recovery issues, and residual operational
-risk.
+between documented and actual behavior. Prefer a safe, understandable stop over
+speculative automatic recovery when the system cannot prove the state. Return
+dangerous failure modes, observability gaps, recovery issues, and residual
+operational risk without inventing broader recovery requirements.
 
 ## Lane Rules
 
 - Remain read-only; do not implement fixes.
-- Focus on the assigned lens and target.
+- Focus on the assigned question and target.
 - Return findings directly, not lane-management narration.
 - Include concrete file references and evidence when possible.
-- If a lane cannot run, continue with useful lenses and report the missing lens
-  as residual risk.
-- The main session verifies findings and owns synthesis.
+- Treat context notes as context, not a checklist to enforce.
+- Do not promote residual risk or an unsupported hypothetical into required work.
+- If a lane cannot run, continue with useful lanes and report the missing lens
+  only when it materially reduces confidence.
+- The main session verifies findings against the code and conversation before
+  reporting them.
 
-## Good Default Combinations
+## Common Combinations
 
-### Current diff
-
-- `general_reviewer`
-- `repo_instructions_reviewer` when applicable
-
-### Spec alignment
+### Ordinary change
 
 - `general_reviewer`
-- `repo_instructions_reviewer` when applicable
-- `spec_alignment_reviewer`
 
-### Behavior change with tests
+### Explicit authoritative-contract alignment
 
 - `general_reviewer`
-- `repo_instructions_reviewer` when applicable
+- `contract_alignment_reviewer`
+
+### Behavior where test proof is the main concern
+
+- `general_reviewer`
 - `test_reviewer`
 
-### Go-heavy review
+### Substantial Go change
 
 - `general_reviewer`
-- `repo_instructions_reviewer` when applicable
 - `go_reviewer`
-- optional `documentation_reviewer`, `test_reviewer`, or
-  `error_handling_reviewer` only when the target justifies them
+- add `test_reviewer` only when it answers a separate proof question
 
-### Risky feature delivery
+### Recovery or destructive workflow
 
 - `general_reviewer`
-- `repo_instructions_reviewer` when applicable
-- `spec_alignment_reviewer`
-- `test_reviewer`
-- optional domain, documentation, error-handling, or one external-model lens
+- `error_handling_reviewer`
+- add a language or test lane only for another material uncertainty

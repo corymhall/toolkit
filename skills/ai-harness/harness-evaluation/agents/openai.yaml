@@ -1,0 +1,6 @@
+interface:
+  display_name: "Harness Evaluation"
+  short_description: "Review real sessions and skill effects"
+  default_prompt: "Use $harness-evaluation to review the relevant Pi or Codex sessions, evaluate loaded personal and repo-local skills against the central field criteria, identify the owning layer, and report evidence before recommending changes."
+policy:
+  allow_implicit_invocation: false

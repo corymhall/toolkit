@@ -1,0 +1,3 @@
+{"type":"session","version":3,"id":"skill-injection","timestamp":"2026-01-01T00:00:00Z","cwd":"/tmp/skill-injection"}
+{"type":"message","id":"s1","parentId":null,"timestamp":"2026-01-03T09:00:00Z","message":{"role":"user","content":[{"type":"text","text":"<skill name=\"request-review\" location=\"/tmp/request-review/SKILL.md\">Skill instructions</skill>"}]}}
+{"type":"message","id":"s2","parentId":"s1","timestamp":"2026-01-03T09:01:00Z","message":{"role":"user","content":[{"type":"text","text":"Review this change"}]}}

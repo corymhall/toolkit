@@ -36,25 +36,21 @@ Use when the user names:
 - a small set of files
 - a directory or package
 
-Preferred interpretation:
+Keep the review bounded to the named scope unless nearby context is needed to
+verify a concrete finding.
 
-- keep the review bounded to the named scope unless the reviewer needs nearby
-  context
+## Context or decision note plus implementation
 
-## Spec plus implementation scope
+A user may name an issue, decision note, design discussion, task, or plan as
+context for a code review. The main session should extract a concise statement
+of the intended observable behavior, constraints, and accepted limitations for
+the sidecar prompt.
 
-Use when the user says:
-
-- "does this match the spec?"
-- "review implementation against `spec.md`"
-- "check whether phase 2 is actually complete"
-
-Preferred evidence:
-
-- explicit spec/plan/task document
-- implementation file set, branch, or diff
-
-This is the main trigger for `spec_alignment_reviewer`.
+Treat these documents as context by default. Add a `contract_alignment_reviewer`
+only when the user explicitly designates a named document as authoritative or
+when it defines an external protocol, compatibility, security, or policy
+contract. The main session must identify the authoritative portions and retain
+ownership of conversational intent.
 
 ## PR for local analysis
 

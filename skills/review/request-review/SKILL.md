@@ -1,6 +1,6 @@
 ---
 name: request-review
-description: Run a focused manual review of a diff, branch, file set, or spec-aligned implementation using the smallest useful set of independent review lenses, then synthesize verified findings.
+description: Run a focused independent review of a diff, branch, file set, or pull request using one general reviewer by default and only the additional test, Go, error-handling, contract-alignment, or domain lenses that answer distinct unresolved questions.
 disable-model-invocation: true
 ---
 
@@ -19,8 +19,14 @@ Accept review requests for:
 - current diff
 - branch or ref range
 - file list or directory
-- spec path plus implementation scope
 - PR URL or number for local analysis only
+
+An issue, decision note, design discussion, task, or plan is context by default,
+not an authoritative checklist for an isolated sidecar. Treat a named document
+as authoritative only when the user explicitly says so or when it defines the
+external protocol, compatibility, security, or policy contract being reviewed.
+The main session owns interpreting intent because it retains the conversation
+with the user.
 
 If the user is vague, default to the current git diff. Open
 [references/target-shapes.md](references/target-shapes.md) for interpretation
@@ -29,13 +35,22 @@ details.
 ## Lens Selection
 
 Use [references/reviewer-lenses.md](references/reviewer-lenses.md) as the source
-of truth for lens selection and each lens contract. Choose the smallest set that
-answers the user's actual question. Do not add lanes merely because they exist.
+of truth for lens selection and each lens contract. Start with one
+`general_reviewer`. Add another lane only when it answers a distinct unresolved
+question; the presence of tests, Go files, repository instructions, or a plan
+does not by itself justify another lane. A contract-alignment lane is appropriate
+only for an explicitly authoritative document or external contract, not an
+ordinary implementation plan.
+
 The `references/` links are relative to this `request-review` skill directory;
 do not probe a sibling or parent `skills/review/references/` directory.
 
 Inspect enough of the target in the main session to frame precise sidecar
-prompts. Do not use sidecars to outsource baseline repository understanding.
+prompts. Include a concise statement of intended observable behavior and
+accepted constraints from the conversation. Read and apply repository
+instructions in the main session. Do not use sidecars to reconstruct user intent,
+enforce a lossy specification, perform author documentation work, or outsource
+baseline repository understanding.
 
 ## Launch Visible Sidecars
 
@@ -140,7 +155,7 @@ just to run these lenses.
 - Keep setup read-only. Do not rebase, merge, cherry-pick, reset, or otherwise
   rewrite the branch unless the user explicitly asks.
 - Gather only the evidence needed for the target: diff, files, named refs,
-  spec/task documents, or PR metadata.
+  concise intent context, or PR metadata.
 - For PR-backed reviews, read `baseRefName`, `headRefName`, and `headRefOid` from
   the PR. Verify refs with `git rev-parse --verify` and fetch exact refs when
   necessary before using `git diff <base>...<head>`.
@@ -151,8 +166,11 @@ just to run these lenses.
 - Use supported `gh pr view --json` fields. Use `gh api` when review comments,
   reviews, or threads are not exposed there.
 - Review lanes return evidence-backed findings rather than process narration.
+- Do not turn hypothetical unsupported behavior, a context-note detail, or a
+  residual risk into a requirement without grounding it in the intended change.
 - The main session owns synthesis and implementation. Verify material sidecar
-  findings against the code before reporting or acting on them.
+  findings against both the code and the conversation before reporting or
+  acting on them.
 
 ## Synthesis
 
@@ -161,7 +179,9 @@ Report findings first, ordered by severity. Include:
 - blocking findings
 - important non-blocking findings
 - disagreements or ambiguities across lenses
-- residual risks, unavailable lenses, or test gaps
+- residual risks, unavailable material lenses, or test gaps
+- findings rejected because they conflict with accepted scope, when that context
+  is important
 
 If there are no meaningful findings, say so clearly and name remaining
 uncertainty. Keep scope and lens details brief unless they explain review

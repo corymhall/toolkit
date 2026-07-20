@@ -192,8 +192,8 @@ update.
 
 | Area | Skills |
 |------|--------|
-| Review | `request-review`, `review-pr`, `explain-pr`, `claude-review` |
-| AI harness | `ai-contribution-readiness-audit`, `ai-harness-bootstrap`, `ai-harness-retrospective` |
+| Review | `prepare-for-review`, `request-review`, `review-pr`, `explain-pr`, `claude-review` |
+| AI harness | `ai-contribution-readiness-audit`, `ai-harness-bootstrap`, `harness-evaluation` |
 | Development | `go-development`, `neovim-plugin-development` |
 | General workflows | `collaborative-framing`, `multi-model-evaluate`, `git-spice-stack-prs` |
 | Operations | `memory-guard` |
@@ -203,16 +203,40 @@ update.
 
 ## Review Coordination
 
-`request-review` selects the smallest useful set of review lenses. When running
-inside Herdr, each sidecar gets its own non-focused, semantically named tab that
-the user can inspect or steer. The main session owns tab lifecycle, synthesis,
-and all implementation. Sidecar tabs remain through synthesis and are then
-closed unless the user asks to retain them. Outside Herdr, the skill applies the
-selected lenses in the main session and reports the reduced context isolation.
+`prepare-for-review` is a manually invoked author pass in the current session.
+It uses the conversation as the source of truth to simplify the implementation,
+apply relevant development guidance, document non-obvious code, and run focused
+verification before independent review.
+
+`request-review` starts with one independent general reviewer. It adds a test,
+Go, error-handling, contract-alignment, or focused domain lane only when that
+lane answers a distinct unresolved question. Contract alignment is reserved for
+an explicitly authoritative document or external contract, not an ordinary
+implementation plan. Intent alignment, repository compliance, and author-side
+documentation remain with the main session; context notes are not treated as
+complete specifications. When running inside Herdr, each selected sidecar gets
+its own non-focused, semantically named tab that the user can inspect or steer.
+The main session owns tab lifecycle, synthesis, and all implementation. Sidecar
+tabs remain through synthesis and are then closed unless the user asks to retain
+them. Outside Herdr, the skill applies the selected lenses in the main session
+and reports the reduced context isolation.
 
 The toolkit intentionally does not provide a generic subagent extension.
 Sidecars are for bounded research and independent review, not parallel ownership
 of overlapping implementation work.
+
+## Harness Evaluation
+
+`harness-evaluation` is a manually invoked personal field-evaluation workflow.
+It can review named Pi or Codex session JSONL files or scan a recent time window
+with bundled rollout helpers. Evaluation criteria for personal and repo-local
+skills are centralized in the evaluator rather than shipped with each evaluated
+skill. A bundled SQLite state CLI preserves runtime scan cursors, deduplicated
+session snapshots, unresolved findings, worktree reviews, and human decisions
+across scheduled runs and missed review days. The workflow separates activation,
+adherence, decision effect, human correction, cost, and owning layer; it reports
+evidence before judgment-heavy edits, permits only narrow objective scheduled
+fixes, and treats `No change` as a valid result.
 
 ## Memory Guard
 
@@ -272,6 +296,7 @@ skill path.
 
 ## Acknowledgements
 
+- [spf13/go-skills](https://github.com/spf13/go-skills) — concrete-first, anti-layering Go guidance adapted into `go-development`
 - [max-sixty/worktrunk](https://github.com/max-sixty/worktrunk) — worktree lifecycle and hook-based automation
 - [obra/superpowers](https://github.com/obra/superpowers) — thinking and review patterns that still influence the repo
 - [steveyegge/gastown](https://github.com/steveyegge/gastown) — reference material that informed earlier experiments

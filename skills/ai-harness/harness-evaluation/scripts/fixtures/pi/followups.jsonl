@@ -1,0 +1,5 @@
+{"type":"session","version":3,"id":"followups","timestamp":"2026-01-01T00:00:00Z","cwd":"/tmp/followups"}
+{"type":"message","id":"f1","parentId":null,"timestamp":"2026-01-03T12:00:00Z","message":{"role":"user","content":[{"type":"text","text":"Implement the change"}]}}
+{"type":"message","id":"f2","parentId":"f1","timestamp":"2026-01-03T12:01:00Z","message":{"role":"assistant","content":[{"type":"text","text":"Implemented a generalized state machine"}]}}
+{"type":"message","id":"f3","parentId":"f2","timestamp":"2026-01-03T12:02:00Z","message":{"role":"user","content":[{"type":"text","text":"This is too complicated; show me the simpler option"}]}}
+{"type":"message","id":"f4","parentId":"f3","timestamp":"2026-01-03T12:03:00Z","message":{"role":"assistant","content":[{"type":"text","text":"I will simplify it"}]}}

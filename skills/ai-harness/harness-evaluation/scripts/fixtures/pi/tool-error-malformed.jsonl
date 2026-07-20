@@ -1,0 +1,5 @@
+{"type":"session","version":3,"id":"tool-error","timestamp":"2026-01-01T00:00:00Z","cwd":"/tmp/tool-error"}
+{"type":"message","id":"t1","parentId":null,"timestamp":"2026-01-03T08:00:00Z","message":{"role":"user","content":[{"type":"text","text":"Fix the failing command"}]}}
+this is malformed json
+{"type":"message","id":"t2","parentId":"t1","timestamp":"2026-01-03T08:01:00Z","message":{"role":"assistant","content":[{"type":"toolCall","id":"read-1","name":"read","arguments":{"path":"/Users/example/.agents/skills/go-development/SKILL.md"}},{"type":"toolCall","id":"bash-1","name":"bash","arguments":{"command":"false"}}]}}
+{"type":"message","id":"t3","parentId":"t2","timestamp":"2026-01-03T08:01:01Z","message":{"role":"toolResult","toolCallId":"bash-1","toolName":"bash","content":[{"type":"text","text":"Command exited with code 1"}],"isError":true}}

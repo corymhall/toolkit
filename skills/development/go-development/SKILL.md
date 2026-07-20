@@ -1,151 +1,157 @@
 ---
 name: go-development
-description: Implement, refactor, modernize, and debug production Go code using Google-style API, error, concurrency, testing, and readability rules plus version-gated modernization guidance. For Go code review, prefer request-review with its Go reviewer lens.
+description: Implement, refactor, and debug production Go using simple package and API design, concrete-first abstractions, explicit ownership, reliable error and concurrency boundaries, semantic tests, and repository-aware contributor judgment. For independent review, use request-review with its Go lens.
 ---
 
 # Go Development
 
-Use this skill for writing and changing Go code. Keep the main session focused
-on the implementation outcome, and load only the Go rules that match the code
-being touched.
+Write clear, boring Go. Prefer the smallest direct implementation that solves
+the current problem. Do not make an unnecessary design more idiomatic; remove
+the unnecessary design.
 
-For review-only work, prefer `request-review` with the `go_reviewer` lens,
-which uses the Go-specific review contract in
+Use this skill for implementation and author-side Go judgment. For independent
+review, use `request-review` with its `go_reviewer` lens, which loads
 [references/reviewer-deep.md](references/reviewer-deep.md).
 
-## Implementer Profile
+## Start With Repository Reality
 
-1. Inspect the repo's existing Go version, style, lint config, and local
-   patterns.
-2. Locate the real execution surface before running verification: the owning
-   `go.mod`/`go.work`, the repo's preferred wrapper (`mise`, `make`, `mage`,
-   script targets), and any AGENTS/docs command canon.
-3. Run the tooling gate when practical, or note why it is too expensive or
-   blocked.
-4. Read only the rule files that match the changed risk areas.
-5. Implement with minimal policy overhead and verify the changed behavior.
+Before changing code:
 
-## Version Gate
+1. Read the applicable repository instructions and architecture docs.
+2. Find the owning `go.mod` or `go.work` and its minimum Go version.
+3. Identify handwritten, generated, vendored, and upstream boundaries.
+4. Find the repository's canonical build, format, lint, and test commands.
+5. Inspect nearby code and recent changes, but treat local precedent as evidence,
+   not proof of idiomatic Go.
 
-Before applying modernization rules, check the target Go version from `go.mod`,
-toolchain config, CI, or repo docs.
+Classify a conflicting local pattern before acting:
 
-- Use modernization rules only when the repo's target Go version supports them.
-- Do not "modernize" across a version boundary without an explicit upgrade
-  request.
-- If version support is unclear, prefer the established local pattern and note
-  the uncertainty.
+- **Hard constraint:** public compatibility, generated boundaries, mandated
+  frameworks, persisted state, or repository workflow. Follow it.
+- **Tolerated legacy:** changing it requires a broader migration. Do not turn a
+  narrow contribution into that migration.
+- **Do not propagate:** a simpler idiomatic choice fits locally without breaking
+  compatibility. Prefer the simpler choice.
 
-## Architecture Defaults
+Keep changes focused. Do not demand repository-wide cleanup, but do not deepen
+legacy architecture merely for consistency.
 
-- For stateful, lifecycle-heavy, or multi-step behavior, start with a concrete struct (`App`, `Runner`, `Service`, `Client`) that owns its dependencies through fields and methods.
-- Keep dependency ownership explicit with constructors or small config/dependency structs. Prefer `runner := Runner{clock: realClock{}, fs: osFS{}}` over package-global mutable function vars.
-- Start with concrete types first. Introduce interfaces only at the consuming boundary and only when a real alternate implementation or test seam is needed.
-- Keep `main` packages thin: parse flags/config, build concrete dependencies, instantiate an `app`/`runner`/`service`, and delegate execution to a method.
-- Do not default to package-global mutable function vars such as `var nowFn = time.Now`, `var readFileFn = os.ReadFile`, or `var killFn = syscall.Kill`. Treat them as a last-resort legacy seam that requires explicit justification and careful test restoration.
-- In tests, prefer constructing a subject with fake/stub dependencies over mutating package globals. This keeps dependencies visible and tests safe for parallel execution.
+## Core Go Posture
 
-## Tooling Gate First
+- Clear is better than clever. Keep control flow direct and the happy path easy
+  to see.
+- Start concrete. Add an abstraction only when a current consumer, alternate
+  implementation, ownership boundary, or test seam genuinely needs it.
+- A package boundary must earn its cost through a coherent domain or dependency
+  boundary. Do not create `service`, `repository`, `controller`, `manager`,
+  `utils`, or `common` layers by reflex.
+- `internal` and `pkg` are mechanisms, not architectures. Use or preserve them
+  when repository visibility and compatibility require them; do not use them as
+  junk drawers.
+- Prefer the standard library when it is sufficient and materially simpler.
+  Existing repository dependencies and frameworks may still be hard constraints.
+- Design useful zero values when practical. Require constructors only when they
+  establish invariants or dependencies that cannot be optional.
+- Export only the API callers need. Preserve public compatibility unless the
+  requested work explicitly changes it.
+- Do not add generic extension points, option systems, state machines, worker
+  pools, or recovery inference for hypothetical future needs.
+- If a difficult tail case can safely retain current behavior or stop with useful
+  guidance, defer it when automatic support adds disproportionate complexity.
 
-Run the gate from the repo's real Go execution surface, not automatically from
-the repository root.
+Read [references/architecture.md](references/architecture.md) when package
+boundaries, interfaces, dependency ownership, globals, public APIs, or data
+ownership are central to the change.
 
-- If the changed code lives under a nested module or workspace, `cd` there or
-  use the repo wrapper that already targets it.
-- If repo instructions prefer a wrapper such as `mise exec -- make ...`, use
-  that before falling back to raw `go` or `golangci-lint` commands.
-- If broad gates fail because generated/embed artifacts are missing or because
-  the root command scans unrelated stale packages, switch to the narrowest
-  meaningful package/module checks and report the blocker clearly.
+## Errors, Context, Concurrency, And Effects
 
-When `golangci-lint` v2 config is present:
+- Return errors from reusable code and add operation context at meaningful
+  boundaries without destroying caller-visible identity.
+- Match errors with `errors.Is` or `errors.As` when callers need classification.
+  Follow established repository error style when wording or types are part of a
+  compatibility surface.
+- Log an error where handling policy is decided; do not repeatedly log and
+  return the same failure.
+- Reserve panic, process exit, and invariant assertions for boundaries or states
+  where ordinary recovery is impossible. External input and operational failure
+  should normally return errors.
+- Accept and propagate `context.Context` for request-scoped, cancelable, or
+  long-running work. Do not add context mechanically to pure functions.
+- Every goroutine needs an owner, stop condition, and completion policy.
+- Use channels for communication and ownership transfer; use mutexes for
+  protecting shared state. Choose the simpler model for the invariant.
+- Bound concurrency when caller-controlled input can create unbounded work.
+- Make mutation and aliasing of maps, slices, pointers, protobufs, and state
+  explicit. Copy only when ownership requires it.
+- Treat filesystem, process, network, Git, and environment changes as effects.
+  Keep their ordering, retries, partial failure, and no-op behavior reviewable.
+- Prefer a safe, understandable stop over guessing at ambiguous recovery state.
+
+Read [references/errors-concurrency.md](references/errors-concurrency.md) for
+changes where failure policy, cancellation, shared state, background work, or
+external effects are material.
+
+## Tests And Documentation
+
+- Test observable behavior and regressions, not implementation structure.
+- Use table-driven tests when several cases share the same setup and assertion
+  shape. Do not force a specialized scenario into a table for uniformity.
+- Use the repository's established test harness when it carries semantic setup,
+  generated assets, protocol fixtures, or external-tool behavior.
+- Prefer the smallest useful seam. A direct function, temporary directory,
+  local server, or narrow fake is often simpler than abstracting a clock,
+  filesystem, process, or client hierarchy.
+- Preserve important failure, cancellation, partial-result, and fallback paths.
+  Do not build an exhaustive matrix for behavior the change deliberately does
+  not support.
+- Document exported APIs where appropriate and explain non-obvious purpose,
+  invariants, ownership, lifecycle, error behavior, and safety tradeoffs.
+  Comments should preserve reasoning, not narrate syntax.
+
+Read [references/testing-documentation.md](references/testing-documentation.md)
+when test architecture or maintainer-facing contracts are a central risk.
+
+## Tooling Is The Mechanical Gate
+
+Use the repository's pinned commands from the real module or workspace. Run the
+formatter, linter, generated-output checks, and focused tests appropriate to the
+change. Broaden validation only when repository guidance and risk justify it.
+
+Do not reproduce formatter, import, naming, or analyzer findings as prose rules.
+For explicit modernization work, use version-aware tooling supported by the
+repository, inspect its changes for semantic differences, and do not modernize
+across the module's minimum Go version.
+
+If no repository workflow exists, use the Go tools directly as a baseline:
 
 ```bash
-golangci-lint fmt --diff
-golangci-lint run
-go test ./...
-```
-
-Fallback (portable baseline):
-
-```bash
-bad=""
-while IFS= read -r -d '' f; do
-  out="$(gofmt -l "$f")"
-  if [ -n "$out" ]; then
-    bad="${bad}${out}\n"
-  fi
-done < <(git ls-files -z --cached --others --exclude-standard -- '*.go')
-if [ -n "$bad" ]; then
-  printf 'gofmt required for:\n%b' "$bad"
-  exit 1
-fi
+gofmt -w <changed-go-files>
 go vet ./...
 go test ./...
 ```
 
-## Rule Categories
+Do not run credentialed, acceptance, or unusually broad suites merely because
+they exist. Report the commands actually run and any blocked validation.
 
-- `api-*`: API and package design
-- `error-*`: error and failure policy
-- `concurrency-*`: context and lifecycle
-- `testing-*`: test quality and helpers
-- `style-*` / `readability-*`: style, naming, docs
-- `language-*`: value/pointer/slice semantics
-- `modernize-*`: version-gated modernization
-- `dependency-*`: dependency hygiene
-- `verification-*`: verification and delivery
+## Before Independent Review
 
-## What To Read Next
+When the user invokes `prepare-for-review`, apply this skill to the complete Go
+diff in the main session:
 
-Use `references/lint-coverage-matrix.md` to decide depth:
+- reconcile it with the conversation and accepted scope
+- simplify unnecessary architecture and speculative support
+- apply current Go judgment without blindly copying local legacy patterns
+- add missing behavioral documentation
+- run the repository's focused mechanical and test gates
 
-- `automated`: trust tooling output first
-- `mixed`: check linter output plus rule intent
-- `review-only`: always evaluate manually
+A later `go_reviewer` is an independent manual-design pass, not another linter.
 
-For implementation, load targeted rules based on the work:
+## Sources
 
-- package design, dependency wiring, or test seams:
-  `rules/api-global-state.md`, `rules/api-consumer-interfaces.md`
-- command setup, cancellation, or process boundaries:
-  `rules/api-cli-command-context.md`, `rules/error-init-panic-boundaries.md`
-- goroutines, cancellation, or worker lifecycles:
-  `rules/concurrency-context-first.md`,
-  `rules/concurrency-goroutine-lifecycles.md`
-- error surfaces, wrapping, logging, or panic policy:
-  `rules/error-api-contract.md`, `rules/error-wrap-context.md`,
-  `rules/error-logging-boundaries.md`, `rules/error-no-panic-libraries.md`
-- tests, fakes, or helper assertions:
-  `rules/testing-failures-helpers.md`, `rules/testing-table-driven.md`
-- Go version updates or cleanup work:
-  `references/modernize-checklist.md` and only the relevant `modernize-*`
-  rules
+This skill is informed by:
 
-## Local Autofix Policy
-
-Allowed for implementers:
-
-```bash
-golangci-lint run --fix
-```
-
-Reviewer/CI gate stays non-mutating (`fmt --diff`, `run`, tests).
-
-## References
-
-- `references/lint-coverage-matrix.md` - rule-to-enforcement routing
-- `references/reviewer-deep.md` - Go reviewer lane contract
-- `references/golangci-lint-v2.7.2.yml` - recommended v2 config baseline
-- `references/google-go-style-checklist.md` - guide/decisions/best-practices pass/fail list
-- `references/effective-go-checklist.md` - core idioms and API basics
-- `references/modernize-checklist.md` - modernize analyzer coverage and guardrails
-
-## Source Alignment
-
-- Effective Go: `https://go.dev/doc/effective_go`
-- Go Code Review Comments: `https://go.dev/wiki/CodeReviewComments`
-- Google Go guide: `https://google.github.io/styleguide/go/guide`
-- Google Go decisions: `https://google.github.io/styleguide/go/decisions`
-- Google Go best practices: `https://google.github.io/styleguide/go/best-practices`
-- Modernize analyzers (pinned): `https://github.com/golang/tools/blob/b365b0a1509ccb1f7568a67499c6db90a6928d7c/go/analysis/passes/modernize/modernize.go`
+- [spf13/go-skills](https://github.com/spf13/go-skills), especially its
+  concrete-first and anti-layering posture
+- [Effective Go](https://go.dev/doc/effective_go)
+- [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments)
+- [Google Go Style Guide](https://google.github.io/styleguide/go/)
