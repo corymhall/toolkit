@@ -195,11 +195,17 @@ update.
 | Review | `prepare-for-review`, `request-review`, `review-pr`, `explain-pr`, `claude-review` |
 | AI harness | `ai-contribution-readiness-audit`, `ai-harness-bootstrap`, `harness-evaluation` |
 | Development | `go-development`, `neovim-plugin-development` |
-| General workflows | `collaborative-framing`, `multi-model-evaluate`, `git-spice-stack-prs` |
+| General workflows | `collaborative-framing`, `capture-decision-context`, `multi-model-evaluate`, `git-spice-stack-prs` |
 | Operations | `memory-guard` |
 | Provider work | `triage-provider-issue`, `pulumi-rpc-lifecycle-investigation`, `bridge-parity-investigation`, `stage-pulumi-provider-repro`, `stage-terraform-provider-repro`, `workaround-investigation` |
 | Pulumi audit | `pulumi-test-rationalization-audit` |
 | Codex CLI-only | `spec-to-goal` |
+
+`capture-decision-context` is a manually invoked way to preserve the motivation,
+evidence, rationale, tradeoffs, accepted limitations, and open questions from a
+conversation. It produces either an implementation-light context note or a
+compact GitHub issue draft with supporting evidence in an expandable section,
+rather than an authoritative specification or autonomous implementation plan.
 
 ## Review Coordination
 

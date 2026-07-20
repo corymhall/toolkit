@@ -1,0 +1,6 @@
+interface:
+  display_name: "Capture Decision Context"
+  short_description: "Preserve session rationale as a decision note or issue draft"
+  default_prompt: "Use $capture-decision-context to preserve the important decisions, rationale, tradeoffs, limitations, and open questions from this conversation as an implementation-light decision note or compact GitHub issue draft."
+policy:
+  allow_implicit_invocation: false
