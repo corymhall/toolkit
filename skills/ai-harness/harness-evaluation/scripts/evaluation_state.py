@@ -77,7 +77,8 @@ def initialize(connection: sqlite3.Connection) -> None:
             pi_since TEXT NOT NULL,
             status TEXT NOT NULL,
             completed_at TEXT,
-            report TEXT
+            report TEXT,
+            scan_result_json TEXT
         );
 
         CREATE TABLE IF NOT EXISTS run_sessions (
@@ -121,6 +122,11 @@ def initialize(connection: sqlite3.Connection) -> None:
         );
         """
     )
+    run_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(runs)")
+    }
+    if "scan_result_json" not in run_columns:
+        connection.execute("ALTER TABLE runs ADD COLUMN scan_result_json TEXT")
     connection.commit()
 
 
@@ -212,15 +218,22 @@ def scan_run(
     run = load_run(connection, run_id)
     if run["status"] != "started":
         raise ValueError(f"run {run_id} is {run['status']}, not started")
+    if run["scan_result_json"]:
+        return json.loads(run["scan_result_json"])
 
     results: dict[str, Any] = {
         "run_id": run_id,
         "scan_through": run["scan_through"],
         "runtimes": {},
     }
+    scan_through = parse_timestamp(run["scan_through"])
 
     pi_cutoff = parse_timestamp(run["pi_since"])
-    pi_all = recent_pi_sessions.scan_sessions(pi_root.expanduser(), pi_cutoff)
+    pi_all = [
+        summary
+        for summary in recent_pi_sessions.scan_sessions(pi_root.expanduser(), pi_cutoff)
+        if summary.activity <= scan_through
+    ]
     pi_unseen = []
     for summary in pi_all:
         item = recent_pi_sessions.summary_dict(summary)
@@ -240,7 +253,13 @@ def scan_run(
     }
 
     codex_cutoff = parse_timestamp(run["codex_since"])
-    codex_all = list(recent_rollouts.iter_recent_rollouts(codex_root.expanduser(), codex_cutoff))
+    codex_all = [
+        item
+        for item in recent_rollouts.iter_recent_rollouts(
+            codex_root.expanduser(), codex_cutoff
+        )
+        if item[2] <= scan_through
+    ]
     codex_unseen = []
     for path, started, activity, cwd in codex_all:
         item = {
@@ -264,6 +283,10 @@ def scan_run(
         "unseen": len(codex_unseen),
         "sessions": codex_unseen,
     }
+    connection.execute(
+        "UPDATE runs SET scan_result_json = ? WHERE id = ?",
+        (json.dumps(results, sort_keys=True), run_id),
+    )
     connection.commit()
     return results
 

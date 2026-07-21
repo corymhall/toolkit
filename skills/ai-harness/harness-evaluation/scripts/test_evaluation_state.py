@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -47,6 +48,55 @@ class EvaluationStateTest(unittest.TestCase):
         self.assertGreater(repeated["runtimes"]["pi"]["matched"], 0)
         self.assertEqual(repeated["runtimes"]["codex"]["unseen"], 0)
         self.assertEqual(repeated["runtimes"]["pi"]["unseen"], 0)
+
+    def test_run_scan_is_frozen_after_first_result(self):
+        runtime_root = self.state_root / "runtime"
+        shutil.copytree(self.fixtures, runtime_root)
+        run = evaluation_state.begin_run(
+            self.connection, hours=100000, overlap_hours=1
+        )
+
+        first = evaluation_state.scan_run(
+            self.connection,
+            run["run_id"],
+            runtime_root / "codex",
+            runtime_root / "pi",
+        )
+        shutil.copy(
+            runtime_root / "pi" / "skill-injection.jsonl",
+            runtime_root / "pi" / "added-after-scan.jsonl",
+        )
+        repeated = evaluation_state.scan_run(
+            self.connection,
+            run["run_id"],
+            runtime_root / "codex",
+            runtime_root / "pi",
+        )
+
+        self.assertEqual(repeated, first)
+
+    def test_run_scan_excludes_activity_after_scan_through(self):
+        runtime_root = self.state_root / "runtime"
+        shutil.copytree(self.fixtures, runtime_root)
+        future = runtime_root / "pi" / "future.jsonl"
+        future.write_text(
+            (runtime_root / "pi" / "skill-injection.jsonl")
+            .read_text()
+            .replace("2026-01", "2999-01")
+        )
+        run = evaluation_state.begin_run(
+            self.connection, hours=10000000, overlap_hours=1
+        )
+
+        scan = evaluation_state.scan_run(
+            self.connection,
+            run["run_id"],
+            runtime_root / "codex",
+            runtime_root / "pi",
+        )
+
+        paths = {item["path"] for item in scan["runtimes"]["pi"]["sessions"]}
+        self.assertNotIn(str(future), paths)
 
     def test_failed_initial_run_preserves_its_earlier_scan_window(self):
         first = evaluation_state.begin_run(
