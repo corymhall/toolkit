@@ -101,6 +101,26 @@ Specific skills should make the agent less likely to skip the important domain
 move. They should not become a long general workflow with domain words sprinkled
 on top.
 
+## Repository-Specific Skills And Documentation
+
+Put stable repository knowledge in documentation: architecture, terminology,
+lifecycle and state models, ownership boundaries, code maps, upstream
+relationships, common pitfalls, and worked examples. Use a repo-specific skill
+to route the agent to relevant evidence and change a few decisions, boundaries,
+or stopping behaviors that documentation alone would not reliably produce.
+
+Do not try to make an unfamiliar contributor agent reason exactly like a
+maintainer. Help it produce a small, evidence-backed, reviewable change with
+explicit assumptions, a conservative fallback, focused proof, and clear points
+for maintainer judgment.
+
+Treat domain boundary and edge-case lists as navigation, not automatic
+acceptance criteria. Relevant cases must be dispositioned, not necessarily
+implemented: a case may be required for the motivating behavior, naturally
+covered, left on an existing safe fallback, deferred, unsupported, or out of
+scope. Measure current
+repository or user incidence before adding machinery for uncommon cases.
+
 ## Model Fit
 
 Do not assume a skill written for another model, agent runtime, or year transfers
@@ -147,17 +167,27 @@ When evidence is weak, keep the skill narrow, explicit, and easy to override.
 A broad general skill with only toy-scenario evidence should be treated as an
 untested theory, not reusable infrastructure.
 
-## Planning Artifacts
+## Durable Context And Planning Artifacts
 
-Durable plans are useful when the work is long, risky, restart-sensitive,
-handoff-heavy, or likely to span multiple sessions.
+The conversation often contains richer intent than any artifact: what the user
+cares about, which ideas were tentative, why an option was chosen, and which
+limitations were accepted. When that context must survive, prefer a concise
+decision note or GitHub issue that preserves motivation, desired outcome,
+evidence, rationale, tradeoffs, limitations, non-goals, and open questions.
 
-They are not the default answer to every fuzzy request. For many tasks, the best
-planning surface is the conversation itself: inspect the repo, clarify the real
-goal, compare a few concrete options, and proceed once the direction is clear.
+Do not make such an artifact sufficient for autonomous implementation by adding
+file-by-file tasks, exhaustive edge-case matrices, detailed pseudocode, or
+speculative requirements. Keep an implementation detail only when it records an
+external contract, settled constraint, consequential tradeoff, or reason an
+alternative was rejected. Future agents should combine the artifact with the
+current repository and maintainer conversation rather than enforce it as an
+authoritative specification.
 
-Use heavier planning only when it reduces real risk or preserves decisions that
-would otherwise be lost.
+Detailed plans remain useful when work is long, risky, restart-sensitive,
+handoff-heavy, or genuinely needs a decision-complete contract. They are not the
+default answer to every fuzzy request. For many tasks, the best planning surface
+is the conversation itself: inspect the repo, clarify the real goal, compare a
+few concrete options, and proceed once the direction is clear.
 
 ## Preferred Patterns
 
@@ -175,6 +205,9 @@ would otherwise be lost.
 - broad skills copied from another model ecosystem without adaptation
 - mandatory planning frameworks for ordinary implementation work
 - skill chains that make the agent manage the workflow instead of the goal
+- skill chains where one skill broadens scope, another turns it into a
+  specification, and review or language skills polish it without challenging
+  the premise
 - prompt rules that duplicate what tool descriptions or repo docs already say
 - large templates whose main effect is verbosity
 - eval claims based on a few cherry-picked examples
@@ -185,9 +218,12 @@ would otherwise be lost.
 2. Would the agent likely do the right thing without it?
 3. Is this skill general posture or domain-specific judgment?
 4. Can the instruction be shorter without losing the important behavior?
-5. Is the trigger narrow enough to avoid accidental activation?
-6. Has real use shown that it reduces correction, rework, or missed evidence?
-7. What would make us shrink or delete it?
+5. Is stable knowledge being duplicated from repository documentation?
+6. Is the trigger narrow enough to avoid accidental activation?
+7. Could another skill mistake this skill's output for an authoritative
+   checklist or specification?
+8. Has real use shown that it reduces correction, rework, or missed evidence?
+9. What would make us shrink or delete it?
 
 ## References
 
