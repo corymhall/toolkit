@@ -27,10 +27,30 @@ git clone https://github.com/corymhall/toolkit.git
 cd toolkit
 mise install
 scripts/install-local-skills.sh
+mise run check:local-install
 ```
 
+The local-install check is non-mutating and verifies every expected shared and
+Codex-only skill link plus the memory guard's `make` proxy against this checkout.
+
 List available tasks with `mise tasks`. Common entry points include
-`mise run test`, `mise run skills:list`, and `mise run skills:update`.
+`mise run validate`, `mise run test`, and `mise run skills:update`. Mise's npm
+dependency provider runs `npm ci` automatically before `mise run` or `mise x`
+when the manifests change or `node_modules/` is missing.
+
+### Git lifecycle
+
+The repository pins [hk](https://hk.jdx.dev/) for non-mutating Git lifecycle
+checks. With Git 2.54 or newer, install hk's global hooks once:
+
+```bash
+mise run hooks:install
+```
+
+The global hooks run through `mise x` and are a no-op in repositories without an
+`hk.pkl`. This repository runs ShellCheck, skill validation, and repository
+policy at pre-commit, then the complete `mise run validate` graph at pre-push.
+Mise tasks remain the source of truth; hk only connects them to Git events.
 
 The installer maps:
 
@@ -196,6 +216,7 @@ update.
 | AI harness | `ai-contribution-readiness-audit`, `ai-harness-bootstrap`, `harness-evaluation` |
 | Development | `go-development`, `neovim-plugin-development` |
 | General workflows | `collaborative-framing`, `capture-decision-context`, `multi-model-evaluate`, `git-spice-stack-prs` |
+| Documentation | `notion-docs` |
 | Operations | `memory-guard` |
 | Provider work | `triage-provider-issue`, `pulumi-rpc-lifecycle-investigation`, `bridge-parity-investigation`, `stage-pulumi-provider-repro`, `stage-terraform-provider-repro`, `workaround-investigation` |
 | Pulumi audit | `pulumi-test-rationalization-audit` |
@@ -265,18 +286,22 @@ installer does not edit agent settings.
 
 ## Validation
 
+Install the repository-managed tools and run the complete local validation
+graph:
+
 ```bash
-while IFS= read -r -d '' skill_file; do
-  python3 /Users/chall/.codex/skills/.system/skill-creator/scripts/quick_validate.py "$(dirname "$skill_file")"
-done < <(find skills codex-skills .agents/skills -name SKILL.md -type f -print0)
-jq empty package.json package-lock.json skills-lock.json
-npm test
-bash -n scripts/*.sh
-scripts/test-claude-review.sh
-scripts/test-local-installer.sh
-scripts/test-memory-guard.sh
-scripts/test-pi-package.sh
+mise install
+mise run validate
 ```
+
+The graph validates every shared, managed, and Codex-only skill against the
+Agent Skills specification, checks repository policy and text hygiene, runs
+ShellCheck, tests all extensions, and exercises the helper scripts, local
+installer, memory guard, and Pi package. Pi's
+`disable-model-invocation` frontmatter extension is type-checked locally and
+removed only from the temporary copy passed to the specification validator.
+The Pi package smoke test uses the global `pi` executable on `PATH`; Pi is not
+managed by this repository. Use `mise tasks ls` to discover narrower checks.
 
 ## Migrating From The Plugin Layout
 

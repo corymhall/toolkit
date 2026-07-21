@@ -1,0 +1,4 @@
+interface:
+  display_name: "Notion Docs"
+  short_description: "Read, map, and create Notion documentation"
+  default_prompt: "Use $notion-docs to read this Notion page and summarize it with its canonical link."

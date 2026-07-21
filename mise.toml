@@ -1,11 +1,69 @@
+min_version = "2025.1.0"
+
+[settings]
+experimental = true
+lockfile = true
+lockfile_platforms = ["linux-x64", "macos-arm64", "macos-x64"]
+
+[env]
+HK_MISE = "1"
+
 [tools]
+hk = "1.51.0"
 node = "26.5.0"
 bun = "1.3.13"
+python = "3.13.14"
+uv = "0.11.29"
 "npm:skills" = "1.5.17"
+"pipx:skills-ref" = "0.1.1"
+shellcheck = "0.11.0"
+
+[deps.npm]
+auto = true
+run = "npm ci"
 
 [tasks.test]
 description = "Run the extension test suite"
 run = "npm test"
+
+[tasks."lint:shell"]
+description = "Lint repository shell scripts"
+run = "shellcheck scripts/*.sh"
+
+[tasks."lint:skills"]
+description = "Validate skills against the Agent Skills specification"
+run = "uv run --script scripts/lint-skills.py"
+
+[tasks."check:repository"]
+description = "Check repository-specific skill and source policies"
+run = "uv run --script scripts/check-repository.py"
+
+[tasks."check:local-install"]
+description = "Check live skill links and the memory guard proxy"
+run = "scripts/check-local-install.sh"
+
+[tasks."check:hooks"]
+description = "Validate the hk Git lifecycle configuration"
+run = "hk config dump >/dev/null"
+
+[tasks."hooks:install"]
+description = "Install Git 2.54+ global hk hooks through mise"
+# Global config hooks are no-ops without hk.pkl. --mise makes hook commands use
+# `mise x`, so each repository resolves its own pinned hk and validation tools.
+run = "hk install --global --mise"
+
+[tasks."test:integration"]
+description = "Test skill helpers, local installation, memory guard, and the Pi package"
+run = '''
+scripts/test-claude-review.sh
+scripts/test-local-installer.sh
+scripts/test-memory-guard.sh
+scripts/test-pi-package.sh
+'''
+
+[tasks.validate]
+description = "Run all repository validation"
+depends = ["lint:shell", "lint:skills", "check:repository", "check:hooks", "test", "test:integration"]
 
 [tasks."skills:list"]
 description = "List project-managed Agent Skills"

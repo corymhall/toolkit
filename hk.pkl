@@ -1,0 +1,40 @@
+amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
+
+min_hk_version = "1.51.0"
+
+local pre_commit_checks = new Mapping<String, Step> {
+  ["shell"] {
+    glob = "scripts/*.sh"
+    check = "mise run lint:shell"
+  }
+  ["skills"] {
+    glob = List(
+      ".agents/skills/**",
+      "codex-skills/**",
+      "skills/**",
+      "scripts/lint-skills.py",
+      "mise.toml",
+      "mise.lock"
+    )
+    check = "mise run lint:skills"
+  }
+  ["repository"] {
+    check = "mise run check:repository"
+  }
+}
+
+hooks {
+  ["pre-commit"] {
+    steps = pre_commit_checks
+  }
+  ["check"] {
+    steps = pre_commit_checks
+  }
+  ["pre-push"] {
+    steps {
+      ["validate"] {
+        check = "mise run validate"
+      }
+    }
+  }
+}

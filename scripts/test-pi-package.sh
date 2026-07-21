@@ -75,6 +75,9 @@ for extension in extensions:
         raise SystemExit(f"Pi extension does not exist: {extension}")
 PY
 
+# Run package commands outside the source tree so validation never needs to
+# approve project-local resources merely to install this explicit package path.
+cd "${tmp_dir}"
 pi install "${repo_root}"
 pi list
 pi --list-models >/dev/null

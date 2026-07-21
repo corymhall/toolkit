@@ -24,17 +24,23 @@ Local installs use:
 
 ```bash
 scripts/install-local-skills.sh
+mise run check:local-install
 ```
 
-The installer links first-party and managed third-party shared skills into
-`~/.agents/skills`, Codex CLI-only skills into `${CODEX_HOME:-~/.codex}/skills`, and
+The check is non-mutating and verifies the live links against the current
+checkout. The installer links first-party and managed third-party shared skills
+into `~/.agents/skills`, Codex CLI-only skills into
+`${CODEX_HOME:-~/.codex}/skills`, and
 the memory guard's `make` proxy into `~/.local/bin`. It may remove only legacy
 toolkit-owned reviewer symlinks from the former plugin layout. It must not edit
 agent settings or package caches, and it must refuse to replace non-symlink
 destinations.
 
-Repository tool versions and common tasks are managed by `mise.toml`. Run
-`mise install` before using them.
+Repository tool versions, npm dependency freshness, and common tasks are
+managed by `mise.toml`. Run `mise install` before using them; `mise run` and
+`mise x` automatically run `npm ci` when dependencies are stale. Keep
+`mise.lock` committed and regenerate it with `mise lock` when tool or
+lockfile-platform pins change.
 
 Update all managed third-party skills with:
 
@@ -53,13 +59,21 @@ The root `package.json` exposes the recursive `skills/` tree and
 installer discovers nested skill directories recursively but links each skill
 flat into `~/.agents/skills` for cross-harness compatibility.
 
-After editing skills, validate all shared and Codex CLI-only skills:
+After changing skills, extensions, installers, or package metadata, run the
+complete local validation graph:
 
 ```bash
-while IFS= read -r -d '' skill_file; do
-  python3 /Users/chall/.codex/skills/.system/skill-creator/scripts/quick_validate.py "$(dirname "$skill_file")"
-done < <(find skills codex-skills .agents/skills -name SKILL.md -type f -print0)
+mise run validate
 ```
+
+Use `mise tasks ls` to discover narrower lint and test tasks. Skill linting uses
+the Agent Skills reference validator; the wrapper validates Pi's
+`disable-model-invocation` extension and removes only that field from a temporary
+copy before specification validation.
+
+The pinned hk configuration runs the fast lint and policy tasks at pre-commit
+and `mise run validate` at pre-push. Install Git 2.54+ global hooks once with
+`mise run hooks:install`; mise tasks remain the validation source of truth.
 
 ## Pi Extension Management
 
@@ -86,18 +100,6 @@ done < <(find skills codex-skills .agents/skills -name SKILL.md -type f -print0)
   subprocess arguments, quote any command text sent through a terminal, and
   require confirmation before creating worktrees, running repository hooks, or
   starting external sessions.
-
-Also validate the Pi package and local installer:
-
-```bash
-jq empty package.json skills-lock.json
-npm test
-bash -n scripts/*.sh
-scripts/test-claude-review.sh
-scripts/test-local-installer.sh
-scripts/test-memory-guard.sh
-scripts/test-pi-package.sh
-```
 
 ## Process Management
 
