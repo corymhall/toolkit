@@ -79,8 +79,9 @@ pi install git:github.com/corymhall/toolkit
 The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
 `extensions/codex-commentary`, `extensions/codex-fast-mode`,
-`extensions/skill-autocomplete`, `extensions/status-footer`,
-`extensions/delegate`, and `extensions/herdr-command` extensions.
+`extensions/skill-autocomplete`, `extensions/system-prompt`,
+`extensions/status-footer`, `extensions/delegate`, and
+`extensions/herdr-command` extensions.
 `codex-skills/spec-to-goal` is omitted because Pi does not provide Codex CLI's
 `/goal` workflow. The package does not add hidden background-process or generic
 subagent tools.
@@ -131,6 +132,16 @@ prompt. Model-invocable skills remain ordinary exact-name mentions. Skills with
 required leading `/skill:name` form when submitted. See
 [extensions/skill-autocomplete/README.md](extensions/skill-autocomplete/README.md)
 for behavior and limitations.
+
+### System Prompt extension
+
+`/system-prompt` opens the last effective Pi system-prompt string in a local
+multiline viewer; `/system-prompt current` reads the currently assembled string
+instead. The extension does not inject the prompt into model context or persist
+another session copy. Provider payload rewrites and host-level instructions are
+outside Pi's prompt API. See
+[extensions/system-prompt/README.md](extensions/system-prompt/README.md) for the
+exact boundary and sensitivity warning.
 
 ### Status Footer extension
 

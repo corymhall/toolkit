@@ -64,6 +64,7 @@ expected_extensions = [
     "extensions/codex-commentary/index.ts",
     "extensions/codex-fast-mode/index.ts",
     "extensions/skill-autocomplete/index.ts",
+    "extensions/system-prompt/index.ts",
     "extensions/status-footer/index.ts",
     "extensions/delegate/index.ts",
     "extensions/herdr-command/index.ts",
