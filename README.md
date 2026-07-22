@@ -80,8 +80,8 @@ The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
 `extensions/codex-commentary`, `extensions/codex-fast-mode`,
 `extensions/skill-autocomplete`, `extensions/system-prompt`,
-`extensions/status-footer`, `extensions/delegate`, and
-`extensions/herdr-command` extensions.
+`extensions/status-footer`, `extensions/delegate`, `extensions/herdr-command`,
+and `extensions/herdr-nvim-links` extensions.
 `codex-skills/spec-to-goal` is omitted because Pi does not provide Codex CLI's
 `/goal` workflow. The package does not add hidden background-process or generic
 subagent tools.
@@ -175,6 +175,24 @@ bounded wait. Explicit working directories prevent the persistent pane shell
 from drifting between commands. See
 [extensions/herdr-command/README.md](extensions/herdr-command/README.md) for the
 command protocol and requirements.
+
+### Herdr Neovim Links extension
+
+When Pi runs in a Herdr pane, built-in `read`, `edit`, and `write` file-title
+links can open in a Neovim pane immediately to the right. The macOS helper uses
+Ghostty's OSC 8 support, Herdr pane discovery, and Neovim RPC; it creates and
+focuses a right-hand Neovim pane when needed and never injects editor
+keystrokes. The packaged extension is inert until the native URL handler and
+Neovim runtime are explicitly installed from a local checkout:
+
+```bash
+extensions/herdr-nvim-links/install.sh
+```
+
+See
+[extensions/herdr-nvim-links/README.md](extensions/herdr-nvim-links/README.md)
+for requirements, security boundaries, installation, and current renderer
+limitations.
 
 Package installation loads the `memory-guard` guidance but cannot create the
 `~/.local/bin/make` proxy. Run `scripts/install-local-skills.sh` from a local

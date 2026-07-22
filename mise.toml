@@ -28,7 +28,7 @@ run = "npm test"
 
 [tasks."lint:shell"]
 description = "Lint repository shell scripts"
-run = "shellcheck scripts/*.sh"
+run = "shellcheck scripts/*.sh extensions/*/*.sh"
 
 [tasks."lint:skills"]
 description = "Validate skills against the Agent Skills specification"

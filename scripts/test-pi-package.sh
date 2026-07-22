@@ -68,6 +68,7 @@ expected_extensions = [
     "extensions/status-footer/index.ts",
     "extensions/delegate/index.ts",
     "extensions/herdr-command/index.ts",
+    "extensions/herdr-nvim-links/index.ts",
 ]
 if extensions != expected_extensions:
     raise SystemExit(f"unexpected Pi extensions manifest: {extensions!r}")

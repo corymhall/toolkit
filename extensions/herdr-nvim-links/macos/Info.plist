@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleDisplayName</key>
+  <string>Herdr Neovim URL Handler</string>
+  <key>CFBundleExecutable</key>
+  <string>herdr-nvim-url-handler</string>
+  <key>CFBundleIdentifier</key>
+  <string>dev.corymhall.toolkit.herdr-nvim-url-handler</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>Herdr Neovim URL Handler</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.1.0</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>13.0</string>
+  <key>LSUIElement</key>
+  <true/>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>CFBundleURLName</key>
+      <string>dev.corymhall.toolkit.herdr-nvim</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>herdr-nvim</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>
