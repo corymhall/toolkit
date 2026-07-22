@@ -249,7 +249,7 @@ test("starts one visible command and returns without waiting or reading output",
     assert.equal(result.details.state, "submitted");
     assert.equal(result.details.runId, FIXED_RUN_ID);
     assert.match(result.content[0].text, /running independently/);
-    assert.equal(calls.some(args => args[0] === "wait" || args[1] === "read"), false);
+    assert.equal(calls.some(args => args[1] === "wait-output" || args[1] === "read"), false);
 
     const split = calls.find(args => args[0] === "pane" && args[1] === "split");
     assert.ok(split);
@@ -304,7 +304,7 @@ test("reports a running command immediately with foreground process and recent o
   assert.match(result.content[0].text, /still running/);
   assert.match(result.content[0].text, /compiling package/);
   assert.match(result.content[0].text, /Foreground: make/);
-  assert.equal(calls.some(args => args[0] === "wait"), false);
+  assert.equal(calls.some(args => args[1] === "wait-output"), false);
 });
 
 test("reports a completed nonzero command and recovers it after session reload", async () => {
@@ -345,7 +345,7 @@ test("optionally waits for a bounded interval without turning status timeouts in
     if (args[0] === "pane" && args[1] === "list") return success(paneList(true));
     if (args[0] === "pane" && args[1] === "read") return success([markers.start, "still building"].join("\n"));
     if (args[0] === "pane" && args[1] === "process-info") return success(processInfo(false));
-    if (args[0] === "wait" && args[1] === "output") return timeout();
+    if (args[0] === "pane" && args[1] === "wait-output") return timeout();
     throw new Error(`Unexpected args: ${args.join(" ")}`);
   }, { now: () => 4_000 }));
   restoreSession(loaded, [
@@ -367,10 +367,11 @@ test("optionally waits for a bounded interval without turning status timeouts in
     undefined,
   );
   assert.equal(result.details.state, "running");
-  const wait = calls.find(args => args[0] === "wait" && args[1] === "output");
+  const wait = calls.find(args => args[0] === "pane" && args[1] === "wait-output");
   assert.ok(wait);
   assert.equal(wait[wait.indexOf("--timeout") + 1], "5000");
-  assert.equal(wait[wait.indexOf("--match") + 1], markers.endRegex);
+  assert.equal(wait[wait.indexOf("--regex") + 1], markers.endRegex);
+  assert.equal(wait.includes("--match"), false);
 });
 
 test("does not submit a second command while the first launch is still reaching the shell", async () => {

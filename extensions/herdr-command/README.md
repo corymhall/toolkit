@@ -71,6 +71,6 @@ Status output is capped at 50KB and defaults to the latest 120 lines; up to
 ## Requirements
 
 - Pi must run inside Herdr.
-- `herdr` must be available on `PATH`.
+- Herdr 0.7.5 or newer must be available on `PATH`.
 - The pane shell must support ordinary subshell, `builtin cd`, `printf`, and
   variable-assignment syntax (for example zsh or bash).

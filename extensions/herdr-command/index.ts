@@ -229,12 +229,11 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
       throw new Error(`Herdr command pane ${pane.paneId} is no longer present`);
     }
     const result = await herdr([
-      "wait", "output", current.paneId,
-      "--match", markers.endRegex,
+      "pane", "wait-output", current.paneId,
+      "--regex", markers.endRegex,
       "--source", "recent-unwrapped",
       "--lines", String(DEFAULT_MAX_LINES),
       "--timeout", String(waitMs),
-      "--regex",
     ], { signal, timeout: waitMs + 5_000 });
     if (result.code === 0 || isWaitTimeout(result.stdout, result.stderr)) return;
     if (signal?.aborted) throw new Error(`Status wait cancelled; the command remains visible in ${current.paneId}`);

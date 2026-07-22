@@ -57,57 +57,62 @@ baseline repository understanding.
 When `HERDR_ENV=1`, load the Herdr skill and give each independent review lane
 its own tab:
 
-1. Re-list panes and tabs, identify the current workspace, and do not rely on
-   remembered IDs because Herdr IDs can compact.
+1. Re-list panes and tabs and identify the current workspace before creating
+   anything.
 2. Prepare a mode-`0600` prompt file containing the exact target, cwd,
    applicable lens contract, and these boundaries: remain read-only, return
    findings directly, and do not implement fixes.
 3. Create one non-focused tab per selected lens with a semantic label such as
-   `agent-general-review`. Add a short task suffix when duplicate roles may
-   coexist. Parse the new tab's root pane ID from the create response.
-4. Start another interactive instance of the active harness in that root pane,
-   wait for it to become idle, then send the prompt as terminal input. The
+   `agent-general-review`. Choose a matching unique agent name such as
+   `review-general`; names must match `[a-z][a-z0-9_-]{0,31}`. Add a short task
+   suffix when duplicate roles may coexist. Parse the new tab's root pane ID
+   from the create response.
+4. Start another interactive instance of the active harness in that root pane
+   with `agent start`, then submit the prompt with `agent prompt --wait`. The
    sidecar owns only this tab and must not spawn additional agents.
 5. Run independent lanes in parallel when practical. Wait about five minutes
    for small reviews and up to ten minutes for larger reviews.
-6. Re-list before later operations, wait for completion, then read unwrapped
-   recent output. Never repurpose a tab containing a working or blocked agent.
-   Retry one timeout with a larger wait before declaring a lane unavailable.
+6. Re-list before later operations, inspect the resolved agent after the prompt
+   wait settles, then read unwrapped recent output. Never repurpose a tab
+   containing a working or blocked agent. Retry one timeout with a larger wait
+   before declaring a lane unavailable.
 7. Keep sidecar tabs through synthesis so the user can inspect or steer them.
    Close them and remove prompt files after findings are captured, verified,
    and reported unless the user asks to retain the tabs.
 
 ### Herdr Launch Commands
 
-Use this tab creation pattern for each sidecar:
+Use this tab creation pattern for each sidecar. Retain both `TAB_LABEL` and the
+strict, unique `AGENT_NAME` chosen for the lane:
 
 ```bash
 TAB_JSON=$(herdr tab create \
   --workspace "$WORKSPACE_ID" \
+  --cwd "$REVIEW_CWD" \
   --label "$TAB_LABEL" \
   --no-focus)
 
 PANE_ID=$(printf '%s' "$TAB_JSON" |
   python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["root_pane"]["pane_id"])')
-
-CWD_Q=$(python3 -c 'import shlex,sys; print(shlex.quote(sys.argv[1]))' "$REVIEW_CWD")
 ```
 
 Start Pi without discovered extensions, skills, or prompt templates so the lane
-receives only the review contract supplied by the parent:
+receives only the review contract supplied by the parent. `agent start` returns
+after Herdr detects Pi and considers it ready for input:
 
 ```bash
-herdr pane run "$PANE_ID" \
-  "cd $CWD_Q && pi --no-session --no-extensions --no-skills --no-prompt-templates --tools read,grep,find,ls,bash"
+herdr agent start "$AGENT_NAME" --kind pi --pane "$PANE_ID" -- \
+  --no-session --no-extensions --no-skills --no-prompt-templates \
+  --tools read,grep,find,ls,bash
 ```
 
 For `go_reviewer`, explicitly add the shared Go skill while leaving general
 skill discovery disabled:
 
 ```bash
-GO_SKILL_Q=$(python3 -c 'import shlex,sys; print(shlex.quote(sys.argv[1]))' "$GO_SKILL_DIR")
-herdr pane run "$PANE_ID" \
-  "cd $CWD_Q && pi --no-session --no-extensions --no-skills --skill $GO_SKILL_Q --no-prompt-templates --tools read,grep,find,ls,bash"
+herdr agent start "$AGENT_NAME" --kind pi --pane "$PANE_ID" -- \
+  --no-session --no-extensions --no-skills --skill "$GO_SKILL_DIR" \
+  --no-prompt-templates --tools read,grep,find,ls,bash
 ```
 
 Pi has no read-only sandbox; `bash` remains available for Git evidence, so the
@@ -117,8 +122,8 @@ needed command output, omit `bash` and use `--tools read,grep,find,ls`.
 Start Codex in its actual read-only sandbox:
 
 ```bash
-herdr pane run "$PANE_ID" \
-  "codex -C $CWD_Q --sandbox read-only"
+herdr agent start "$AGENT_NAME" --kind codex --pane "$PANE_ID" -- \
+  -C "$REVIEW_CWD" --sandbox read-only
 ```
 
 Read-only Codex lanes must stick to inspection commands. Do not ask them to
@@ -126,20 +131,27 @@ create temporary checkouts, run tests from extracted archives, or otherwise
 write to `/tmp`; perform that verification in the main session when it is
 needed.
 
-For either harness, wait for startup, send the prompt without interpreting it as
-a shell command, and wait for the review turn:
+Set `WAIT_MS` to about `300000` for a small review or `600000` for a larger one.
+Submit the prompt atomically and wait for the first settled `idle`, `done`, or
+`blocked` state, then inspect and read the agent:
 
 ```bash
-herdr wait agent-status "$PANE_ID" --status idle --timeout 30000
-herdr pane send-text "$PANE_ID" "$(cat "$PROMPT_FILE")"
-herdr pane send-keys "$PANE_ID" Enter
-herdr wait agent-status "$PANE_ID" --status done --timeout "$WAIT_MS"
-herdr pane read "$PANE_ID" --source recent-unwrapped --lines 500
+herdr agent prompt "$AGENT_NAME" "$(cat "$PROMPT_FILE")" \
+  --wait --timeout "$WAIT_MS"
+herdr agent get "$AGENT_NAME"
+herdr agent read "$AGENT_NAME" --source recent-unwrapped --lines 500
 ```
 
-Set `WAIT_MS` to about `300000` for a small review or `600000` for a larger one.
-If a user focuses or reads the tab, a completed agent may appear `idle` instead
-of `done`; inspect its recent output before treating that as a timeout.
+If the prompt wait times out, stalls, or settles as `blocked`, inspect the agent
+with `agent get` and `agent read` before deciding what to do. After a timeout on
+a turn that is still working, retry the wait once without resending the prompt:
+
+```bash
+herdr agent wait "$AGENT_NAME" --timeout "$LARGER_WAIT_MS"
+```
+
+Because the default settled states include both `idle` and `done`, user focus no
+longer requires a different completion wait.
 
 Use a concise Markdown artifact when lane output must survive the session or be
 consumed without relying on terminal scrollback. Do not create artifacts for
