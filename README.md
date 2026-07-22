@@ -103,6 +103,9 @@ dependencies automatically.
 - Other HTTP(S) pages are fetched directly and HTML is converted locally with
   Readability. Extraction failures are returned without external-service
   fallbacks.
+- Successful remote results are saved to private temporary Markdown files. The
+  model receives bounded content, while the TUI shows a compact title/source
+  summary with a clickable full-output path.
 
 The extension does not bundle an extension-owned skill or use Jina, Gemini,
 Parallel, Brave, Exa, Tavily, or Perplexity. See

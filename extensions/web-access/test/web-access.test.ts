@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile, rm, stat } from "node:fs/promises";
 import http from "node:http";
 import test from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -258,16 +259,22 @@ test("searches GitHub through gh api and normalizes issue results", async () => 
   assert.doesNotMatch(result.fetched.content, /body/);
 });
 
-test("registers the intended tools and describes fetch_content boundaries", () => {
-  const tools: Array<{ name: string; description: string; executionMode?: "parallel" | "sequential" }> = [];
+test("registers compact renderers for the intended tools and describes fetch_content boundaries", () => {
+  const tools: Array<{
+    name: string;
+    description: string;
+    executionMode?: "parallel" | "sequential";
+    renderResult?: (...args: any[]) => any;
+  }> = [];
   webAccessExtension({ registerTool: tool => tools.push(tool) } as unknown as ExtensionAPI);
   assert.deepEqual(tools.map(tool => tool.name), ["web_search", "github_search", "fetch_content"]);
+  assert.equal(tools.every(tool => typeof tool.renderResult === "function"), true);
   const fetchContent = tools.find(tool => tool.name === "fetch_content");
   assert.equal(fetchContent?.executionMode, "sequential");
   assert.match(fetchContent?.description ?? "", /do not use this tool for GitHub issues, pull requests, commits, releases/);
 });
 
-test("labels GitHub code search results as untrusted and bounds fragments", async () => {
+test("labels GitHub code search results as untrusted and bounds fragments", async t => {
   const tools: Array<{ name: string; execute: (...args: any[]) => Promise<any> }> = [];
   const calls: string[][] = [];
   const pi = {
@@ -302,27 +309,57 @@ test("labels GitHub code search results as untrusted and bounds fragments", asyn
     path: "src",
     limit: 5,
   }, undefined, undefined);
+  const fullOutputPath = result.details.fullOutputPath as string;
+  t.after(() => rm(fullOutputPath, { force: true }));
   assert.match(decodeURIComponent(calls[0][4]), /^search\/code\?q=/);
   assert.match(result.content[0].text, /^\[Untrusted remote content follows\./);
   assert.match(result.content[0].text, /"repository": "acme\/private"/);
   assert.doesNotMatch(result.content[0].text, /x{501}/);
+  assert.equal(await readFile(fullOutputPath, "utf8"), result.content[0].text);
 });
 
-test("labels fetched GitHub content as untrusted", async () => {
-  const tools: Array<{ name: string; execute: (...args: any[]) => Promise<any> }> = [];
+test("saves fetched content and renders only its remote-content summary", async t => {
+  const tools: Array<{
+    name: string;
+    execute: (...args: any[]) => Promise<any>;
+    renderResult?: (...args: any[]) => any;
+  }> = [];
   const responses = [
     { private: false, visibility: "public", full_name: "acme/widgets", default_branch: "main" },
     { type: "file", size: 5, encoding: "base64", content: Buffer.from("hello").toString("base64") },
   ];
   const pi = {
-    registerTool: (tool: { name: string; execute: (...args: any[]) => Promise<any> }) => tools.push(tool),
+    registerTool: (tool: {
+      name: string;
+      execute: (...args: any[]) => Promise<any>;
+      renderResult?: (...args: any[]) => any;
+    }) => tools.push(tool),
     exec: async () => ({ code: 0, stdout: JSON.stringify(responses.shift()), stderr: "", killed: false }),
   } as unknown as ExtensionAPI;
   webAccessExtension(pi);
   const tool = tools.find(candidate => candidate.name === "fetch_content");
   assert.ok(tool);
   const result = await tool.execute("call", { url: "https://github.com/acme/widgets/blob/main/README.md" }, undefined, undefined);
+  const fullOutputPath = result.details.fullOutputPath as string;
+  t.after(() => rm(fullOutputPath, { force: true }));
+
   assert.match(result.content[0].text, /^\[Untrusted remote content follows\./);
+  assert.match(result.content[0].text, /hello/);
+  assert.equal(await readFile(fullOutputPath, "utf8"), result.content[0].text);
+  assert.equal((await stat(fullOutputPath)).mode & 0o777, 0o600);
+
+  assert.ok(tool.renderResult);
+  const rendered = tool.renderResult(
+    result,
+    { expanded: false, isPartial: false },
+    { fg: (_color: string, text: string) => text },
+    { isError: false },
+  ).render(240).join("\n");
+  assert.match(rendered, /^\[Untrusted remote content follows\./);
+  assert.match(rendered, /# acme\/widgets: README\.md/);
+  assert.match(rendered, /Source: https:\/\/github\.com\/acme\/widgets\/blob\/main\/README\.md/);
+  assert.match(rendered, new RegExp(fullOutputPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.doesNotMatch(rendered, /hello/);
 });
 
 test("renders hostile search citation metadata as escaped plain text", () => {

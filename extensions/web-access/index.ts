@@ -1,6 +1,12 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { randomBytes } from "node:crypto";
+import { writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import type { AgentToolResult, ExtensionAPI, Theme, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
+import { getCapabilities, hyperlink, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { fetchGitHubContent } from "./github.ts";
 import { searchGitHub } from "./github-search.ts";
@@ -15,14 +21,60 @@ function markdownText(value: string): string {
   return value.replace(/\s+/g, " ").trim().replace(/[\\`*_[\]()]/g, "\\$&");
 }
 
-function formatFetched(result: FetchedContent): { text: string; truncated: boolean } {
+interface RemoteContentDetails {
+  title: string;
+  source: string;
+  fullOutputPath: string;
+  truncated: boolean;
+}
+
+async function formatFetched(result: FetchedContent, tempFilePrefix: string): Promise<RemoteContentDetails & { text: string }> {
   const title = markdownText(result.title) || "Untitled";
   const source = result.url.replace(/[\r\n]/g, "");
   const body = `${UNTRUSTED_CONTENT_WARNING}\n\n# ${title}\n\nSource: ${source}\n\n${result.content}`;
+  const id = randomBytes(8).toString("hex");
+  const fullOutputPath = join(tmpdir(), `${tempFilePrefix}-${id}.md`);
+  await writeFile(fullOutputPath, body, { encoding: "utf8", flag: "wx", mode: 0o600 });
+
   const output = truncateHead(body, { maxBytes: DEFAULT_MAX_BYTES - 120, maxLines: DEFAULT_MAX_LINES - 2 });
   const truncated = output.truncated || result.truncated;
-  const suffix = truncated ? "\n\n[Content truncated at the extension's safety limit.]" : "";
-  return { text: output.content + suffix, truncated };
+  const suffix = truncated
+    ? `\n\n[Content truncated at the extension's safety limit. Full output: ${fullOutputPath}]`
+    : "";
+  return { text: output.content + suffix, title, source, fullOutputPath, truncated };
+}
+
+function resultText(result: AgentToolResult<unknown>): string {
+  return result.content
+    .filter((part): part is Extract<typeof part, { type: "text" }> => part.type === "text")
+    .map(part => part.text)
+    .join("\n");
+}
+
+function renderFetchedResult(
+  result: AgentToolResult<unknown>,
+  options: ToolRenderResultOptions,
+  theme: Theme,
+  isError: boolean,
+): Text {
+  if (options.isPartial) return new Text(theme.fg("warning", "Fetching..."), 0, 0);
+
+  const details = result.details as RemoteContentDetails | undefined;
+  if (isError || !details?.title || !details.source || !details.fullOutputPath) {
+    return new Text(theme.fg(isError ? "error" : "toolOutput", resultText(result)), 0, 0);
+  }
+
+  const styledPath = theme.fg("accent", details.fullOutputPath);
+  const linkedPath = getCapabilities().hyperlinks
+    ? hyperlink(styledPath, pathToFileURL(details.fullOutputPath).href)
+    : styledPath;
+  const text = [
+    theme.fg("warning", UNTRUSTED_CONTENT_WARNING),
+    theme.fg("toolOutput", `# ${details.title}`),
+    `${theme.fg("muted", "Source:")} ${theme.fg("accent", details.source)}`,
+    `${theme.fg("muted", "Full output:")} ${linkedPath}`,
+  ].join("\n\n");
+  return new Text(text, 0, 0);
 }
 
 export function formatSearchSources(results: SearchResult[]): string {
@@ -66,16 +118,26 @@ export default function webAccessExtension(pi: ExtensionAPI) {
         signal,
       }, ctx);
       const sources = formatSearchSources(result.results);
-      const formatted = formatFetched({
+      const formatted = await formatFetched({
         url: "OpenAI Codex web_search",
         title: `Web search: ${params.query}`,
         content: result.answer + sources,
         truncated: false,
-      });
+      }, "pi-web-search");
       return {
         content: [{ type: "text", text: formatted.text }],
-        details: { query: params.query, resultCount: result.results.length, truncated: formatted.truncated },
+        details: {
+          query: params.query,
+          resultCount: result.results.length,
+          title: formatted.title,
+          source: formatted.source,
+          fullOutputPath: formatted.fullOutputPath,
+          truncated: formatted.truncated,
+        },
       };
+    },
+    renderResult(result, options, theme, context) {
+      return renderFetchedResult(result, options, theme, context.isError);
     },
   });
 
@@ -100,11 +162,20 @@ export default function webAccessExtension(pi: ExtensionAPI) {
     }),
     async execute(_toolCallId, params, signal) {
       const result = await searchGitHub(pi, params, signal);
-      const formatted = formatFetched(result.fetched);
+      const formatted = await formatFetched(result.fetched, "pi-github-search");
       return {
         content: [{ type: "text", text: formatted.text }],
-        details: { ...result.details, truncated: formatted.truncated },
+        details: {
+          ...result.details,
+          title: formatted.title,
+          source: formatted.source,
+          fullOutputPath: formatted.fullOutputPath,
+          truncated: formatted.truncated,
+        },
       };
+    },
+    renderResult(result, options, theme, context) {
+      return renderFetchedResult(result, options, theme, context.isError);
     },
   });
 
@@ -129,11 +200,20 @@ export default function webAccessExtension(pi: ExtensionAPI) {
       } else {
         result = await fetchHttpContent(params.url, signal);
       }
-      const formatted = formatFetched(result);
+      const formatted = await formatFetched(result, "pi-fetch-content");
       return {
         content: [{ type: "text", text: formatted.text }],
-        details: { url: result.url, title: result.title, truncated: formatted.truncated },
+        details: {
+          url: result.url,
+          title: formatted.title,
+          source: formatted.source,
+          fullOutputPath: formatted.fullOutputPath,
+          truncated: formatted.truncated,
+        },
       };
+    },
+    renderResult(result, options, theme, context) {
+      return renderFetchedResult(result, options, theme, context.isError);
     },
   });
 }

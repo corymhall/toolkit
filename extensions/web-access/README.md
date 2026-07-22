@@ -8,6 +8,11 @@ A deliberately narrow Pi extension with three tools:
 
 It does not contain skills and does not use third-party search or extraction fallbacks. In particular, it does not use Jina Reader, Gemini, Parallel, Brave, Exa, Tavily, or Perplexity.
 
+Successful results are written to private Markdown files in the OS temp directory.
+The model receives the normal bounded result, while Pi's TUI renders only the
+untrusted-content warning, title or query, source, and a clickable full-output
+path. Temp-file retention follows the operating system's cleanup policy.
+
 `fetch_content` opts into Pi's sequential tool execution. A turn containing it
 runs sibling tool calls serially, trading parallel fetch throughput for
 reliability after observed parallel custom-tool batch stalls. Direct HTTP reads
@@ -47,7 +52,8 @@ Repository URLs return the root listing and README. Private repositories work wh
 
 - Direct HTTP fetching rejects credential-bearing URLs and common non-public address ranges, including loopback, private, link-local, multicast, and documentation networks.
 - Validated DNS addresses are pinned to the HTTP connection, and every redirect destination is separately validated and pinned.
-- Responses are limited to 5 MB and final tool output stays within Pi's standard 50 KB/2,000-line truncation.
+- Responses are limited to 5 MB and final model-visible tool output stays within Pi's standard 50 KB/2,000-line truncation.
+- Saved output files use mode `0600`; when model-visible output is truncated, the saved file retains the complete fetched result.
 - Remote content is explicitly labeled as untrusted in tool results.
 - GitHub search and fetching use the authenticated `gh` account and can send content from any accessible repository to the active model. A prompt-injected tool call that knows a private repository or suitable search terms therefore has the same read access.
 - These controls reduce risk but do not make remote content immune to prompt injection. Run Pi in an OS sandbox when exploring adversarial material.
