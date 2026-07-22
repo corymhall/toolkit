@@ -15,7 +15,7 @@ Use deterministic command sequences, keep one conceptual change per branch, and 
 2. Initialize tracking when needed.
 3. Build or repair the stack graph with one conceptual change per branch.
 4. Submit stack PRs as draft or update-only.
-5. Verify branch-to-PR mapping and update PR descriptions via `gh`.
+5. Verify branch-to-PR mapping and apply `create-pr` guidance to each title and description.
 
 ## Core Concepts
 - `trunk`: the default branch, usually `main` or `master`; it has no base.
@@ -101,6 +101,11 @@ Create draft PRs for whole stack:
 ```bash
 git-spice stack submit --fill --draft --no-web
 ```
+
+`--fill` provides non-interactive submission metadata, not a final description.
+After creation, use `create-pr` guidance to replace each commit-derived title and
+body with a deliberate reviewer-facing explanation. Preserve navigation comments,
+but do not rely on them for rationale.
 
 Update already-created PRs only:
 ```bash
@@ -194,23 +199,21 @@ Then run project verification:
 gh pr checks <num>
 ```
 
-### 7) Keep PR Descriptions Clean
-Use `gh` for all GitHub edits.
+### 7) Author Reviewer-Facing PRs
+Use `create-pr` to write each PR's title and description from the branch's actual
+role in the stack. Explain why that branch exists, what behavior it changes, and
+which dependency, tradeoff, or review boundary matters. Do not expose the whole
+stack's diff as though it belongs to every PR.
 
-Examples:
+Use `gh` with a body file for GitHub edits:
+
 ```bash
 gh pr list --head <branch> --json number,title,url
-gh pr edit <number> --title "<title>" --body "$(cat <<'PR_BODY_EOF'
-## Summary
-- ...
-
-## Testing
-- ...
-PR_BODY_EOF
-)"
+gh pr edit <number> --title "<title>" --body-file <body-file>
 ```
 
-Do not rely on stack-navigation comments for core rationale; put rationale in PR body sections.
+Do not require fixed `Summary` and `Testing` sections. Preserve repository-required
+template content, and do not rely on stack-navigation comments for core rationale.
 
 ## Branch-to-PR Mapping Procedure
 Record mapping in a task tracker whenever a new stack is submitted.
@@ -233,7 +236,7 @@ Before claiming stack-ready:
 1. `git-spice log short -a --no-prompt` shows expected linear order.
 2. Project-equivalent full-suite command passes on stack tip (for example `go test ./...`).
 3. All PRs exist and point to intended base branches.
-4. PR bodies include concise `Summary` and `Testing` sections.
+4. Each PR title and body proportionally explain that branch's purpose, changed behavior, relevant boundaries, and actual validation.
 
 ## References
 - Command cookbook: `references/commands.md`

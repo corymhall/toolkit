@@ -227,6 +227,7 @@ update.
 | AI harness | `ai-contribution-readiness-audit`, `ai-harness-bootstrap`, `harness-evaluation` |
 | Development | `go-development`, `neovim-plugin-development` |
 | General workflows | `collaborative-framing`, `capture-decision-context`, `multi-model-evaluate`, `git-spice-stack-prs` |
+| GitHub | `create-pr`, `github-search-cli` |
 | Documentation | `notion-docs` |
 | Operations | `memory-guard` |
 | Provider work | `triage-provider-issue`, `pulumi-rpc-lifecycle-investigation`, `bridge-parity-investigation`, `stage-pulumi-provider-repro`, `stage-terraform-provider-repro`, `workaround-investigation` |
