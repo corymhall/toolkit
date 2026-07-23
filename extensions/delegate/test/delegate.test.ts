@@ -7,6 +7,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import delegateExtension from "../index.ts";
 import {
   buildDelegatePrompt,
+  buildDelegatedSessionPrompt,
   buildHerdrWorktreeOpenArgs,
   buildPiLaunchCommand,
   buildWorktrunkArgs,
@@ -38,20 +39,30 @@ test("builds argument-safe Worktrunk and Pi launches", () => {
     ],
   );
   assert.equal(
-    buildPiLaunchCommand("/tmp/handoff's.md", "fix auth", ["/opt/pi bin/pi"]),
-    `'/opt/pi bin/pi' --name 'fix auth' '@/tmp/handoff'"'"'s.md'`,
+    buildPiLaunchCommand("/tmp/context's.md", "fix auth", ["/opt/pi bin/pi"]),
+    `'/opt/pi bin/pi' --name 'fix auth' '@/tmp/context'"'"'s.md'`,
   );
   assert.deepEqual(detectPiCommand("/usr/bin/node", "/opt/pi/dist/cli.js"), ["/usr/bin/node", "/opt/pi/dist/cli.js"]);
   assert.deepEqual(detectPiCommand("/opt/mise/pi", undefined), ["/opt/mise/pi"]);
 });
 
-test("builds a narrow delegation prompt and defaults to a new worktree", () => {
-  const prompt = buildDelegatePrompt("Implement the bridge fix", "/tmp/source");
-  assert.match(prompt, /Do not implement the delegated task/);
+test("builds a lightweight delegation prompt and defaults to a new worktree", () => {
+  const prompt = buildDelegatePrompt("Look into the bridge behavior", "/tmp/source");
+  assert.match(prompt, /Do not implement or research the delegated task/);
+  assert.match(prompt, /background for independent investigation, not a specification/);
+  assert.match(prompt, /Do not turn it into an implementation plan/);
   assert.match(prompt, /new Worktrunk worktree is the default/);
   assert.match(prompt, new RegExp(DELEGATE_TOOL_NAME));
-  assert.match(prompt, /Implement the bridge fix/);
+  assert.match(prompt, /Look into the bridge behavior/);
   assert.match(prompt, /\/tmp\/source/);
+});
+
+test("frames delegated context as background for independent investigation", () => {
+  const prompt = buildDelegatedSessionPrompt("The source session noticed surprising bridge behavior.");
+  assert.match(prompt, /context generated from another Pi session/);
+  assert.match(prompt, /not as a specification or settled implementation plan/);
+  assert.match(prompt, /look into the request independently/);
+  assert.match(prompt, /surprising bridge behavior/);
 });
 
 test("normalizes Pi session names", () => {
@@ -61,10 +72,10 @@ test("normalizes Pi session names", () => {
 });
 
 test("validates delegation proposals", () => {
-  assert.throws(() => validateProposal({ repository: "relative", handoff: "task", branch: "fix" }), /absolute/);
-  assert.throws(() => validateProposal({ repository: "/tmp/repo", handoff: "", branch: "fix" }), /handoff/);
-  assert.throws(() => validateProposal({ repository: "/tmp/repo", handoff: "task" }), /branch/);
-  assert.doesNotThrow(() => validateProposal({ repository: "/tmp/repo", handoff: "task", useExistingCheckout: true }));
+  assert.throws(() => validateProposal({ repository: "relative", context: "task", branch: "fix" }), /absolute/);
+  assert.throws(() => validateProposal({ repository: "/tmp/repo", context: "", branch: "fix" }), /context/);
+  assert.throws(() => validateProposal({ repository: "/tmp/repo", context: "task" }), /branch/);
+  assert.doesNotThrow(() => validateProposal({ repository: "/tmp/repo", context: "task", useExistingCheckout: true }));
 });
 
 test("parses Worktrunk output", () => {
@@ -211,7 +222,7 @@ test("opens new and existing checkouts as non-focused Herdr worktrees", async ()
     const ui = {
       notify() {},
       setStatus() {},
-      editor: async () => "Self-contained handoff",
+      editor: async (_title: string, initial: string) => initial,
       confirm: async () => true,
     };
     await commands.get("delegate")!.handler("implement in target", {
@@ -226,7 +237,7 @@ test("opens new and existing checkouts as non-focused Herdr worktrees", async ()
       repository: "/tmp/target",
       branch: "fix/delegation",
       sessionName: "delegated fix",
-      handoff: "Draft handoff",
+      context: "Draft context",
     }, undefined, undefined, { ui });
 
     assert.equal(result.terminate, true);
@@ -244,7 +255,10 @@ test("opens new and existing checkouts as non-focused Herdr worktrees", async ()
     assert.equal(paneRuns.length, 1);
     assert.match(paneRuns[0], /^'pi' --name 'delegated fix' '@.*delegations.*\.md'$/);
     assert.deepEqual(activeTools.at(-1), ["read", "bash"]);
-    assert.equal(await readFile(result.details.handoffFile, "utf8"), "Self-contained handoff\n");
+    assert.equal(
+      await readFile(result.details.contextFile, "utf8"),
+      `${buildDelegatedSessionPrompt("Draft context")}\n`,
+    );
 
     await commands.get("delegate")!.handler("continue in existing checkout", {
       mode: "tui",
@@ -255,7 +269,7 @@ test("opens new and existing checkouts as non-focused Herdr worktrees", async ()
     const existingResult = await tool.execute("call-existing", {
       repository: "/tmp/target",
       sessionName: "existing checkout task",
-      handoff: "Draft existing handoff",
+      context: "Draft existing context",
       useExistingCheckout: true,
     }, undefined, undefined, { ui });
 
@@ -271,7 +285,10 @@ test("opens new and existing checkouts as non-focused Herdr worktrees", async ()
       "--json",
     ]);
     assert.match(paneRuns[1], /^'pi' --name 'existing checkout task' '@.*delegations.*\.md'$/);
-    assert.equal(await readFile(existingResult.details.handoffFile, "utf8"), "Self-contained handoff\n");
+    assert.equal(
+      await readFile(existingResult.details.contextFile, "utf8"),
+      `${buildDelegatedSessionPrompt("Draft existing context")}\n`,
+    );
   } finally {
     if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
     else process.env.PI_CODING_AGENT_DIR = previousAgentDir;

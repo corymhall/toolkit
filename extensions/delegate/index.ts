@@ -5,6 +5,7 @@ import { Type } from "typebox";
 import { getAgentDir, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   buildDelegatePrompt,
+  buildDelegatedSessionPrompt,
   buildHerdrWorktreeOpenArgs,
   buildPiLaunchCommand,
   buildWorktrunkArgs,
@@ -23,7 +24,7 @@ const DELEGATE_PARAMETERS = Type.Object({
   branch: Type.Optional(Type.String({ description: "Concise branch name for the new worktree" })),
   base: Type.Optional(Type.String({ description: "Optional base branch; omit to use Worktrunk's default" })),
   sessionName: Type.Optional(Type.String({ description: "Short semantic name for the delegated Pi session; Herdr labels the worktree with its branch" })),
-  handoff: Type.String({ description: "Self-contained handoff prompt for the new Pi session" }),
+  context: Type.String({ description: "Concise background from the current conversation for the delegated session to investigate independently" }),
   useExistingCheckout: Type.Optional(Type.Boolean({ description: "Use the destination checkout directly instead of creating a Worktrunk worktree" })),
 });
 
@@ -41,13 +42,13 @@ async function checkExecutable(pi: ExtensionAPI, command: string): Promise<boole
   }
 }
 
-async function writeHandoffFile(label: string, handoff: string): Promise<string> {
+async function writeContextFile(label: string, context: string): Promise<string> {
   const directory = join(getAgentDir(), "delegations");
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "delegation";
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const path = join(directory, `${timestamp}-${slug}-${randomUUID().slice(0, 8)}.md`);
-  await writeFile(path, `${handoff.trim()}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
+  await writeFile(path, `${context.trim()}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
   return path;
 }
 
@@ -75,9 +76,9 @@ export default function delegateExtension(
       name: DELEGATE_TOOL_NAME,
       label: "Delegate Session",
       description: "Open a confirmed checkout as a Herdr worktree and launch a normal Pi session there. Available only after the user invokes /delegate.",
-      promptSnippet: "Finish a user-requested cross-repository or cross-worktree handoff.",
+      promptSnippet: "Transfer lightweight conversation context to a user-requested delegated session.",
       promptGuidelines: [
-        "Call delegate_session only to complete the delegation explicitly armed by the user's /delegate command; resolve uncertainty with the user before calling it.",
+        "Call delegate_session only to complete the delegation explicitly armed by the user's /delegate command; ask the user only when the destination or checkout choice remains materially uncertain.",
       ],
       parameters: DELEGATE_PARAMETERS,
       async execute(_toolCallId, rawProposal, signal, onUpdate, ctx) {
@@ -88,7 +89,7 @@ export default function delegateExtension(
           branch: rawProposal.branch?.trim() || undefined,
           base: rawProposal.base?.trim() || undefined,
           sessionName: rawProposal.sessionName?.trim() || undefined,
-          handoff: rawProposal.handoff,
+          context: rawProposal.context,
           useExistingCheckout: rawProposal.useExistingCheckout === true,
         };
 
@@ -118,8 +119,9 @@ export default function delegateExtension(
           }
 
           const sessionName = normalizeSessionName(proposal.sessionName, proposal.branch, repository);
-          const editedHandoff = await ctx.ui.editor("Edit delegation handoff", proposal.handoff.trim());
-          if (editedHandoff === undefined || !editedHandoff.trim()) {
+          const delegatedPrompt = buildDelegatedSessionPrompt(proposal.context);
+          const editedContext = await ctx.ui.editor("Edit delegation context", delegatedPrompt);
+          if (editedContext === undefined || !editedContext.trim()) {
             shouldDisarm = true;
             return {
               content: [{ type: "text", text: "Delegation cancelled before creating anything." }],
@@ -144,8 +146,8 @@ export default function delegateExtension(
             };
           }
 
-          onUpdate?.({ content: [{ type: "text", text: "Writing handoff..." }] });
-          const handoffFile = await writeHandoffFile(sessionName, editedHandoff);
+          onUpdate?.({ content: [{ type: "text", text: "Writing delegation context..." }] });
+          const contextFile = await writeContextFile(sessionName, editedContext);
           shouldDisarm = true;
           let destination = repository;
           let worktreeLabel: string;
@@ -182,23 +184,23 @@ export default function delegateExtension(
           const panesResult = await pi.exec("herdr", ["pane", "list"], { signal, timeout: 10_000 });
           if (panesResult.code !== 0) throw execFailure("herdr pane list", panesResult.stderr);
           if (!paneStillBelongsToWorkspace(panesResult.stdout, workspace)) {
-            throw new Error(`The new Herdr pane is no longer present. Handoff preserved at ${handoffFile}`);
+            throw new Error(`The new Herdr pane is no longer present. Context preserved at ${contextFile}`);
           }
 
-          const launchCommand = buildPiLaunchCommand(handoffFile, sessionName, piCommand);
+          const launchCommand = buildPiLaunchCommand(contextFile, sessionName, piCommand);
           const runResult = await pi.exec("herdr", ["pane", "run", workspace.paneId, launchCommand], {
             signal,
             timeout: 10_000,
           });
           if (runResult.code !== 0) {
-            throw new Error(`Could not start Pi in Herdr workspace ${workspace.workspaceId}. Handoff preserved at ${handoffFile}: ${runResult.stderr.trim()}`);
+            throw new Error(`Could not start Pi in Herdr workspace ${workspace.workspaceId}. Context preserved at ${contextFile}: ${runResult.stderr.trim()}`);
           }
 
           ctx.ui.notify(`Delegated session “${sessionName}” starting in Herdr worktree “${worktreeLabel}”`, "info");
           return {
             content: [{
               type: "text",
-              text: `Delegated session “${sessionName}” started in the non-focused Herdr worktree “${worktreeLabel}”. The handoff is preserved at ${handoffFile}.`,
+              text: `Delegated session “${sessionName}” started in the non-focused Herdr worktree “${worktreeLabel}”. The context is preserved at ${contextFile}.`,
             }],
             details: {
               workspaceId: workspace.workspaceId,
@@ -206,7 +208,7 @@ export default function delegateExtension(
               repository,
               destination,
               branch: worktreeLabel,
-              handoffFile,
+              contextFile,
             },
             terminate: true,
           };
@@ -218,7 +220,7 @@ export default function delegateExtension(
   };
 
   pi.registerCommand("delegate", {
-    description: "Hand work to a normal Pi session in another repo or worktree; use /delegate cancel to disarm",
+    description: "Start a normal Pi session in another repo or worktree with conversation context; use /delegate cancel to disarm",
     handler: async (args, ctx) => {
       const goal = args.trim();
       if (goal === "cancel") {

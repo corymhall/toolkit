@@ -1,17 +1,20 @@
 # Delegate extension
 
-`/delegate [goal]` transfers work from the current conversation into a normal,
-persisted Pi session in another local repository or a new Worktrunk worktree.
+`/delegate [goal]` transfers lightweight context from the current conversation
+into a normal, persisted Pi session in another local repository or a new
+Worktrunk worktree.
 
 The extension is intentionally dormant until the command is invoked. It then
 temporarily exposes `delegate_session` to the current agent so the agent can use
-the conversation to propose a destination, branch, and self-contained handoff.
-Before anything is created, Pi opens the handoff for editing and asks for
-confirmation.
+the existing conversation to propose a destination, branch, and concise context
+note. The source agent is told not to research the delegated task, prescribe a
+solution, or turn the context into an implementation plan. Before anything is
+created, Pi frames the note as background for independent investigation, opens
+the resulting destination prompt for editing, and asks for confirmation.
 
 After confirmation the extension:
 
-1. writes the handoff under Pi's agent directory in `delegations/`;
+1. writes the context under Pi's agent directory in `delegations/`;
 2. creates a Worktrunk worktree and runs its configured start hooks, unless the
    existing checkout was explicitly requested;
 3. opens the resulting checkout as a non-focused native Herdr worktree, labels
@@ -20,8 +23,10 @@ After confirmation the extension:
 4. disables the temporary delegation tool.
 
 The launched process is an ordinary interactive Pi session with normal session
-persistence and configured model defaults. Worktrunk remains responsible for
-worktree layout and repository hooks.
+persistence and configured model defaults. It receives the note as background,
+with an explicit request to investigate independently and verify details in the
+destination checkout. Worktrunk remains responsible for worktree layout and
+repository hooks.
 
 ## Requirements
 
@@ -32,5 +37,5 @@ worktree layout and repository hooks.
 
 Use `/delegate cancel` to disarm a delegation that is waiting for clarification.
 The extension does not automatically remove a Herdr workspace or Git worktree
-after a partial failure; the visible workspace and saved handoff are retained
+after a partial failure; the visible workspace and saved context are retained
 for inspection and recovery.

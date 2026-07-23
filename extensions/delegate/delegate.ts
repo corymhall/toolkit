@@ -4,7 +4,7 @@ export const DELEGATE_TOOL_NAME = "delegate_session";
 
 export interface DelegationProposal {
   repository: string;
-  handoff: string;
+  context: string;
   branch?: string;
   base?: string;
   sessionName?: string;
@@ -22,22 +22,30 @@ export interface WorktreeResult {
 }
 
 export function buildDelegatePrompt(goal: string, cwd: string): string {
-  const requestedGoal = goal.trim() || "Infer the intended next task from the conversation. Ask me if it is ambiguous.";
-  return `Prepare a delegation that I explicitly requested. Do not implement the delegated task in this session.
+  const requestedGoal = goal.trim() || "Capture the relevant context from this conversation for another session.";
+  return `Prepare the lightweight delegation that I explicitly requested. Do not implement or research the delegated task in this session.
 
 Goal:
 ${requestedGoal}
 
-Use the conversation and, when useful, read-only repository inspection to identify the correct local destination repository. The current working directory is ${cwd}.
+Use the existing conversation to identify the destination repository and capture what the other session should know. The current working directory is ${cwd}. Inspect the filesystem or repository only when needed to resolve the destination or checkout choice, not to investigate the task itself.
 
-When the destination and task are clear, call ${DELEGATE_TOOL_NAME} exactly once with:
+Call ${DELEGATE_TOOL_NAME} exactly once with:
 - an absolute path to the local destination repository
 - a concise new branch name; a new Worktrunk worktree is the default
 - an optional base branch only when the default branch is not appropriate
 - a short semantic Pi session name
-- a self-contained handoff covering the problem, material findings and evidence, decisions already made, relevant files or symbols, the exact next task, constraints, and useful validation
+- concise context from this conversation: the user's goal, relevant background or pointers already surfaced, and any open questions or uncertainty
 
-Set useExistingCheckout only when I explicitly asked not to create a worktree or a new worktree is clearly inappropriate. If destination, branch, or scope is materially uncertain, ask me before calling the tool. The tool will show me the final proposal before creating anything.`;
+The context is background for independent investigation, not a specification. Do not turn it into an implementation plan, prescribe a solution, add speculative requirements, or add research and validation steps that were not already part of the conversation.
+
+Set useExistingCheckout only when I explicitly asked not to create a worktree or a new worktree is clearly inappropriate. Ask me before calling the tool only if the destination or checkout choice is materially uncertain. The tool will show me the final context and proposal before creating anything.`;
+}
+
+export function buildDelegatedSessionPrompt(context: string): string {
+  return `Here is context generated from another Pi session. Treat it as background, not as a specification or settled implementation plan. Please look into the request independently, verify relevant details in this checkout, and ask me about unresolved intent when needed.
+
+${context.trim()}`;
 }
 
 export function normalizeSessionName(value: string | undefined, branch: string | undefined, repository: string): string {
@@ -80,9 +88,9 @@ export function detectPiCommand(execPath = process.execPath, argvEntry = process
   return [execPath];
 }
 
-export function buildPiLaunchCommand(handoffFile: string, sessionName: string, command = detectPiCommand()): string {
+export function buildPiLaunchCommand(contextFile: string, sessionName: string, command = detectPiCommand()): string {
   const prefix = command.map(shellQuote).join(" ");
-  return `${prefix} --name ${shellQuote(sessionName)} ${shellQuote(`@${handoffFile}`)}`;
+  return `${prefix} --name ${shellQuote(sessionName)} ${shellQuote(`@${contextFile}`)}`;
 }
 
 export function parseWorktreeResult(stdout: string): WorktreeResult {
@@ -136,7 +144,7 @@ export function validateProposal(proposal: DelegationProposal): void {
   if (!proposal.repository.trim() || !isAbsolute(proposal.repository)) {
     throw new Error("repository must be an absolute local path");
   }
-  if (!proposal.handoff.trim()) throw new Error("handoff must not be empty");
+  if (!proposal.context.trim()) throw new Error("context must not be empty");
   if (!proposal.useExistingCheckout && !proposal.branch?.trim()) {
     throw new Error("branch is required unless useExistingCheckout is true");
   }
