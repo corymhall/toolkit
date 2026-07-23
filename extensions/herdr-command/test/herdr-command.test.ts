@@ -11,6 +11,8 @@ import {
   buildRunMarkers,
   exitCodeFromTranscript,
   extractTranscript,
+  HERDR_COMMAND_METADATA_SOURCE,
+  HERDR_COMMAND_OWNER_TOKEN,
   HERDR_COMMAND_PANE_ENTRY,
   HERDR_COMMAND_RUN_ENTRY,
   HERDR_COMMAND_STATUS_TOOL_NAME,
@@ -56,13 +58,19 @@ function timeout() {
   return { code: 1, stdout: "", stderr: '{"error":{"code":"timeout"}}', killed: false };
 }
 
-function paneList(created: boolean) {
+function paneList(created: boolean, ownerTerminalId = "term_parent") {
   return JSON.stringify({
     result: {
       panes: [
         { pane_id: "w1:p1", terminal_id: "term_parent", workspace_id: "w1", tab_id: "w1:t1" },
         ...(created
-          ? [{ pane_id: "w1:p2", terminal_id: "term_command", workspace_id: "w1", tab_id: "w1:t1" }]
+          ? [{
+              pane_id: "w1:p2",
+              terminal_id: "term_command",
+              workspace_id: "w1",
+              tab_id: "w1:t1",
+              tokens: { [HERDR_COMMAND_OWNER_TOKEN]: ownerTerminalId },
+            }]
           : []),
       ],
     },
@@ -108,11 +116,11 @@ function tool(loaded: ReturnType<typeof loadExtension>, name: string) {
   return found;
 }
 
-function restoreSession(
+async function restoreSession(
   loaded: ReturnType<typeof loadExtension>,
   entries: Array<{ customType: string; data: unknown }>,
 ) {
-  loaded.handlers.get("session_start")?.({}, {
+  await loaded.handlers.get("session_start")?.({}, {
     sessionManager: {
       getBranch: () => entries.map(entry => ({ type: "custom", ...entry })),
     },
@@ -213,6 +221,7 @@ test("starts one visible command and returns without waiting or reading output",
           pane_id: "w1:p2", terminal_id: "term_command", workspace_id: "w1", tab_id: "w1:t1",
         } } }));
       }
+      if (args[0] === "pane" && args[1] === "report-metadata") return success();
       if (args[0] === "pane" && args[1] === "rename") return success();
       if (args[0] === "pane" && args[1] === "run") {
         submitted = args[3];
@@ -255,6 +264,12 @@ test("starts one visible command and returns without waiting or reading output",
     assert.ok(split);
     assert.equal(split[split.indexOf("--direction") + 1], "down");
     assert.equal(split[split.indexOf("--ratio") + 1], "0.9");
+    const metadata = calls.find(args => args[0] === "pane" && args[1] === "report-metadata");
+    assert.deepEqual(metadata, [
+      "pane", "report-metadata", "w1:p2",
+      "--source", HERDR_COMMAND_METADATA_SOURCE,
+      "--token", `${HERDR_COMMAND_OWNER_TOKEN}=term_parent`,
+    ]);
     assert.deepEqual(loaded.entries.map(entry => entry.customType), [
       HERDR_COMMAND_PANE_ENTRY,
       HERDR_COMMAND_RUN_ENTRY,
@@ -269,6 +284,148 @@ test("starts one visible command and returns without waiting or reading output",
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test("adopts a tagged command pane across Pi sessions instead of splitting", async () => {
+  const calls: string[][] = [];
+  const loaded = withHerdrEnv(() => loadExtension(async (_command, args) => {
+    calls.push(args);
+    if (args[0] === "pane" && args[1] === "list") return success(paneList(true));
+    if (args[0] === "pane" && args[1] === "process-info") return success(processInfo(true));
+    if (args[0] === "pane" && args[1] === "rename") return success();
+    if (args[0] === "pane" && args[1] === "run") return success();
+    throw new Error(`Unexpected args: ${args.join(" ")}`);
+  }, {
+    now: () => 1_000,
+    randomUUID: () => FIXED_RUN_ID,
+  }));
+
+  await restoreSession(loaded, []);
+  const result = await tool(loaded, HERDR_START_COMMAND_TOOL_NAME).execute(
+    "call",
+    { command: "make build", cwd: "/", label: "build" },
+    undefined,
+    undefined,
+    { cwd: "/" },
+  );
+
+  assert.equal(result.details.paneId, "w1:p2");
+  assert.equal(calls.some(args => args[0] === "pane" && args[1] === "split"), false);
+  assert.equal(calls.some(args => args[0] === "pane" && args[1] === "report-metadata"), false);
+  assert.equal(calls.some(args => args[0] === "pane" && args[1] === "run" && args[2] === "w1:p2"), true);
+  assert.deepEqual(loaded.entries.map(entry => entry.customType), [
+    HERDR_COMMAND_PANE_ENTRY,
+    HERDR_COMMAND_RUN_ENTRY,
+  ]);
+});
+
+test("tags an untagged pane restored from an older Pi session", async () => {
+  const calls: string[][] = [];
+  const untaggedPaneList = JSON.stringify({
+    result: {
+      panes: [
+        { pane_id: "w1:p1", terminal_id: "term_parent", workspace_id: "w1", tab_id: "w1:t1" },
+        { pane_id: "w1:p2", terminal_id: "term_command", workspace_id: "w1", tab_id: "w1:t1" },
+      ],
+    },
+  });
+  const loaded = withHerdrEnv(() => loadExtension(async (_command, args) => {
+    calls.push(args);
+    if (args[0] === "pane" && args[1] === "list") return success(untaggedPaneList);
+    if (args[0] === "pane" && args[1] === "report-metadata") return success();
+    throw new Error(`Unexpected args: ${args.join(" ")}`);
+  }));
+
+  await restoreSession(loaded, [{
+    customType: HERDR_COMMAND_PANE_ENTRY,
+    data: { paneId: "w1:p2", terminalId: "term_command", workspaceId: "w1", tabId: "w1:t1" },
+  }]);
+
+  const metadata = calls.find(args => args[0] === "pane" && args[1] === "report-metadata");
+  assert.deepEqual(metadata, [
+    "pane", "report-metadata", "w1:p2",
+    "--source", HERDR_COMMAND_METADATA_SOURCE,
+    "--token", `${HERDR_COMMAND_OWNER_TOKEN}=term_parent`,
+  ]);
+});
+
+test("does not steal a command pane owned by another Pi terminal", async () => {
+  let created = false;
+  const calls: string[][] = [];
+  const loaded = withHerdrEnv(() => loadExtension(async (_command, args) => {
+    calls.push(args);
+    if (args[0] === "pane" && args[1] === "list") {
+      return success(JSON.stringify({ result: { panes: [
+        { pane_id: "w1:p1", terminal_id: "term_parent", workspace_id: "w1", tab_id: "w1:t1" },
+        {
+          pane_id: "w1:p2",
+          terminal_id: "term_foreign_command",
+          workspace_id: "w1",
+          tab_id: "w1:t1",
+          tokens: { [HERDR_COMMAND_OWNER_TOKEN]: "term_other_parent" },
+        },
+        ...(created ? [{
+          pane_id: "w1:p3",
+          terminal_id: "term_own_command",
+          workspace_id: "w1",
+          tab_id: "w1:t1",
+          tokens: { [HERDR_COMMAND_OWNER_TOKEN]: "term_parent" },
+        }] : []),
+      ] } }));
+    }
+    if (args[0] === "pane" && args[1] === "split") {
+      created = true;
+      return success(JSON.stringify({ result: { pane: {
+        pane_id: "w1:p3", terminal_id: "term_own_command", workspace_id: "w1", tab_id: "w1:t1",
+      } } }));
+    }
+    if (args[0] === "pane" && args[1] === "report-metadata") return success();
+    if (args[0] === "pane" && args[1] === "rename") return success();
+    if (args[0] === "pane" && args[1] === "run") return success();
+    throw new Error(`Unexpected args: ${args.join(" ")}`);
+  }, { randomUUID: () => FIXED_RUN_ID }));
+
+  await restoreSession(loaded, [{
+    customType: HERDR_COMMAND_PANE_ENTRY,
+    data: { paneId: "w1:p2", terminalId: "term_foreign_command", workspaceId: "w1", tabId: "w1:t1" },
+  }]);
+  const result = await tool(loaded, HERDR_START_COMMAND_TOOL_NAME).execute(
+    "call",
+    { command: "make build", cwd: "/" },
+    undefined,
+    undefined,
+    { cwd: "/" },
+  );
+
+  assert.equal(result.details.paneId, "w1:p3");
+  assert.equal(calls.some(args => args[0] === "pane" && args[1] === "split"), true);
+  assert.equal(calls.some(args => args[0] === "pane" && args[1] === "run" && args[2] === "w1:p2"), false);
+});
+
+test("reports an adopted pane owned by another running session as busy", async () => {
+  let runCalls = 0;
+  const loaded = withHerdrEnv(() => loadExtension(async (_command, args) => {
+    if (args[0] === "pane" && args[1] === "list") return success(paneList(true));
+    if (args[0] === "pane" && args[1] === "process-info") return success(processInfo(false, "make"));
+    if (args[0] === "pane" && args[1] === "run") {
+      runCalls++;
+      return success();
+    }
+    throw new Error(`Unexpected args: ${args.join(" ")}`);
+  }));
+
+  await restoreSession(loaded, []);
+  const result = await tool(loaded, HERDR_START_COMMAND_TOOL_NAME).execute(
+    "call",
+    { command: "make test", cwd: "/" },
+    undefined,
+    undefined,
+    { cwd: "/" },
+  );
+
+  assert.equal(result.details.state, "busy");
+  assert.equal(result.details.runId, undefined);
+  assert.equal(runCalls, 0);
 });
 
 test("reports a running command immediately with foreground process and recent output", async () => {
@@ -290,7 +447,7 @@ test("reports a running command immediately with foreground process and recent o
     if (args[0] === "pane" && args[1] === "process-info") return success(processInfo(false));
     throw new Error(`Unexpected args: ${args.join(" ")}`);
   }, { now: () => 4_000 }));
-  restoreSession(loaded, [
+  await restoreSession(loaded, [
     { customType: HERDR_COMMAND_PANE_ENTRY, data: {
       paneId: "w1:p2", terminalId: "term_command", workspaceId: "w1", tabId: "w1:t1",
     } },
@@ -317,7 +474,7 @@ test("reports a completed nonzero command and recovers it after session reload",
     if (args[0] === "pane" && args[1] === "process-info") return success(processInfo(true));
     throw new Error(`Unexpected args: ${args.join(" ")}`);
   }, { now: () => 6_000 }));
-  restoreSession(loaded, [
+  await restoreSession(loaded, [
     { customType: HERDR_COMMAND_PANE_ENTRY, data: {
       paneId: "w1:p2", terminalId: "term_command", workspaceId: "w1", tabId: "w1:t1",
     } },
@@ -348,7 +505,7 @@ test("optionally waits for a bounded interval without turning status timeouts in
     if (args[0] === "pane" && args[1] === "wait-output") return timeout();
     throw new Error(`Unexpected args: ${args.join(" ")}`);
   }, { now: () => 4_000 }));
-  restoreSession(loaded, [
+  await restoreSession(loaded, [
     { customType: HERDR_COMMAND_PANE_ENTRY, data: {
       paneId: "w1:p2", terminalId: "term_command", workspaceId: "w1", tabId: "w1:t1",
     } },
@@ -386,7 +543,7 @@ test("does not submit a second command while the first launch is still reaching 
     }
     throw new Error(`Unexpected args: ${args.join(" ")}`);
   }, { now: () => 1_000 }));
-  restoreSession(loaded, [
+  await restoreSession(loaded, [
     { customType: HERDR_COMMAND_PANE_ENTRY, data: {
       paneId: "w1:p2", terminalId: "term_command", workspaceId: "w1", tabId: "w1:t1",
     } },
@@ -421,7 +578,7 @@ test("refuses a second command while the managed pane is busy", async () => {
     }
     throw new Error(`Unexpected args: ${args.join(" ")}`);
   }));
-  restoreSession(loaded, [
+  await restoreSession(loaded, [
     { customType: HERDR_COMMAND_PANE_ENTRY, data: {
       paneId: "w1:p2", terminalId: "term_command", workspaceId: "w1", tabId: "w1:t1",
     } },

@@ -86,10 +86,16 @@ test("overrides only local built-in file tools in TUI mode", () => {
       render: () => ["\x1b]8;;file:///repo/main.ts\x07main.ts\x1b]8;;\x07"],
       invalidate() {},
     };
+    let renderCalls = 0;
+    const renderCall = (_args: unknown, _theme: unknown, renderContext: { lastComponent?: Component }) => {
+      assert.equal(renderContext.lastComponent, renderCalls === 0 ? undefined : baseComponent);
+      renderCalls++;
+      return baseComponent;
+    };
     const definitions = [
-      { name: "read", execute() {}, renderCall: () => baseComponent },
-      { name: "edit", execute() {}, renderCall: () => baseComponent },
-      { name: "write", execute() {}, renderCall: () => baseComponent },
+      { name: "read", execute() {}, renderCall },
+      { name: "edit", execute() {}, renderCall },
+      { name: "write", execute() {}, renderCall },
     ];
     const pi = {
       on(name: string, handler: (...args: any[]) => void) { handlers.set(name, handler); },
@@ -107,10 +113,19 @@ test("overrides only local built-in file tools in TUI mode", () => {
     handlers.get("session_start")?.({}, { mode: "tui", cwd: "/repo" });
 
     assert.deepEqual(registered.map(tool => tool.name), ["read", "write"]);
-    assert.match(
-      registered[0].renderCall({ offset: 7 }, {}, { cwd: "/repo" }).render(80)[0],
-      /line=7/,
+    const first = registered[0].renderCall(
+      { offset: 7 },
+      {},
+      { cwd: "/repo", lastComponent: undefined },
     );
+    const second = registered[0].renderCall(
+      { offset: 8 },
+      {},
+      { cwd: "/repo", lastComponent: first },
+    );
+    assert.equal(second, first);
+    assert.equal(renderCalls, 2);
+    assert.match(second.render(80)[0], /line=8/);
   });
 });
 

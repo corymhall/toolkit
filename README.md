@@ -171,11 +171,12 @@ for requirements and failure behavior.
 ### Herdr command extension
 
 When Pi runs inside Herdr, `herdr_start_command` starts an ordinary long-running
-command in one reusable, non-focused pane and returns immediately so the agent
-can continue independent work. `herdr_command_status` later reports completion,
-exit status, foreground processes, and recent pane output, with an optional
-bounded wait. Explicit working directories prevent the persistent pane shell
-from drifting between commands. See
+command in one reusable, non-focused pane owned by the calling Pi terminal and
+returns immediately so the agent can continue independent work. New Pi sessions
+in that terminal adopt the same command pane. `herdr_command_status` later
+reports completion, exit status, foreground processes, and recent pane output,
+with an optional bounded wait. Explicit working directories prevent the
+persistent pane shell from drifting between commands. See
 [extensions/herdr-command/README.md](extensions/herdr-command/README.md) for the
 command protocol and requirements.
 
@@ -249,7 +250,7 @@ update.
 | Development | `go-development`, `neovim-plugin-development` |
 | General workflows | `collaborative-framing`, `capture-decision-context`, `multi-model-evaluate`, `git-spice-stack-prs` |
 | GitHub | `create-pr`, `github-search-cli` |
-| Documentation | `notion-docs` |
+| Documentation | `high-signal-docs`, `notion-docs` |
 | Operations | `memory-guard` |
 | Provider work | `triage-provider-issue`, `pulumi-rpc-lifecycle-investigation`, `bridge-parity-investigation`, `stage-pulumi-provider-repro`, `stage-terraform-provider-repro`, `workaround-investigation` |
 | Pulumi audit | `pulumi-test-rationalization-audit` |

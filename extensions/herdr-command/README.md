@@ -25,10 +25,12 @@ reporting that the command succeeded.
 
 ## Behavior
 
-- The first start creates one non-focused horizontal split directly beneath the
-  calling Pi pane. Herdr receives `--ratio 0.9`, giving the top Pi pane 90% of
-  the height and the lower command pane 10%. Later starts reuse that pane while
-  it remains available and idle.
+- The first start for a calling Pi terminal creates one non-focused horizontal
+  split directly beneath the Pi pane. Herdr receives `--ratio 0.9`, giving the
+  top Pi pane 90% of the height and the lower command pane 10%. The extension
+  tags the split with the calling pane's stable terminal ID, so later Pi
+  sessions in that terminal adopt and reuse the same command pane while it
+  remains available and idle. Separate Pi panes receive separate command panes.
 - Starting returns after Herdr accepts the terminal input. It does not wait for
   output or command completion. The command continues if Pi is cancelled,
   reloaded, or exits.
@@ -43,9 +45,13 @@ reporting that the command succeeded.
   the command. Status uses those markers to distinguish running commands from
   successful and nonzero completion.
 - The extension stores pane and latest-run metadata in non-context Pi session
-  entries so `/reload` and session resume can recover status.
+  entries so `/reload` and session resume can recover status. Herdr pane
+  metadata stores only the owning Pi terminal ID needed for cross-session pane
+  adoption.
 - If the managed pane is already busy, start refuses to submit another command
-  instead of interleaving shell input.
+  instead of interleaving shell input. A new Pi session can detect an adopted
+  busy pane even when that session has no metadata for the command already
+  running there.
 - The extension never closes its pane or kills its command automatically.
 
 `herdr_command_status` returns immediately by default. Its optional `waitMs`

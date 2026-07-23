@@ -4,6 +4,8 @@ export const HERDR_START_COMMAND_TOOL_NAME = "herdr_start_command";
 export const HERDR_COMMAND_STATUS_TOOL_NAME = "herdr_command_status";
 export const HERDR_COMMAND_PANE_ENTRY = "herdr-command-pane";
 export const HERDR_COMMAND_RUN_ENTRY = "herdr-command-run";
+export const HERDR_COMMAND_METADATA_SOURCE = "pi:herdr-command";
+export const HERDR_COMMAND_OWNER_TOKEN = "pi_command_owner";
 
 export interface ManagedPane {
   paneId: string;
@@ -37,6 +39,7 @@ export interface PaneRecord {
   terminal_id?: unknown;
   workspace_id?: unknown;
   tab_id?: unknown;
+  tokens?: unknown;
 }
 
 export interface RunMarkers {
@@ -121,6 +124,12 @@ export function paneRecordToManagedPane(record: PaneRecord): ManagedPane | undef
     workspaceId: record.workspace_id,
     tabId: record.tab_id,
   };
+}
+
+export function paneRecordOwnerTerminalId(record: PaneRecord): string | undefined {
+  if (!record.tokens || typeof record.tokens !== "object" || Array.isArray(record.tokens)) return undefined;
+  const owner = (record.tokens as Record<string, unknown>)[HERDR_COMMAND_OWNER_TOKEN];
+  return typeof owner === "string" && owner ? owner : undefined;
 }
 
 export function parseSplitPane(stdout: string): ManagedPane {

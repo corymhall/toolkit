@@ -13,6 +13,8 @@ import {
   buildRunMarkers,
   exitCodeFromTranscript,
   extractTranscript,
+  HERDR_COMMAND_METADATA_SOURCE,
+  HERDR_COMMAND_OWNER_TOKEN,
   HERDR_COMMAND_PANE_ENTRY,
   HERDR_COMMAND_RUN_ENTRY,
   HERDR_COMMAND_STATUS_TOOL_NAME,
@@ -23,6 +25,7 @@ import {
   type ManagedPane,
   type ManagedRun,
   normalizeLabel,
+  paneRecordOwnerTerminalId,
   paneRecordToManagedPane,
   parsePaneList,
   parsePaneProcessInfo,
@@ -132,6 +135,72 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     return parsePaneList(result.stdout);
   };
 
+  const rememberManagedPane = (current: ManagedPane): ManagedPane => {
+    const previous = managedPane;
+    managedPane = current;
+    if (
+      !previous ||
+      previous.paneId !== current.paneId ||
+      previous.terminalId !== current.terminalId ||
+      previous.workspaceId !== current.workspaceId ||
+      previous.tabId !== current.tabId
+    ) {
+      pi.appendEntry(HERDR_COMMAND_PANE_ENTRY, current);
+    }
+    return current;
+  };
+
+  const callingPane = (panes: ReturnType<typeof parsePaneList>): ManagedPane => {
+    if (!callerPaneId || !callerWorkspaceId) {
+      throw new Error("Herdr did not provide the calling pane context");
+    }
+    const caller = panes
+      .map(paneRecordToManagedPane)
+      .find((pane): pane is ManagedPane => pane?.paneId === callerPaneId && pane.workspaceId === callerWorkspaceId);
+    if (!caller) throw new Error(`The calling Herdr pane ${callerPaneId} is no longer present`);
+    return caller;
+  };
+
+  const tagManagedPane = async (
+    pane: ManagedPane,
+    ownerTerminalId: string,
+    signal?: AbortSignal,
+  ): Promise<void> => {
+    const result = await herdr([
+      "pane", "report-metadata", pane.paneId,
+      "--source", HERDR_COMMAND_METADATA_SOURCE,
+      "--token", `${HERDR_COMMAND_OWNER_TOKEN}=${ownerTerminalId}`,
+    ], { signal, timeout: 10_000 });
+    if (result.code !== 0) throw execFailure("tagging Herdr command pane", result);
+  };
+
+  const recoverManagedPane = async (
+    panes: ReturnType<typeof parsePaneList>,
+    caller: ManagedPane,
+    signal?: AbortSignal,
+  ): Promise<ManagedPane | undefined> => {
+    if (managedPane) {
+      const record = panes.find(pane => pane.terminal_id === managedPane!.terminalId);
+      const current = record && paneRecordToManagedPane(record);
+      if (current) {
+        const ownerTerminalId = paneRecordOwnerTerminalId(record);
+        if (!ownerTerminalId) {
+          await tagManagedPane(current, caller.terminalId, signal);
+          return rememberManagedPane(current);
+        }
+        if (ownerTerminalId === caller.terminalId) return rememberManagedPane(current);
+      }
+      managedPane = undefined;
+    }
+
+    const owned = panes.filter(pane => paneRecordOwnerTerminalId(pane) === caller.terminalId);
+    if (owned.length > 1) {
+      throw new Error(`Multiple Herdr command panes are tagged for calling terminal ${caller.terminalId}`);
+    }
+    const adopted = owned[0] && paneRecordToManagedPane(owned[0]);
+    return adopted ? rememberManagedPane(adopted) : undefined;
+  };
+
   const refreshManagedPane = async (signal?: AbortSignal): Promise<ManagedPane | undefined> => {
     if (!managedPane) return undefined;
     const panes = await listPanes(signal);
@@ -142,25 +211,17 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
       managedPane = undefined;
       return undefined;
     }
-    if (current.paneId !== managedPane.paneId || current.workspaceId !== managedPane.workspaceId) {
-      managedPane = current;
-      pi.appendEntry(HERDR_COMMAND_PANE_ENTRY, current);
-    }
-    return managedPane;
+    return rememberManagedPane(current);
   };
 
   const createManagedPane = async (
     cwd: string,
     label: string,
+    ownerTerminalId: string,
     signal?: AbortSignal,
   ): Promise<ManagedPane> => {
     if (!callerPaneId || !callerWorkspaceId) {
       throw new Error("Herdr did not provide the calling pane context");
-    }
-
-    const panes = await listPanes(signal);
-    if (!panes.some(pane => pane.pane_id === callerPaneId && pane.workspace_id === callerWorkspaceId)) {
-      throw new Error(`The calling Herdr pane ${callerPaneId} is no longer present`);
     }
 
     const split = await herdr([
@@ -172,8 +233,8 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     ], { signal, timeout: 10_000 });
     if (split.code !== 0) throw execFailure("herdr pane split", split);
     const pane = parseSplitPane(split.stdout);
-    managedPane = pane;
-    pi.appendEntry(HERDR_COMMAND_PANE_ENTRY, pane);
+    rememberManagedPane(pane);
+    await tagManagedPane(pane, ownerTerminalId, signal);
 
     const rename = await herdr(["pane", "rename", pane.paneId, label], { signal, timeout: 10_000 });
     if (rename.code !== 0) throw execFailure("herdr pane rename", rename);
@@ -185,9 +246,11 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     label: string,
     signal?: AbortSignal,
   ): Promise<{ pane: ManagedPane; created: boolean }> => {
-    const existing = await refreshManagedPane(signal);
+    const panes = await listPanes(signal);
+    const caller = callingPane(panes);
+    const existing = await recoverManagedPane(panes, caller, signal);
     if (existing) return { pane: existing, created: false };
-    return { pane: await createManagedPane(cwd, label, signal), created: true };
+    return { pane: await createManagedPane(cwd, label, caller.terminalId, signal), created: true };
   };
 
   const readPane = async (pane: ManagedPane, signal?: AbortSignal): Promise<string> => {
@@ -424,7 +487,7 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     };
   };
 
-  pi.on("session_start", (_event, ctx) => {
+  pi.on("session_start", async (_event, ctx) => {
     managedPane = undefined;
     latestRun = undefined;
     for (const entry of ctx.sessionManager.getBranch()) {
@@ -437,6 +500,9 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
         latestRun = candidate.data;
       }
     }
+
+    const panes = await listPanes();
+    await recoverManagedPane(panes, callingPane(panes));
   });
 
   pi.registerTool({

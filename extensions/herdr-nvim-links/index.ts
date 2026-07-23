@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { Component } from "@earendil-works/pi-tui";
 import {
   createEditToolDefinition,
   createReadToolDefinition,
@@ -18,6 +19,12 @@ interface ToolDefinitionLike {
 
 interface Dependencies {
   createDefinitions?: (cwd: string) => ToolDefinitionLike[];
+}
+
+interface RenderContextLike {
+  cwd: string;
+  lastComponent?: Component;
+  [key: string]: unknown;
 }
 
 function defaultDefinitions(cwd: string): ToolDefinitionLike[] {
@@ -69,8 +76,14 @@ export default function herdrNvimLinksExtension(
 
       pi.registerTool({
         ...definition,
-        renderCall(args: unknown, theme: unknown, renderContext: { cwd?: string }) {
-          const component = originalRenderCall(args, theme, renderContext);
+        renderCall(args: unknown, theme: unknown, renderContext: RenderContextLike) {
+          const previous = renderContext.lastComponent instanceof HerdrNvimLinkComponent
+            ? renderContext.lastComponent
+            : undefined;
+          const component = originalRenderCall(args, theme, {
+            ...renderContext,
+            lastComponent: previous?.innerComponent,
+          });
           const linkContext: HerdrLinkContext = {
             sourcePane: environment.sourcePane,
             workspace: environment.workspace,
@@ -79,7 +92,9 @@ export default function herdrNvimLinksExtension(
             ...(environment.socket ? { socket: environment.socket } : {}),
             ...(requestedLine(args) !== undefined ? { line: requestedLine(args) } : {}),
           };
-          return new HerdrNvimLinkComponent(component, linkContext);
+          return previous
+            ? previous.update(component, linkContext)
+            : new HerdrNvimLinkComponent(component, linkContext);
         },
       } as any);
     }

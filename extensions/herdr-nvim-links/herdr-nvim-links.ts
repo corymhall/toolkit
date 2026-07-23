@@ -47,14 +47,26 @@ export function rewriteFileHyperlinks(text: string, context: HerdrLinkContext): 
 }
 
 export class HerdrNvimLinkComponent implements Component {
-  readonly wantsKeyRelease?: boolean;
-  private readonly inner: Component;
-  private readonly context: HerdrLinkContext;
+  private inner: Component;
+  private context: HerdrLinkContext;
 
   constructor(inner: Component, context: HerdrLinkContext) {
     this.inner = inner;
     this.context = context;
-    this.wantsKeyRelease = inner.wantsKeyRelease;
+  }
+
+  get wantsKeyRelease(): boolean | undefined {
+    return this.inner.wantsKeyRelease;
+  }
+
+  get innerComponent(): Component {
+    return this.inner;
+  }
+
+  update(inner: Component, context: HerdrLinkContext): this {
+    this.inner = inner;
+    this.context = context;
+    return this;
   }
 
   render(width: number): string[] {
