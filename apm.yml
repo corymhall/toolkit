@@ -1,0 +1,11 @@
+name: toolkit
+version: 1.0.0
+description: Shared Agent Skills and focused Pi extensions
+
+targets:
+  - agent-skills
+
+dependencies:
+  apm:
+    - badlogic/pi-skills/browser-tools
+    - path: ../../work/provider-agent-skills/packages/bridged

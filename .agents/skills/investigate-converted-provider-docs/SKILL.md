@@ -1,6 +1,11 @@
-# Docs And Example Conversion
+---
+name: investigate-converted-provider-docs
+description: "Investigate bridged-provider generated docs and converted Terraform examples. Use for incorrect casing, malformed PCL, wrong target-language output, or unclear ownership across schema generation, tfgen, the Terraform converter, the bridge, and language generators."
+---
 
-Use this reference when a provider issue involves generated docs, converted
+# Investigate Converted Provider Docs
+
+Use this skill when a bridged-provider issue involves generated docs, converted
 Terraform examples, or unexpected casing in examples.
 
 ## Pipeline

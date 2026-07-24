@@ -34,7 +34,7 @@ Use only when at least one of these is true:
 - there is an existing bridge issue that matches the same failure mode, or
 - Pulumi behavior is established, Terraform behavior is established, and the
   remaining gap is bridge-owned enough that `bridge-parity-investigation` is
-  the right next step
+  the right next step when that specialist is installed
 
 Do not use it when:
 

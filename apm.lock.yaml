@@ -1,0 +1,572 @@
+lockfile_version: '1'
+generated_at: '2026-07-24T14:29:24.749594+00:00'
+apm_version: 0.25.0
+dependencies:
+- repo_url: _local/bridged
+  name: pulumi-bridged-provider
+  version: 0.1.0
+  package_type: skill_bundle
+  deployed_files:
+  - .agents/skills/bridge-parity-investigation
+  - .agents/skills/bridge-parity-investigation/SKILL.md
+  - .agents/skills/bridge-parity-investigation/agents/openai.yaml
+  - .agents/skills/bridge-parity-investigation/references/cross-test-playbook.md
+  - .agents/skills/investigate-converted-provider-docs
+  - .agents/skills/investigate-converted-provider-docs/SKILL.md
+  - .agents/skills/investigate-converted-provider-docs/agents/openai.yaml
+  - .agents/skills/pulumi-rpc-lifecycle-investigation
+  - .agents/skills/pulumi-rpc-lifecycle-investigation/SKILL.md
+  - .agents/skills/pulumi-rpc-lifecycle-investigation/agents/openai.yaml
+  - .agents/skills/stage-terraform-provider-repro
+  - .agents/skills/stage-terraform-provider-repro/SKILL.md
+  - .agents/skills/stage-terraform-provider-repro/agents/openai.yaml
+  - .agents/skills/stage-terraform-provider-repro/references/repro-shape.md
+  deployed_file_hashes:
+    .agents/skills/bridge-parity-investigation/SKILL.md: sha256:d9d15fe386a589902b65b1f5663caccf21a9be8f8cbcbf23a578a668dcefb1c3
+    .agents/skills/bridge-parity-investigation/agents/openai.yaml: sha256:f97c701205a71c3c3ca872b91142a78500348d9e8b4d01ce496cf07602610399
+    .agents/skills/bridge-parity-investigation/references/cross-test-playbook.md: sha256:867ff3e2987a94d1862cc50d026b1bba32c2254b501db5f6361879f915190a75
+    .agents/skills/investigate-converted-provider-docs/SKILL.md: sha256:b180ede3ed2f491d63205c2606bd67bd8537b4a2ba16fc1e8739aa4212da8aa1
+    .agents/skills/investigate-converted-provider-docs/agents/openai.yaml: sha256:2324b0d730a153d0f88cd11e3a2d88a05a39d54308deb25342f67356d010a2d4
+    .agents/skills/pulumi-rpc-lifecycle-investigation/SKILL.md: sha256:c5338dfe81c1ec93699c6a61bad3571c363fccde1b4ed82b245ce95b71a36818
+    .agents/skills/pulumi-rpc-lifecycle-investigation/agents/openai.yaml: sha256:2f4d7ae20c1c8dbd3d4240d6928c7d3765524b8f204da2b22b633912e1790435
+    .agents/skills/stage-terraform-provider-repro/SKILL.md: sha256:e03e9a914a9e50ae5d3b828f2b4e9035a9a81b8716dcf470a065d843e09f57c6
+    .agents/skills/stage-terraform-provider-repro/agents/openai.yaml: sha256:f160ef1567cb78199f0170a5a5c87926ab1dae646477563e35b71e59553d97cf
+    .agents/skills/stage-terraform-provider-repro/references/repro-shape.md: sha256:12371c91dd376125a95cbd90ec3727688bc8d3d9005554a9a571906d7b36e97b
+  source: local
+  local_path: ../../work/provider-agent-skills/packages/bridged
+  declared_license: Apache-2.0
+- repo_url: badlogic/pi-skills
+  name: pi-skills
+  host: github.com
+  resolved_commit: 90bb51cae36515a648515b633a81c0c6efc8c74d
+  version: unknown
+  virtual_path: browser-tools
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/browser-tools
+  - .agents/skills/browser-tools/.gitignore
+  - .agents/skills/browser-tools/SKILL.md
+  - .agents/skills/browser-tools/browser-content.js
+  - .agents/skills/browser-tools/browser-cookies.js
+  - .agents/skills/browser-tools/browser-eval.js
+  - .agents/skills/browser-tools/browser-hn-scraper.js
+  - .agents/skills/browser-tools/browser-nav.js
+  - .agents/skills/browser-tools/browser-pick.js
+  - .agents/skills/browser-tools/browser-screenshot.js
+  - .agents/skills/browser-tools/browser-start.js
+  - .agents/skills/browser-tools/package-lock.json
+  - .agents/skills/browser-tools/package.json
+  deployed_file_hashes:
+    .agents/skills/browser-tools/.gitignore: sha256:43bbc08d848017bc3e3cdd7dfd14e9ab48d661302e94c1f7cd30f783b1aaf148
+    .agents/skills/browser-tools/SKILL.md: sha256:abb6f33fc50550b3f4c36378b9b6be09e4d9792b17cf56f8dc80079792543499
+    .agents/skills/browser-tools/browser-content.js: sha256:97b1d6a7ed27c287a47086d4d6e79be83c0e5a9ab8860adc6014872f16b8125c
+    .agents/skills/browser-tools/browser-cookies.js: sha256:c1828d427ae5ee20eb0941a1b9e51adae198732b2853ef9dfcd9b49dc133d78a
+    .agents/skills/browser-tools/browser-eval.js: sha256:3c1ddd6ab1726d191977a56f3021c470e547653b29959cbe359ac3790bc052ba
+    .agents/skills/browser-tools/browser-hn-scraper.js: sha256:27b4aefebeba068f789e626989b3756180f7c596587cabed35281642de9ff18f
+    .agents/skills/browser-tools/browser-nav.js: sha256:7d6bd34f94b07e593735b79c2b48f23aad3a02ae68a8e8000e1829bad5099467
+    .agents/skills/browser-tools/browser-pick.js: sha256:9a05689c1c45725ca7253d0334f377d5e26d6018d0b5c70bf0dc51161553ee4f
+    .agents/skills/browser-tools/browser-screenshot.js: sha256:c070ebbb8f865c135a53b5fbfd8cb392ac8e5e766a72e85f1d27816433fefd8a
+    .agents/skills/browser-tools/browser-start.js: sha256:8529f9a762b4a1490b6336be5d7022a0ac2d97fd4c8a3a03061deb084786f61d
+    .agents/skills/browser-tools/package-lock.json: sha256:24e6b9120bc3ae975e3a3f81400f1d0a87dc4f191166ff4f96aac86ab752f2a6
+    .agents/skills/browser-tools/package.json: sha256:70e10b3ed27ad993d5491c91b7326d18cce5035c443590d99230d77cd6feffa7
+  content_hash: sha256:2eef6bbe215b522a1f9691f9a88e9abddd7e9a590d9c76f90c17e2315b215c55
+- repo_url: _local/core
+  name: pulumi-provider-core
+  version: 0.1.0
+  depth: 2
+  resolved_by: _local/bridged
+  package_type: skill_bundle
+  deployed_files:
+  - .agents/skills/stage-pulumi-provider-repro
+  - .agents/skills/stage-pulumi-provider-repro/SKILL.md
+  - .agents/skills/stage-pulumi-provider-repro/agents/openai.yaml
+  - .agents/skills/stage-pulumi-provider-repro/references/repro-shape.md
+  - .agents/skills/triage-provider-issue
+  - .agents/skills/triage-provider-issue/SKILL.md
+  - .agents/skills/triage-provider-issue/agents/openai.yaml
+  - .agents/skills/triage-provider-issue/references/confidence-and-artifacts.md
+  - .agents/skills/triage-provider-issue/references/disposition-gates.md
+  - .agents/skills/triage-provider-issue/references/helper-switches.md
+  - .agents/skills/triage-provider-issue/references/provider-families.md
+  - .agents/skills/triage-provider-issue/references/workaround-investigation.md
+  deployed_file_hashes:
+    .agents/skills/stage-pulumi-provider-repro/SKILL.md: sha256:c7c360d6fd2b233aa46a1aa3b76faaf203e9a7ab78db32a7afe38da4eecf94ac
+    .agents/skills/stage-pulumi-provider-repro/agents/openai.yaml: sha256:4337ec0decb104f99be7438f63a3f21ec23bee5f2c1ebb7bc22ee3233d8b8717
+    .agents/skills/stage-pulumi-provider-repro/references/repro-shape.md: sha256:7b9f674da3fef893eafa0b9a66d1e54c319a8b5d3988e81e457ad10a05560bbf
+    .agents/skills/triage-provider-issue/SKILL.md: sha256:36eb32b75090afe7533e7693d7a237beda0508f1f1dffe47280a444e4e74cfe9
+    .agents/skills/triage-provider-issue/agents/openai.yaml: sha256:57cd6644e7c68fc00a57a2b8de657998b358d0e8bcf5bb036cdaa226392e0685
+    .agents/skills/triage-provider-issue/references/confidence-and-artifacts.md: sha256:9aade6826d780812f94ad8dc30f5b03f78d40d92811d0f85b7774c4ce7b613c9
+    .agents/skills/triage-provider-issue/references/disposition-gates.md: sha256:7e5e7a5d04771672718e9a2688befe9b8aef8274fa6b8d2d68d9621267e27fa9
+    .agents/skills/triage-provider-issue/references/helper-switches.md: sha256:8f878eb7cd240b233d59e0f1f0fb4881bf7f5e27c216dc8ca28436f1e1751071
+    .agents/skills/triage-provider-issue/references/provider-families.md: sha256:88fa42888a37f5f24c5400979c01e2ad92a10a25cfe4c41f5b5596eb20c341d5
+    .agents/skills/triage-provider-issue/references/workaround-investigation.md: sha256:6c05795586b00c78c69102d975a8c726e2f9e4fc8476dee4f4a21002d1c99930
+  source: local
+  local_path: ../core
+  declaring_parent: ../../work/provider-agent-skills/packages/bridged
+  anchored_local_path: /Users/chall/work/provider-agent-skills/packages/core
+  declared_license: Apache-2.0
+- repo_url: pulumi/agent-skills
+  name: pulumi-package-maintenance
+  host: github.com
+  resolved_commit: 49e2562105dbd3bd0e1829c32c023163d139452b
+  resolved_ref: main
+  version: 1.0.4
+  virtual_path: package-maintenance
+  is_virtual: true
+  depth: 2
+  resolved_by: _local/bridged
+  package_type: marketplace_plugin
+  deployed_files:
+  - .agents/skills/pulumi-upgrade-provider
+  - .agents/skills/pulumi-upgrade-provider/SKILL.md
+  - .agents/skills/pulumi-upgrade-provider/agents/openai.yaml
+  - .agents/skills/pulumi-upgrade-provider/references/upgrade-provider-errors.md
+  - .agents/skills/pulumi-upgrade-provider/use_cases.yaml
+  - .agents/skills/upstream-patches
+  - .agents/skills/upstream-patches/SKILL.md
+  - .agents/skills/upstream-patches/agents/openai.yaml
+  - .agents/skills/upstream-patches/use_cases.yaml
+  deployed_file_hashes:
+    .agents/skills/pulumi-upgrade-provider/SKILL.md: sha256:7dfc873f30ff4d4f7bb6f537e9b59e0b47403392e5567e6912fa536cdc34f4a3
+    .agents/skills/pulumi-upgrade-provider/agents/openai.yaml: sha256:3c396aa642f8d1048d90106e47758a28fe3dca9e78f7d477e47ed4642e9e0bde
+    .agents/skills/pulumi-upgrade-provider/references/upgrade-provider-errors.md: sha256:bfb377e1b95263bff4e428a7c7202cb04be87bdb139f8a90a9ba6c3a0896197c
+    .agents/skills/pulumi-upgrade-provider/use_cases.yaml: sha256:1ef52b6c4d51c26c53b6fee802627a1bf498613dabda215ec0aa86231f6b6dc4
+    .agents/skills/upstream-patches/SKILL.md: sha256:56a593f44d1bcc05413354204da3c73488d8cb9239f043fea4cc103fad7054b1
+    .agents/skills/upstream-patches/agents/openai.yaml: sha256:2fb000ec013660c8c5db2566c9e92aa125e339f89d66e8c4b5b4165311f48c2a
+    .agents/skills/upstream-patches/use_cases.yaml: sha256:6ca7fd1178a7c3287e0af7dea901004201c6052b3f22af36d4ad469892500698
+  content_hash: sha256:36adbd6a15f9db56403841414ec51837825d4bbe658b188315971f9d54a91376
+  declared_license: Apache-2.0
+deployments:
+- kind: project-relative
+  target: agents
+  value: .agents/skills/bridge-parity-investigation
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: null
+- kind: project-relative
+  target: agents
+  value: .agents/skills/bridge-parity-investigation/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: sha256:d9d15fe386a589902b65b1f5663caccf21a9be8f8cbcbf23a578a668dcefb1c3
+- kind: project-relative
+  target: agents
+  value: .agents/skills/bridge-parity-investigation/agents/openai.yaml
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: sha256:f97c701205a71c3c3ca872b91142a78500348d9e8b4d01ce496cf07602610399
+- kind: project-relative
+  target: agents
+  value: .agents/skills/bridge-parity-investigation/references/cross-test-playbook.md
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: sha256:867ff3e2987a94d1862cc50d026b1bba32c2254b501db5f6361879f915190a75
+- kind: project-relative
+  target: agents
+  value: .agents/skills/browser-tools
+  runtime: null
+  scope: project
+  owners:
+  - badlogic/pi-skills/browser-tools
+  active_owner: badlogic/pi-skills/browser-tools
+  content_hash: null
+- kind: project-relative
+  target: agents
+  value: .agents/skills/browser-tools/.gitignore
+  runtime: null
+  scope: project
+  owners:
+  - badlogic/pi-skills/browser-tools
+  active_owner: badlogic/pi-skills/browser-tools
+  content_hash: sha256:43bbc08d848017bc3e3cdd7dfd14e9ab48d661302e94c1f7cd30f783b1aaf148
+- kind: project-relative
+  target: agents
+  value: .agents/skills/browser-tools/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - badlogic/pi-skills/browser-tools
+  active_owner: badlogic/pi-skills/browser-tools
+  content_hash: sha256:abb6f33fc50550b3f4c36378b9b6be09e4d9792b17cf56f8dc80079792543499
+- kind: project-relative
+  target: agents
+  value: .agents/skills/browser-tools/browser-content.js
+  runtime: null
+  scope: project
+  owners:
+  - badlogic/pi-skills/browser-tools
+  active_owner: badlogic/pi-skills/browser-tools
+  content_hash: sha256:97b1d6a7ed27c287a47086d4d6e79be83c0e5a9ab8860adc6014872f16b8125c
+- kind: project-relative
+  target: agents
+  value: .agents/skills/browser-tools/browser-cookies.js
+  runtime: null
+  scope: project
+  owners:
+  - badlogic/pi-skills/browser-tools
+  active_owner: badlogic/pi-skills/browser-tools
+  content_hash: sha256:c1828d427ae5ee20eb0941a1b9e51adae198732b2853ef9dfcd9b49dc133d78a
+- kind: project-relative
+  target: agents
+  value: .agents/skills/browser-tools/browser-eval.js
+  runtime: null
+  scope: project
+  owners:
+  - badlogic/pi-skills/browser-tools
+  active_owner: badlogic/pi-skills/browser-tools
+  content_hash: sha256:3c1ddd6ab1726d191977a56f3021c470e547653b29959cbe359ac3790bc052ba
+- kind: project-relative
+  target: agents
+  value: .agents/skills/browser-tools/browser-hn-scraper.js
+  runtime: null
+  scope: project
+  owners:
+  - badlogic/pi-skills/browser-tools
+  active_owner: badlogic/pi-skills/browser-tools
+  content_hash: sha256:27b4aefebeba068f789e626989b3756180f7c596587cabed35281642de9ff18f
+- kind: project-relative
+  target: agents
+  value: .agents/skills/browser-tools/browser-nav.js
+  runtime: null
+  scope: project
+  owners:
+  - badlogic/pi-skills/browser-tools
+  active_owner: badlogic/pi-skills/browser-tools
+  content_hash: sha256:7d6bd34f94b07e593735b79c2b48f23aad3a02ae68a8e8000e1829bad5099467
+- kind: project-relative
+  target: agents
+  value: .agents/skills/browser-tools/browser-pick.js
+  runtime: null
+  scope: project
+  owners:
+  - badlogic/pi-skills/browser-tools
+  active_owner: badlogic/pi-skills/browser-tools
+  content_hash: sha256:9a05689c1c45725ca7253d0334f377d5e26d6018d0b5c70bf0dc51161553ee4f
+- kind: project-relative
+  target: agents
+  value: .agents/skills/browser-tools/browser-screenshot.js
+  runtime: null
+  scope: project
+  owners:
+  - badlogic/pi-skills/browser-tools
+  active_owner: badlogic/pi-skills/browser-tools
+  content_hash: sha256:c070ebbb8f865c135a53b5fbfd8cb392ac8e5e766a72e85f1d27816433fefd8a
+- kind: project-relative
+  target: agents
+  value: .agents/skills/browser-tools/browser-start.js
+  runtime: null
+  scope: project
+  owners:
+  - badlogic/pi-skills/browser-tools
+  active_owner: badlogic/pi-skills/browser-tools
+  content_hash: sha256:8529f9a762b4a1490b6336be5d7022a0ac2d97fd4c8a3a03061deb084786f61d
+- kind: project-relative
+  target: agents
+  value: .agents/skills/browser-tools/package-lock.json
+  runtime: null
+  scope: project
+  owners:
+  - badlogic/pi-skills/browser-tools
+  active_owner: badlogic/pi-skills/browser-tools
+  content_hash: sha256:24e6b9120bc3ae975e3a3f81400f1d0a87dc4f191166ff4f96aac86ab752f2a6
+- kind: project-relative
+  target: agents
+  value: .agents/skills/browser-tools/package.json
+  runtime: null
+  scope: project
+  owners:
+  - badlogic/pi-skills/browser-tools
+  active_owner: badlogic/pi-skills/browser-tools
+  content_hash: sha256:70e10b3ed27ad993d5491c91b7326d18cce5035c443590d99230d77cd6feffa7
+- kind: project-relative
+  target: agents
+  value: .agents/skills/investigate-converted-provider-docs
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: null
+- kind: project-relative
+  target: agents
+  value: .agents/skills/investigate-converted-provider-docs/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: sha256:b180ede3ed2f491d63205c2606bd67bd8537b4a2ba16fc1e8739aa4212da8aa1
+- kind: project-relative
+  target: agents
+  value: .agents/skills/investigate-converted-provider-docs/agents/openai.yaml
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: sha256:2324b0d730a153d0f88cd11e3a2d88a05a39d54308deb25342f67356d010a2d4
+- kind: project-relative
+  target: agents
+  value: .agents/skills/pulumi-rpc-lifecycle-investigation
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: null
+- kind: project-relative
+  target: agents
+  value: .agents/skills/pulumi-rpc-lifecycle-investigation/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: sha256:c5338dfe81c1ec93699c6a61bad3571c363fccde1b4ed82b245ce95b71a36818
+- kind: project-relative
+  target: agents
+  value: .agents/skills/pulumi-rpc-lifecycle-investigation/agents/openai.yaml
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: sha256:2f4d7ae20c1c8dbd3d4240d6928c7d3765524b8f204da2b22b633912e1790435
+- kind: project-relative
+  target: agents
+  value: .agents/skills/pulumi-upgrade-provider
+  runtime: null
+  scope: project
+  owners:
+  - pulumi/agent-skills/package-maintenance
+  active_owner: pulumi/agent-skills/package-maintenance
+  content_hash: null
+- kind: project-relative
+  target: agents
+  value: .agents/skills/pulumi-upgrade-provider/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - pulumi/agent-skills/package-maintenance
+  active_owner: pulumi/agent-skills/package-maintenance
+  content_hash: sha256:7dfc873f30ff4d4f7bb6f537e9b59e0b47403392e5567e6912fa536cdc34f4a3
+- kind: project-relative
+  target: agents
+  value: .agents/skills/pulumi-upgrade-provider/agents/openai.yaml
+  runtime: null
+  scope: project
+  owners:
+  - pulumi/agent-skills/package-maintenance
+  active_owner: pulumi/agent-skills/package-maintenance
+  content_hash: sha256:3c396aa642f8d1048d90106e47758a28fe3dca9e78f7d477e47ed4642e9e0bde
+- kind: project-relative
+  target: agents
+  value: .agents/skills/pulumi-upgrade-provider/references/upgrade-provider-errors.md
+  runtime: null
+  scope: project
+  owners:
+  - pulumi/agent-skills/package-maintenance
+  active_owner: pulumi/agent-skills/package-maintenance
+  content_hash: sha256:bfb377e1b95263bff4e428a7c7202cb04be87bdb139f8a90a9ba6c3a0896197c
+- kind: project-relative
+  target: agents
+  value: .agents/skills/pulumi-upgrade-provider/use_cases.yaml
+  runtime: null
+  scope: project
+  owners:
+  - pulumi/agent-skills/package-maintenance
+  active_owner: pulumi/agent-skills/package-maintenance
+  content_hash: sha256:1ef52b6c4d51c26c53b6fee802627a1bf498613dabda215ec0aa86231f6b6dc4
+- kind: project-relative
+  target: agents
+  value: .agents/skills/stage-pulumi-provider-repro
+  runtime: null
+  scope: project
+  owners:
+  - local:/Users/chall/work/provider-agent-skills/packages/core
+  active_owner: local:/Users/chall/work/provider-agent-skills/packages/core
+  content_hash: null
+- kind: project-relative
+  target: agents
+  value: .agents/skills/stage-pulumi-provider-repro/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - local:/Users/chall/work/provider-agent-skills/packages/core
+  active_owner: local:/Users/chall/work/provider-agent-skills/packages/core
+  content_hash: sha256:c7c360d6fd2b233aa46a1aa3b76faaf203e9a7ab78db32a7afe38da4eecf94ac
+- kind: project-relative
+  target: agents
+  value: .agents/skills/stage-pulumi-provider-repro/agents/openai.yaml
+  runtime: null
+  scope: project
+  owners:
+  - local:/Users/chall/work/provider-agent-skills/packages/core
+  active_owner: local:/Users/chall/work/provider-agent-skills/packages/core
+  content_hash: sha256:4337ec0decb104f99be7438f63a3f21ec23bee5f2c1ebb7bc22ee3233d8b8717
+- kind: project-relative
+  target: agents
+  value: .agents/skills/stage-pulumi-provider-repro/references/repro-shape.md
+  runtime: null
+  scope: project
+  owners:
+  - local:/Users/chall/work/provider-agent-skills/packages/core
+  active_owner: local:/Users/chall/work/provider-agent-skills/packages/core
+  content_hash: sha256:7b9f674da3fef893eafa0b9a66d1e54c319a8b5d3988e81e457ad10a05560bbf
+- kind: project-relative
+  target: agents
+  value: .agents/skills/stage-terraform-provider-repro
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: null
+- kind: project-relative
+  target: agents
+  value: .agents/skills/stage-terraform-provider-repro/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: sha256:e03e9a914a9e50ae5d3b828f2b4e9035a9a81b8716dcf470a065d843e09f57c6
+- kind: project-relative
+  target: agents
+  value: .agents/skills/stage-terraform-provider-repro/agents/openai.yaml
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: sha256:f160ef1567cb78199f0170a5a5c87926ab1dae646477563e35b71e59553d97cf
+- kind: project-relative
+  target: agents
+  value: .agents/skills/stage-terraform-provider-repro/references/repro-shape.md
+  runtime: null
+  scope: project
+  owners:
+  - ../../work/provider-agent-skills/packages/bridged
+  active_owner: ../../work/provider-agent-skills/packages/bridged
+  content_hash: sha256:12371c91dd376125a95cbd90ec3727688bc8d3d9005554a9a571906d7b36e97b
+- kind: project-relative
+  target: agents
+  value: .agents/skills/triage-provider-issue
+  runtime: null
+  scope: project
+  owners:
+  - local:/Users/chall/work/provider-agent-skills/packages/core
+  active_owner: local:/Users/chall/work/provider-agent-skills/packages/core
+  content_hash: null
+- kind: project-relative
+  target: agents
+  value: .agents/skills/triage-provider-issue/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - local:/Users/chall/work/provider-agent-skills/packages/core
+  active_owner: local:/Users/chall/work/provider-agent-skills/packages/core
+  content_hash: sha256:36eb32b75090afe7533e7693d7a237beda0508f1f1dffe47280a444e4e74cfe9
+- kind: project-relative
+  target: agents
+  value: .agents/skills/triage-provider-issue/agents/openai.yaml
+  runtime: null
+  scope: project
+  owners:
+  - local:/Users/chall/work/provider-agent-skills/packages/core
+  active_owner: local:/Users/chall/work/provider-agent-skills/packages/core
+  content_hash: sha256:57cd6644e7c68fc00a57a2b8de657998b358d0e8bcf5bb036cdaa226392e0685
+- kind: project-relative
+  target: agents
+  value: .agents/skills/triage-provider-issue/references/confidence-and-artifacts.md
+  runtime: null
+  scope: project
+  owners:
+  - local:/Users/chall/work/provider-agent-skills/packages/core
+  active_owner: local:/Users/chall/work/provider-agent-skills/packages/core
+  content_hash: sha256:9aade6826d780812f94ad8dc30f5b03f78d40d92811d0f85b7774c4ce7b613c9
+- kind: project-relative
+  target: agents
+  value: .agents/skills/triage-provider-issue/references/disposition-gates.md
+  runtime: null
+  scope: project
+  owners:
+  - local:/Users/chall/work/provider-agent-skills/packages/core
+  active_owner: local:/Users/chall/work/provider-agent-skills/packages/core
+  content_hash: sha256:7e5e7a5d04771672718e9a2688befe9b8aef8274fa6b8d2d68d9621267e27fa9
+- kind: project-relative
+  target: agents
+  value: .agents/skills/triage-provider-issue/references/helper-switches.md
+  runtime: null
+  scope: project
+  owners:
+  - local:/Users/chall/work/provider-agent-skills/packages/core
+  active_owner: local:/Users/chall/work/provider-agent-skills/packages/core
+  content_hash: sha256:8f878eb7cd240b233d59e0f1f0fb4881bf7f5e27c216dc8ca28436f1e1751071
+- kind: project-relative
+  target: agents
+  value: .agents/skills/triage-provider-issue/references/provider-families.md
+  runtime: null
+  scope: project
+  owners:
+  - local:/Users/chall/work/provider-agent-skills/packages/core
+  active_owner: local:/Users/chall/work/provider-agent-skills/packages/core
+  content_hash: sha256:88fa42888a37f5f24c5400979c01e2ad92a10a25cfe4c41f5b5596eb20c341d5
+- kind: project-relative
+  target: agents
+  value: .agents/skills/triage-provider-issue/references/workaround-investigation.md
+  runtime: null
+  scope: project
+  owners:
+  - local:/Users/chall/work/provider-agent-skills/packages/core
+  active_owner: local:/Users/chall/work/provider-agent-skills/packages/core
+  content_hash: sha256:6c05795586b00c78c69102d975a8c726e2f9e4fc8476dee4f4a21002d1c99930
+- kind: project-relative
+  target: agents
+  value: .agents/skills/upstream-patches
+  runtime: null
+  scope: project
+  owners:
+  - pulumi/agent-skills/package-maintenance
+  active_owner: pulumi/agent-skills/package-maintenance
+  content_hash: null
+- kind: project-relative
+  target: agents
+  value: .agents/skills/upstream-patches/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - pulumi/agent-skills/package-maintenance
+  active_owner: pulumi/agent-skills/package-maintenance
+  content_hash: sha256:56a593f44d1bcc05413354204da3c73488d8cb9239f043fea4cc103fad7054b1
+- kind: project-relative
+  target: agents
+  value: .agents/skills/upstream-patches/agents/openai.yaml
+  runtime: null
+  scope: project
+  owners:
+  - pulumi/agent-skills/package-maintenance
+  active_owner: pulumi/agent-skills/package-maintenance
+  content_hash: sha256:2fb000ec013660c8c5db2566c9e92aa125e339f89d66e8c4b5b4165311f48c2a
+- kind: project-relative
+  target: agents
+  value: .agents/skills/upstream-patches/use_cases.yaml
+  runtime: null
+  scope: project
+  owners:
+  - pulumi/agent-skills/package-maintenance
+  active_owner: pulumi/agent-skills/package-maintenance
+  content_hash: sha256:6ca7fd1178a7c3287e0af7dea901004201c6052b3f22af36d4ad469892500698

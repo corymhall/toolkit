@@ -1,4 +1,0 @@
-interface:
-  display_name: "Workaround Investigation"
-  short_description: "Investigate practical issue workarounds"
-  default_prompt: "Use $workaround-investigation to investigate a practical workaround for this provider issue."

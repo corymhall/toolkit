@@ -10,7 +10,7 @@ This repository is organized around self-contained Agent Skills:
 - `codex-skills/` contains skills that depend on Codex CLI-only workflows. Skills
   may be grouped using the same convention.
 - `.agents/skills/<skill-name>/` contains reviewed third-party skills managed by
-  `npx skills` and `skills-lock.json`; do not edit vendored copies by hand.
+  APM or a focused repository updater; do not edit vendored copies by hand.
 - References, scripts, assets, and metadata owned by a skill belong inside that
   skill directory.
 
@@ -48,10 +48,10 @@ Update all managed third-party skills with:
 mise run skills:update
 ```
 
-The task pins `skills@1.5.17` intentionally. Herdr's `SKILL.md` is at its
-repository root, and `skills@1.5.18` copies that entire application repository
-into the managed skill directory. Keep the pin until the CLI supports a
-file-only root-skill update. Review managed skill and lockfile diffs before
+APM manages ordinary third-party skill directories through `apm.yml` and
+`apm.lock.yaml`. Herdr's `SKILL.md` is at its repository root, so
+`scripts/update-herdr-skill.sh` downloads that file without copying the entire
+application repository. Review managed skill and lockfile diffs before
 committing them.
 
 The root `package.json` exposes the recursive `skills/` tree and

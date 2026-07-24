@@ -1,0 +1,4 @@
+interface:
+  display_name: "Converted Provider Docs Investigation"
+  short_description: "Trace bridged docs and example conversion"
+  default_prompt: "Use $investigate-converted-provider-docs to trace this generated provider documentation or converted example issue to the owning layer."

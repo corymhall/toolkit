@@ -9,7 +9,12 @@ trap 'rm -rf "${tmp_dir}"' EXIT
 
 home="${tmp_dir}/home"
 codex_home="${tmp_dir}/codex"
-mkdir -p "${home}" "${codex_home}/agents"
+mkdir -p "${home}/.agents/skills" "${codex_home}/agents"
+
+ln -s /old/agent-skills/package-maintenance/skills/pulumi-upgrade-provider \
+  "${home}/.agents/skills/pulumi-upgrade-provider"
+ln -s /old/agent-skills/package-maintenance/skills/upstream-patches \
+  "${home}/.agents/skills/upstream-patches"
 
 legacy_link="${codex_home}/agents/general_reviewer.toml"
 unrelated_link="${codex_home}/agents/test_reviewer.toml"
@@ -43,7 +48,9 @@ codex_actual=$(find "${codex_home}/skills" -mindepth 1 -maxdepth 1 -type l | wc 
 [[ "${shared_actual}" == "${shared_expected}" ]]
 [[ "${codex_actual}" == "${codex_expected}" ]]
 [[ "$(readlink "${home}/.agents/skills/herdr")" == "${repo_root}/.agents/skills/herdr" ]]
-[[ "$(readlink "${home}/.agents/skills/triage-provider-issue")" == "${repo_root}/skills/provider-issue-workbench/triage-provider-issue" ]]
+[[ "$(readlink "${home}/.agents/skills/triage-provider-issue")" == "${repo_root}/.agents/skills/triage-provider-issue" ]]
+[[ "$(readlink "${home}/.agents/skills/pulumi-upgrade-provider")" == "${repo_root}/.agents/skills/pulumi-upgrade-provider" ]]
+[[ "$(readlink "${home}/.agents/skills/upstream-patches")" == "${repo_root}/.agents/skills/upstream-patches" ]]
 [[ "$(readlink "${home}/.local/bin/make")" == "${repo_root}/skills/memory-guard/scripts/make" ]]
 [[ ! -L "${legacy_link}" ]]
 [[ -L "${unrelated_link}" ]]

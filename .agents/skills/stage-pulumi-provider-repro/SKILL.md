@@ -1,6 +1,6 @@
 ---
 name: stage-pulumi-provider-repro
-description: "Stage durable Pulumi-side repro artifacts for provider issues after the routing question has already narrowed to a Pulumi repro, or when the user explicitly asks for that help. Use when the agent needs to create maintainer-quality examples or tests in a provider repo, preserve the exact lifecycle path that matters, prefer repo-native repros over ad hoc temp directories, and report what can or cannot be executed without credentials."
+description: "Stage durable Pulumi-side repros for provider issues. Use when triage or another skill selects a Pulumi repro as the next evidence artifact, or when the user asks for a maintainer-quality Pulumi example or lifecycle test."
 ---
 
 # Stage Pulumi Provider Repro
@@ -35,8 +35,9 @@ Read `references/repro-shape.md` before editing.
    If the issue is about update followed by read, do not collapse it into a
    simpler create-only repro.
 4. Encode the smallest input shape that still reproduces the bug.
-5. If the relevant repro surface lives in another repo, move there and stage it
-   in that repo instead of stopping.
+5. If the relevant repro surface lives in another repository, continue there only
+   when the environment can preserve correct repository and artifact ownership.
+   Otherwise leave a repository-scoped handoff with the exact artifact required.
 6. Stage the artifact locally.
 7. Run only what is safe and available.
 8. If credentialed execution is required and unavailable, stop with the best
@@ -54,9 +55,9 @@ Read `references/repro-shape.md` before editing.
 - Do not silently swap in HEAD semantics if the issue depends on older versions.
 - If you cannot execute the best path, do not invent a weaker one and present
   it as equivalent.
-- When citing staged files, tests, or commands in the final handoff, use
-  app-native Markdown links like `[examples/foo_test.go](/abs/path/foo_test.go:45)`.
-  Do not emit `file://` URIs, including in sidecar handoffs.
+- Cite staged files and tests with repository-relative `path/to/file.go:45`
+  references unless the hosting application provides a stable source-link format.
+  Do not emit absolute sandbox paths or `file://` URIs.
 
 ## Deliverable
 

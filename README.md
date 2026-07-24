@@ -8,8 +8,8 @@ Agent-Skills-compatible harnesses.
 - `skills/` contains runtime-neutral skills, optionally grouped in nested
   directories.
 - `codex-skills/` contains workflows that require Codex CLI-specific features.
-- `.agents/skills/` contains reviewed third-party skills managed by
-  `npx skills` and `skills-lock.json`.
+- `.agents/skills/` contains reviewed third-party skills managed by APM or a
+  focused repository updater.
 - Each first-party skill owns its references, scripts, assets, and agent
   metadata.
 
@@ -213,35 +213,32 @@ pi update --extensions
 Do not also install local links for the same skills unless you intentionally
 want both resource sources configured.
 
-## Install with `npx skills`
+## Managed Third-Party Skills
 
-For a skill-only installation, inspect and select skills with:
+APM manages ordinary third-party skills through `apm.yml` and `apm.lock.yaml`.
+It deploys them under `.agents/skills/`, where the local installer can link them
+for both Pi and Codex CLI. Run `apm install --frozen` to reproduce the locked
+versions.
 
-```bash
-npx skills add corymhall/toolkit --list --full-depth
-```
+The provider workflow skills come from the local
+`../../work/provider-agent-skills/packages/bridged` APM package. That package
+brings in `core` and `package-maintenance` transitively, so their source remains
+in the provider-agent-skills and pulumi/agent-skills repositories rather than
+this repository.
 
-Install Codex CLI-only skills into Codex CLI's private skill directory rather
-than a shared directory that Pi also scans. The local link script remains the canonical
-workflow for developing this checkout.
+Herdr is the exception: its `SKILL.md` is at the upstream repository root.
+`scripts/update-herdr-skill.sh` downloads only that file into
+`.agents/skills/herdr` instead of copying the entire application repository.
 
-## Managed Herdr Skill
-
-The Herdr skill is installed project-locally under `.agents/skills/herdr` and
-linked globally by `scripts/install-local-skills.sh`. This lets both Pi and
-Codex CLI discover it while the repository retains update provenance in
-`skills-lock.json`.
-
-Refresh all managed third-party skills from their upstream repositories with:
+Refresh the APM dependencies and the Herdr skill with:
 
 ```bash
 mise run skills:update
 ```
 
-The mise-managed `skills@1.5.17` pin avoids newer CLI versions copying Herdr's
-entire root-level application repository into the managed skill directory.
-Review managed skill and `skills-lock.json` changes before committing the
-update.
+Review managed skill and `apm.lock.yaml` changes before committing the update.
+The local link script remains the canonical workflow for developing this
+checkout.
 
 ## Skills
 
@@ -254,7 +251,8 @@ update.
 | GitHub | `create-pr`, `github-search-cli` |
 | Documentation | `high-signal-docs`, `notion-docs` |
 | Operations | `memory-guard` |
-| Provider work | `triage-provider-issue`, `pulumi-rpc-lifecycle-investigation`, `bridge-parity-investigation`, `stage-pulumi-provider-repro`, `stage-terraform-provider-repro`, `workaround-investigation` |
+| Provider work | `triage-provider-issue`, `pulumi-rpc-lifecycle-investigation`, `bridge-parity-investigation`, `stage-pulumi-provider-repro`, `stage-terraform-provider-repro`, `investigate-converted-provider-docs` |
+| Provider maintenance | `pulumi-upgrade-provider`, `upstream-patches` |
 | Pulumi audit | `pulumi-test-rationalization-audit` |
 | Codex CLI-only | `spec-to-goal` |
 
@@ -305,8 +303,8 @@ fixes, and treats `No change` as a valid result.
 
 `memory-guard` is harness-independent. After local installation,
 `~/.local/bin/make` points to its proxy, which runs the real `make` process tree
-under `memrun`. No Codex CLI hook or Pi extension is required. A Pi or
-`npx skills` package installation by itself does not create this proxy.
+under `memrun`. No Codex CLI hook or Pi extension is required. A Pi or APM
+package installation by itself does not create this proxy.
 
 The proxy only covers `make` resolved through `PATH`; an explicit path such as
 `/usr/bin/make` bypasses it. Logs default to

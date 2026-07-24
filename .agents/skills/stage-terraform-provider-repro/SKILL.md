@@ -1,6 +1,6 @@
 ---
 name: stage-terraform-provider-repro
-description: "Stage durable Terraform-side repro artifacts for provider issues after the routing question has already narrowed to a Terraform discriminator, or when the user explicitly asks for that help. Use when the agent needs to answer whether Terraform reproduces, build an upstream acceptance-style repro, preserve the exact discriminator being tested, and avoid replacing a strong Terraform path with a weaker local experiment just because credentials are unavailable."
+description: "Stage durable Terraform-side repros for bridged-provider issues. Use when triage selects Terraform behavior as the decisive discriminator, an upstream acceptance-style repro is needed, or the user asks for a Terraform repro."
 ---
 
 # Stage Terraform Provider Repro
@@ -30,8 +30,9 @@ Read `references/repro-shape.md` before editing.
 3. Preserve the exact discriminator.
    If refresh semantics matter, stage that explicitly.
 4. Keep the config minimal, but not so minimal that it erases the behavior.
-5. If the relevant repro surface lives in another repo, move there and stage it
-   in that repo instead of stopping.
+5. If the relevant repro surface lives in another repository, continue there only
+   when the environment can preserve correct repository and artifact ownership.
+   Otherwise leave a repository-scoped handoff with the exact artifact required.
 6. Stage the artifact locally.
 7. Run only what is safe and available.
 8. If credentials or approvals are missing, stop with a ready-to-run artifact

@@ -1,6 +1,6 @@
 ---
 name: bridge-parity-investigation
-description: "Investigate established Pulumi-vs-Terraform parity gaps in bridged providers by creating or refining bridge cross-tests, after routing has already determined that bridge parity work is the next step, or when the user explicitly asks for that help. Use when the agent already knows that Pulumi has the problem and Terraform does not, and the next step is to capture, narrow, and explain that parity gap inside pulumi-terraform-bridge without debating alternate harnesses."
+description: "Investigate established Pulumi-vs-Terraform parity gaps with bridge cross-tests. Use after triage establishes that Pulumi fails while Terraform succeeds and selects bridge parity work, or when the user asks for a bridge cross-test."
 ---
 
 # Bridge Parity Investigation
@@ -33,8 +33,9 @@ root cause or workaround work.
    Example: "Pulumi update+read fails, Terraform equivalent path succeeds."
 2. Identify the lifecycle path that must be preserved.
    Examples: update then read, refresh, import, diff.
-3. If the work belongs in the bridge repo, move there and continue instead of
-   stopping.
+3. If the work belongs in the bridge repository, continue there only when the
+   environment can preserve correct repository and artifact ownership. Otherwise
+   leave a bridge-repository handoff with the exact cross-test required.
 4. Build or refine the bridge cross-test around that path.
 5. Preserve the dataflow that matters, not just the final values.
 6. Instrument the failing boundary narrowly.

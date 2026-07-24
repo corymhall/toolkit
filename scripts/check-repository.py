@@ -17,6 +17,7 @@ IGNORED_PARTS = {
     ".git",
     ".mise",
     ".worktrees",
+    "apm_modules",
     "__pycache__",
     "node_modules",
 }
@@ -58,7 +59,7 @@ def source_files() -> list[Path]:
 
 
 def check_json(errors: list[str]) -> None:
-    for path in (ROOT / "package.json", ROOT / "package-lock.json", ROOT / "skills-lock.json"):
+    for path in (ROOT / "package.json", ROOT / "package-lock.json"):
         try:
             json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as error:

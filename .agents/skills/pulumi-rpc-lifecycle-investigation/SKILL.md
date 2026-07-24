@@ -1,6 +1,6 @@
 ---
 name: pulumi-rpc-lifecycle-investigation
-description: "Investigate Pulumi engine, bridge, and provider lifecycle behavior from gRPC logs, architecture docs, and provider code. Use when diagnosing confusing Pulumi preview/update/refresh/import/replacement behavior, bridged provider failures, unexpected Check/Diff/Read ordering, provider upgrade regressions, stale or surprising inputs/state, Terraform bridge translation issues, or questions about which layer owns a lifecycle bug."
+description: "Investigate bridged-provider lifecycle behavior from Pulumi gRPC logs. Use for unexpected Check/Diff/Read ordering or payloads, confusing refresh/import/replacement semantics, stale inputs or state, or uncertain ownership across engine, bridge, provider, and upstream Terraform layers."
 ---
 
 # Pulumi RPC Lifecycle Investigation
@@ -10,10 +10,10 @@ Treat engine, bridge, Pulumi provider, and upstream Terraform provider behavior
 as separate layers until the evidence shows how a value or decision moved
 between them.
 
-Prefer this skill when the question is about lifecycle semantics or ownership
-from logs. Use `stage-pulumi-provider-repro`, `stage-terraform-provider-repro`,
-or `bridge-parity-investigation` when the next best action is a durable repro or
-bridge cross-test artifact.
+Prefer this skill when the question is about bridged-provider lifecycle semantics
+or ownership from logs. Use `stage-pulumi-provider-repro`,
+`stage-terraform-provider-repro`, or `bridge-parity-investigation` when the next
+best action is a durable repro or bridge cross-test artifact.
 
 ## Get Evidence First
 

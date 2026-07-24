@@ -62,9 +62,9 @@ url = "https://nodejs.org/dist/v26.5.0/node-v26.5.0-darwin-arm64.tar.gz"
 checksum = "sha256:98293394c945a24e64e00b4177bf075ec963ea70b34d1d2e24bd4a71716d334f"
 url = "https://nodejs.org/dist/v26.5.0/node-v26.5.0-darwin-x64.tar.gz"
 
-[[tools."npm:skills"]]
-version = "1.5.17"
-backend = "npm:skills"
+[[tools."pipx:apm-cli"]]
+version = "0.25.0"
+backend = "pipx:apm-cli"
 
 [[tools."pipx:skills-ref"]]
 version = "0.1.1"
