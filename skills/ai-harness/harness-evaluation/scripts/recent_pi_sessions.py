@@ -26,6 +26,7 @@ class ParsedSession:
     header: dict[str, Any]
     entries: list[dict[str, Any]]
     malformed_lines: int
+    malformed_line_upper_bounds: list[dt.datetime]
 
 
 @dataclass
@@ -105,6 +106,8 @@ def message_text(message: dict[str, Any]) -> str:
 def read_session(path: Path) -> ParsedSession | None:
     rows: list[dict[str, Any]] = []
     malformed_lines = 0
+    pending_malformed_lines = 0
+    malformed_line_upper_bounds: list[dt.datetime] = []
     with path.open(errors="replace") as handle:
         for line in handle:
             if not line.strip():
@@ -113,8 +116,20 @@ def read_session(path: Path) -> ParsedSession | None:
                 value = json.loads(line)
             except json.JSONDecodeError:
                 malformed_lines += 1
+                pending_malformed_lines += 1
                 continue
             if isinstance(value, dict):
+                timestamp = value.get("timestamp")
+                if pending_malformed_lines and isinstance(timestamp, str):
+                    try:
+                        upper_bound = parse_timestamp(timestamp)
+                    except ValueError:
+                        pass
+                    else:
+                        malformed_line_upper_bounds.extend(
+                            [upper_bound] * pending_malformed_lines
+                        )
+                        pending_malformed_lines = 0
                 rows.append(value)
 
     if not rows or rows[0].get("type") != "session":
@@ -122,7 +137,13 @@ def read_session(path: Path) -> ParsedSession | None:
 
     header = rows[0]
     entries = normalize_entries(rows[1:], int(header.get("version", 1)))
-    return ParsedSession(path, header, entries, malformed_lines)
+    return ParsedSession(
+        path,
+        header,
+        entries,
+        malformed_lines,
+        malformed_line_upper_bounds,
+    )
 
 
 def normalize_entries(
@@ -245,6 +266,14 @@ def entries_through(
     return bounded
 
 
+def malformed_lines_through(parsed: ParsedSession, through: dt.datetime | None) -> int:
+    if through is None:
+        return parsed.malformed_lines
+    return sum(
+        upper_bound <= through for upper_bound in parsed.malformed_line_upper_bounds
+    )
+
+
 def summarize_session(
     parsed: ParsedSession, through: dt.datetime | None = None
 ) -> SessionSummary | None:
@@ -259,8 +288,9 @@ def summarize_session(
         warnings.append(
             f"unsupported session version {version}; current Pi version is {CURRENT_SESSION_VERSION}"
         )
-    if parsed.malformed_lines and through is None:
-        warnings.append(f"skipped {parsed.malformed_lines} malformed JSON line(s)")
+    malformed_lines = malformed_lines_through(parsed, through)
+    if malformed_lines:
+        warnings.append(f"skipped {malformed_lines} malformed JSON line(s)")
 
     asks: list[str] = []
     skills: list[str] = []

@@ -69,6 +69,9 @@ class RecentPiSessionsTest(unittest.TestCase):
             }
         )
         parsed.malformed_lines += 1
+        parsed.malformed_line_upper_bounds.append(
+            recent_pi_sessions.parse_timestamp("2026-01-04T00:00:00Z")
+        )
         after_summary = recent_pi_sessions.summarize_session(parsed, through)
         self.assertIsNotNone(after_summary)
         after = recent_pi_sessions.summary_dict(after_summary)
@@ -84,6 +87,16 @@ class RecentPiSessionsTest(unittest.TestCase):
         summary = self.scan("tool-error-malformed.jsonl", "2026-01-02T00:00:00Z")
         self.assertEqual(summary.skills, ["go-development"])
         self.assertEqual(summary.failures, ["bash: Command exited with code 1"])
+        self.assertIn("skipped 1 malformed JSON line(s)", summary.warnings)
+
+    def test_bounded_scan_preserves_attributable_malformed_warning(self):
+        parsed = recent_pi_sessions.read_session(
+            self.fixtures / "tool-error-malformed.jsonl"
+        )
+        self.assertIsNotNone(parsed)
+        through = recent_pi_sessions.parse_timestamp("2026-01-03T09:00:00Z")
+        summary = recent_pi_sessions.summarize_session(parsed, through)
+        self.assertIsNotNone(summary)
         self.assertIn("skipped 1 malformed JSON line(s)", summary.warnings)
 
     def test_unknown_session_version_is_visible(self):
