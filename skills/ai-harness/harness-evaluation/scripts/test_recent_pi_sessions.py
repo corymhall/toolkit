@@ -40,6 +40,16 @@ class RecentPiSessionsTest(unittest.TestCase):
         self.assertEqual(summary.total_entries, 5)
         self.assertEqual(summary.failures, [])
 
+    def test_bounded_scan_uses_branch_active_at_window_end(self):
+        parsed = recent_pi_sessions.read_session(self.fixtures / "branched.jsonl")
+        self.assertIsNotNone(parsed)
+        through = recent_pi_sessions.parse_timestamp("2026-01-03T10:30:00Z")
+        summary = recent_pi_sessions.summarize_session(parsed, through)
+        self.assertIsNotNone(summary)
+        self.assertEqual(summary.active_entries, 3)
+        self.assertEqual(summary.failures, ["bash: Command exited with code 1"])
+        self.assertEqual(summary.activity.isoformat(), "2026-01-03T10:01:00+00:00")
+
     def test_skill_injection_is_not_reported_as_the_ask(self):
         summary = self.scan("skill-injection.jsonl", "2026-01-02T00:00:00Z")
         self.assertEqual(summary.ask, "Review this change")
@@ -54,7 +64,10 @@ class RecentPiSessionsTest(unittest.TestCase):
     def test_unknown_session_version_is_visible(self):
         summary = self.scan("unsupported-version.jsonl", "2026-01-02T00:00:00Z")
         self.assertTrue(
-            any("unsupported session version 99" in warning for warning in summary.warnings)
+            any(
+                "unsupported session version 99" in warning
+                for warning in summary.warnings
+            )
         )
 
     def test_user_followups_surface_human_corrections(self):
@@ -70,6 +83,13 @@ class RecentPiSessionsTest(unittest.TestCase):
         summaries = recent_pi_sessions.scan_sessions(self.fixtures, cutoff)
         names = {summary.path.name for summary in summaries}
         self.assertIn("resumed.jsonl", names)
+
+    def test_bounded_scan_requires_active_branch_activity_inside_window(self):
+        cutoff = dt.datetime(2026, 1, 2, tzinfo=dt.timezone.utc)
+        through = dt.datetime(2026, 1, 2, 23, 59, tzinfo=dt.timezone.utc)
+        summaries = recent_pi_sessions.scan_sessions(self.fixtures, cutoff, through)
+        names = {summary.path.name for summary in summaries}
+        self.assertNotIn("resumed.jsonl", names)
 
 
 if __name__ == "__main__":

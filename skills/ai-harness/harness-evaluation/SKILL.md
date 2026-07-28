@@ -45,10 +45,12 @@ python3 "$SKILL_DIR/scripts/recent_rollouts.py" --hours 24
 python3 "$SKILL_DIR/scripts/recent_pi_sessions.py" --hours 24
 ```
 
-Both scripts accept `--root`, `--since`, and `--json`, use latest user/assistant
-activity, and surface follow-up user messages so human corrections are visible
-during shortlisting. Report the matched session count. Inspect full session
-files only after shortlisting.
+Both scripts accept `--root`, `--since`, `--until`, and `--json`, use latest
+user/assistant activity, and surface follow-up user messages so human
+corrections are visible during shortlisting. Use `--until` when the reporting
+window must remain stable while the scan runs. JSON output reports resumed
+session counts. Report the matched session count. Inspect full session files
+only after shortlisting.
 
 Prioritize sessions with human correction, backing out or restarting work,
 repeated attempts, unexpected skill activation, tool failures, recovery

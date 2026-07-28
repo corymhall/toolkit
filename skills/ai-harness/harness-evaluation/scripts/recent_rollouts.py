@@ -37,6 +37,10 @@ def parse_args() -> argparse.Namespace:
         help="Include activity at or after this ISO-8601 timestamp instead of --hours.",
     )
     parser.add_argument(
+        "--until",
+        help="Exclude activity after this ISO-8601 timestamp.",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Emit machine-readable JSON instead of the human summary.",
@@ -51,8 +55,10 @@ def parse_timestamp(value: str) -> dt.datetime:
     return parsed
 
 
-def latest_activity(path: Path, started: dt.datetime) -> dt.datetime:
-    activity = started
+def latest_activity(
+    path: Path, through: dt.datetime | None = None
+) -> dt.datetime | None:
+    activity: dt.datetime | None = None
     with path.open(errors="replace") as handle:
         for line in handle:
             try:
@@ -75,13 +81,18 @@ def latest_activity(path: Path, started: dt.datetime) -> dt.datetime:
             if not isinstance(timestamp, str):
                 continue
             try:
-                activity = max(activity, parse_timestamp(timestamp))
+                event_time = parse_timestamp(timestamp)
             except ValueError:
                 continue
+            if through is not None and event_time > through:
+                continue
+            activity = event_time if activity is None else max(activity, event_time)
     return activity
 
 
-def iter_recent_rollouts(root: Path, cutoff: dt.datetime):
+def iter_recent_rollouts(
+    root: Path, cutoff: dt.datetime, through: dt.datetime | None = None
+):
     for path in sorted(root.rglob("*.jsonl")):
         try:
             with path.open() as handle:
@@ -96,8 +107,8 @@ def iter_recent_rollouts(root: Path, cutoff: dt.datetime):
         if not timestamp:
             continue
         started = parse_timestamp(timestamp)
-        activity = latest_activity(path, started)
-        if activity >= cutoff:
+        activity = latest_activity(path, through)
+        if activity is not None and activity >= cutoff:
             yield path, started, activity, payload.get("cwd", "")
 
 
@@ -115,7 +126,7 @@ def stringify(value) -> str:
     return str(value)
 
 
-def summarize_rollout(path: Path) -> dict:
+def summarize_rollout(path: Path, through: dt.datetime | None = None) -> dict:
     asks = []
     skills = []
     failures = []
@@ -127,6 +138,13 @@ def summarize_rollout(path: Path) -> dict:
                 obj = json.loads(line)
             except Exception:
                 continue
+            timestamp = obj.get("timestamp")
+            if through is not None and isinstance(timestamp, str):
+                try:
+                    if parse_timestamp(timestamp) > through:
+                        continue
+                except ValueError:
+                    pass
 
             if obj.get("type") == "response_item":
                 payload = obj.get("payload", {})
@@ -141,7 +159,10 @@ def summarize_rollout(path: Path) -> dict:
                     if text and not text.startswith("# AGENTS.md instructions"):
                         asks.append(text)
                         skills.extend(SKILL_TAG_PAT.findall(text))
-                elif item_type == "function_call" and payload.get("name") == "exec_command":
+                elif (
+                    item_type == "function_call"
+                    and payload.get("name") == "exec_command"
+                ):
                     matches = SKILL_PATH_PAT.findall(payload.get("arguments", ""))
                     skills.extend(matches)
                 elif item_type == "function_call_output":
@@ -175,29 +196,46 @@ def summarize_rollout(path: Path) -> dict:
 def main() -> int:
     args = parse_args()
     now = dt.datetime.now(dt.timezone.utc)
-    cutoff = parse_timestamp(args.since) if args.since else now - dt.timedelta(hours=args.hours)
+    through = parse_timestamp(args.until) if args.until else now
+    cutoff = (
+        parse_timestamp(args.since)
+        if args.since
+        else through - dt.timedelta(hours=args.hours)
+    )
+    if through < cutoff:
+        raise SystemExit("--until must be at or after --since")
     root = Path(args.root).expanduser()
 
-    rollouts = list(iter_recent_rollouts(root, cutoff))
+    rollouts = list(iter_recent_rollouts(root, cutoff, through))
     summarized = []
     for path, started, activity, cwd in rollouts:
-        summarized.append({
-            "path": str(path),
-            "started": started.isoformat(),
-            "activity": activity.isoformat(),
-            "cwd": cwd,
-            **summarize_rollout(path),
-        })
+        summarized.append(
+            {
+                "path": str(path),
+                "started": started.isoformat(),
+                "activity": activity.isoformat(),
+                "resumed": started < cutoff,
+                "cwd": cwd,
+                **summarize_rollout(path, through),
+            }
+        )
     if args.json:
-        print(json.dumps({
-            "runtime": "codex",
-            "root": str(root),
-            "cutoff": cutoff.isoformat(),
-            "count": len(summarized),
-            "sessions": summarized,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "runtime": "codex",
+                    "root": str(root),
+                    "cutoff": cutoff.isoformat(),
+                    "through": through.isoformat(),
+                    "count": len(summarized),
+                    "resumed_count": sum(item["resumed"] for item in summarized),
+                    "sessions": summarized,
+                },
+                indent=2,
+            )
+        )
         return 0
-    window = f"since {cutoff.isoformat()}" if args.since else f"from the last {args.hours:g}h"
+    window = f"from {cutoff.isoformat()} through {through.isoformat()}"
     print(
         f"Recent Codex sessions {window} by latest user/assistant activity: {len(summarized)}"
     )

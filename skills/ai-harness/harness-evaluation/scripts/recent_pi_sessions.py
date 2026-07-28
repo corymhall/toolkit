@@ -67,6 +67,10 @@ def parse_args() -> argparse.Namespace:
         help="Include activity at or after this ISO-8601 timestamp instead of --hours.",
     )
     parser.add_argument(
+        "--until",
+        help="Exclude activity after this ISO-8601 timestamp.",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Emit machine-readable JSON instead of the human summary.",
@@ -139,13 +143,28 @@ def normalize_entries(
 
 
 def active_branch(
-    entries: list[dict[str, Any]],
+    entries: list[dict[str, Any]], through: dt.datetime | None = None
 ) -> tuple[list[dict[str, Any]], list[str]]:
     if not entries:
         return [], []
 
     by_id = {entry["id"]: entry for entry in entries}
-    current = entries[-1]
+    if through is None:
+        current = entries[-1]
+    else:
+        current = None
+        for entry in reversed(entries):
+            timestamp = entry.get("timestamp")
+            if not isinstance(timestamp, str):
+                continue
+            try:
+                if parse_timestamp(timestamp) <= through:
+                    current = entry
+                    break
+            except ValueError:
+                continue
+        if current is None:
+            return [], []
     branch: list[dict[str, Any]] = []
     seen: set[str] = set()
     warnings: list[str] = []
@@ -207,12 +226,14 @@ def dedupe(values: list[str]) -> list[str]:
     return result
 
 
-def summarize_session(parsed: ParsedSession) -> SessionSummary | None:
-    activity = latest_activity(parsed.entries)
+def summarize_session(
+    parsed: ParsedSession, through: dt.datetime | None = None
+) -> SessionSummary | None:
+    branch, warnings = active_branch(parsed.entries, through)
+    activity = latest_activity(branch)
     if activity is None:
         return None
 
-    branch, warnings = active_branch(parsed.entries)
     version = int(parsed.header.get("version", 1))
     if version not in KNOWN_SESSION_VERSIONS:
         warnings.append(
@@ -288,7 +309,9 @@ def summarize_session(parsed: ParsedSession) -> SessionSummary | None:
     )
 
 
-def scan_sessions(root: Path, cutoff: dt.datetime) -> list[SessionSummary]:
+def scan_sessions(
+    root: Path, cutoff: dt.datetime, through: dt.datetime | None = None
+) -> list[SessionSummary]:
     summaries: list[SessionSummary] = []
     for path in sorted(root.rglob("*.jsonl")):
         try:
@@ -297,7 +320,7 @@ def scan_sessions(root: Path, cutoff: dt.datetime) -> list[SessionSummary]:
             continue
         if parsed is None:
             continue
-        summary = summarize_session(parsed)
+        summary = summarize_session(parsed, through)
         if summary is not None and summary.activity >= cutoff:
             summaries.append(summary)
     return sorted(summaries, key=lambda item: (item.activity, str(item.path)))
@@ -332,9 +355,7 @@ def print_summary(summary: SessionSummary) -> None:
         print("  user follow-ups:")
         for followup in summary.followups[:5]:
             print(f"    - {followup[:220]}")
-    print(
-        f"  active branch entries: {summary.active_entries}/{summary.total_entries}"
-    )
+    print(f"  active branch entries: {summary.active_entries}/{summary.total_entries}")
     if summary.skills:
         print(f"  skills: {', '.join(summary.skills[:8])}")
     if summary.failures:
@@ -354,19 +375,41 @@ def print_summary(summary: SessionSummary) -> None:
 def main() -> int:
     args = parse_args()
     now = dt.datetime.now(dt.timezone.utc)
-    cutoff = parse_timestamp(args.since) if args.since else now - dt.timedelta(hours=args.hours)
+    through = parse_timestamp(args.until) if args.until else now
+    cutoff = (
+        parse_timestamp(args.since)
+        if args.since
+        else through - dt.timedelta(hours=args.hours)
+    )
+    if through < cutoff:
+        raise SystemExit("--until must be at or after --since")
     root = Path(args.root).expanduser()
-    summaries = scan_sessions(root, cutoff)
+    summaries = scan_sessions(root, cutoff, through)
     if args.json:
-        print(json.dumps({
-            "runtime": "pi",
-            "root": str(root),
-            "cutoff": cutoff.isoformat(),
-            "count": len(summaries),
-            "sessions": [summary_dict(summary) for summary in summaries],
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "runtime": "pi",
+                    "root": str(root),
+                    "cutoff": cutoff.isoformat(),
+                    "through": through.isoformat(),
+                    "count": len(summaries),
+                    "resumed_count": sum(
+                        summary.started < cutoff for summary in summaries
+                    ),
+                    "sessions": [
+                        {
+                            **summary_dict(summary),
+                            "resumed": summary.started < cutoff,
+                        }
+                        for summary in summaries
+                    ],
+                },
+                indent=2,
+            )
+        )
         return 0
-    window = f"since {cutoff.isoformat()}" if args.since else f"from the last {args.hours:g}h"
+    window = f"from {cutoff.isoformat()} through {through.isoformat()}"
     print(
         f"Recent Pi sessions {window} by latest user/assistant activity: {len(summaries)}"
     )

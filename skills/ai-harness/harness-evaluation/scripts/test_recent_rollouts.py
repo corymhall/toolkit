@@ -34,6 +34,30 @@ class RecentRolloutsTest(unittest.TestCase):
         self.assertEqual(started.isoformat(), "2026-01-01T10:00:00+00:00")
         self.assertEqual(activity.isoformat(), "2026-01-03T10:00:00+00:00")
 
+    def test_bounded_scan_excludes_later_activity_and_summary_content(self):
+        cutoff = dt.datetime(2026, 1, 1, 9, 0, tzinfo=dt.timezone.utc)
+        through = dt.datetime(2026, 1, 2, 0, 0, tzinfo=dt.timezone.utc)
+        rollouts = list(
+            recent_rollouts.iter_recent_rollouts(self.fixtures, cutoff, through)
+        )
+        self.assertEqual([path.name for path, _, _, _ in rollouts], ["basic.jsonl"])
+        _, _, activity, _ = rollouts[0]
+        self.assertEqual(activity.isoformat(), "2026-01-01T10:03:00+00:00")
+
+        summary = recent_rollouts.summarize_rollout(
+            self.fixtures / "basic.jsonl", through
+        )
+        self.assertEqual(summary["followups"], [])
+        self.assertEqual(summary["failures"], [])
+
+    def test_bounded_scan_requires_activity_inside_window(self):
+        cutoff = dt.datetime(2026, 1, 2, 0, 0, tzinfo=dt.timezone.utc)
+        through = dt.datetime(2026, 1, 2, 23, 59, tzinfo=dt.timezone.utc)
+        rollouts = list(
+            recent_rollouts.iter_recent_rollouts(self.fixtures, cutoff, through)
+        )
+        self.assertEqual(rollouts, [])
+
 
 if __name__ == "__main__":
     unittest.main()

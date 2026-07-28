@@ -122,9 +122,7 @@ def initialize(connection: sqlite3.Connection) -> None:
         );
         """
     )
-    run_columns = {
-        row["name"] for row in connection.execute("PRAGMA table_info(runs)")
-    }
+    run_columns = {row["name"] for row in connection.execute("PRAGMA table_info(runs)")}
     if "scan_result_json" not in run_columns:
         connection.execute("ALTER TABLE runs ADD COLUMN scan_result_json TEXT")
     connection.commit()
@@ -155,7 +153,9 @@ def add_event(
     )
 
 
-def begin_run(connection: sqlite3.Connection, hours: float, overlap_hours: float) -> dict[str, Any]:
+def begin_run(
+    connection: sqlite3.Connection, hours: float, overlap_hours: float
+) -> dict[str, Any]:
     now = utc_now()
     run_id = f"{now.strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
     since: dict[str, str] = {}
@@ -231,8 +231,9 @@ def scan_run(
     pi_cutoff = parse_timestamp(run["pi_since"])
     pi_all = [
         summary
-        for summary in recent_pi_sessions.scan_sessions(pi_root.expanduser(), pi_cutoff)
-        if summary.activity <= scan_through
+        for summary in recent_pi_sessions.scan_sessions(
+            pi_root.expanduser(), pi_cutoff, scan_through
+        )
     ]
     pi_unseen = []
     for summary in pi_all:
@@ -256,9 +257,8 @@ def scan_run(
     codex_all = [
         item
         for item in recent_rollouts.iter_recent_rollouts(
-            codex_root.expanduser(), codex_cutoff
+            codex_root.expanduser(), codex_cutoff, scan_through
         )
-        if item[2] <= scan_through
     ]
     codex_unseen = []
     for path, started, activity, cwd in codex_all:
@@ -267,9 +267,11 @@ def scan_run(
             "started": started.isoformat(),
             "activity": activity.isoformat(),
             "cwd": cwd,
-            **recent_rollouts.summarize_rollout(path),
+            **recent_rollouts.summarize_rollout(path, scan_through),
         }
-        if completed_snapshot_exists(connection, "codex", item["path"], item["activity"]):
+        if completed_snapshot_exists(
+            connection, "codex", item["path"], item["activity"]
+        ):
             continue
         codex_unseen.append(item)
         connection.execute(
@@ -328,7 +330,9 @@ def parse_evidence(values: list[str]) -> list[str]:
 def record_finding(connection: sqlite3.Connection, args: argparse.Namespace) -> None:
     now = iso(utc_now())
     evidence = parse_evidence(args.evidence)
-    existing = connection.execute("SELECT * FROM findings WHERE key = ?", (args.key,)).fetchone()
+    existing = connection.execute(
+        "SELECT * FROM findings WHERE key = ?", (args.key,)
+    ).fetchone()
     if existing:
         combined = json.loads(existing["evidence_json"])
         for item in evidence:
@@ -401,7 +405,14 @@ def attach_change(connection: sqlite3.Connection, args: argparse.Namespace) -> N
             commit_sha = ?, validation = ?, last_seen = ?, resolved_at = NULL
         WHERE key = ?
         """,
-        (args.worktree, args.branch, args.commit, args.validation, iso(utc_now()), args.key),
+        (
+            args.worktree,
+            args.branch,
+            args.commit,
+            args.validation,
+            iso(utc_now()),
+            args.key,
+        ),
     )
     add_event(connection, args.key, "change-attached", args.commit)
     connection.commit()
@@ -465,7 +476,9 @@ def list_findings(
     values: list[str] = []
     placeholders = ",".join("?" for _ in OPEN_STATUSES)
     open_values = sorted(OPEN_STATUSES)
-    reviewed = get_meta(connection, "last_human_review") if since_last_human_review else None
+    reviewed = (
+        get_meta(connection, "last_human_review") if since_last_human_review else None
+    )
     if not include_resolved:
         clauses.append(f"status IN ({placeholders})")
         values.extend(open_values)
@@ -521,7 +534,9 @@ def mark_human_review(connection: sqlite3.Connection, note: str | None) -> str:
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Persist harness evaluation runs and decisions.")
+    parser = argparse.ArgumentParser(
+        description="Persist harness evaluation runs and decisions."
+    )
     parser.add_argument(
         "--state-root",
         type=Path,
@@ -539,8 +554,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     scan = subparsers.add_parser("scan")
     scan.add_argument("--run-id", required=True)
-    scan.add_argument("--codex-root", type=Path, default=Path.home() / ".codex" / "sessions")
-    scan.add_argument("--pi-root", type=Path, default=Path.home() / ".pi" / "agent" / "sessions")
+    scan.add_argument(
+        "--codex-root", type=Path, default=Path.home() / ".codex" / "sessions"
+    )
+    scan.add_argument(
+        "--pi-root", type=Path, default=Path.home() / ".pi" / "agent" / "sessions"
+    )
     scan.add_argument("--json", action="store_true")
 
     finish = subparsers.add_parser("finish-run")
