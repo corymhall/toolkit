@@ -226,10 +226,30 @@ def dedupe(values: list[str]) -> list[str]:
     return result
 
 
+def entries_through(
+    entries: list[dict[str, Any]], through: dt.datetime | None
+) -> list[dict[str, Any]]:
+    if through is None:
+        return entries
+
+    bounded: list[dict[str, Any]] = []
+    for entry in entries:
+        timestamp = entry.get("timestamp")
+        if not isinstance(timestamp, str):
+            continue
+        try:
+            if parse_timestamp(timestamp) <= through:
+                bounded.append(entry)
+        except ValueError:
+            continue
+    return bounded
+
+
 def summarize_session(
     parsed: ParsedSession, through: dt.datetime | None = None
 ) -> SessionSummary | None:
-    branch, warnings = active_branch(parsed.entries, through)
+    bounded_entries = entries_through(parsed.entries, through)
+    branch, warnings = active_branch(bounded_entries)
     activity = latest_activity(branch)
     if activity is None:
         return None
@@ -239,7 +259,7 @@ def summarize_session(
         warnings.append(
             f"unsupported session version {version}; current Pi version is {CURRENT_SESSION_VERSION}"
         )
-    if parsed.malformed_lines:
+    if parsed.malformed_lines and through is None:
         warnings.append(f"skipped {parsed.malformed_lines} malformed JSON line(s)")
 
     asks: list[str] = []
@@ -298,7 +318,7 @@ def summarize_session(
         activity=activity,
         cwd=str(parsed.header.get("cwd", "")),
         version=version,
-        total_entries=len(parsed.entries),
+        total_entries=len(bounded_entries),
         active_entries=len(branch),
         ask=asks[0] if asks else "(none)",
         followups=asks[1:],

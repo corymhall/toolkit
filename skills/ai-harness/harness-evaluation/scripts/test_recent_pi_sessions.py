@@ -47,8 +47,33 @@ class RecentPiSessionsTest(unittest.TestCase):
         summary = recent_pi_sessions.summarize_session(parsed, through)
         self.assertIsNotNone(summary)
         self.assertEqual(summary.active_entries, 3)
+        self.assertEqual(summary.total_entries, 3)
         self.assertEqual(summary.failures, ["bash: Command exited with code 1"])
         self.assertEqual(summary.activity.isoformat(), "2026-01-03T10:01:00+00:00")
+
+    def test_bounded_scan_metadata_ignores_later_file_content(self):
+        parsed = recent_pi_sessions.read_session(self.fixtures / "branched.jsonl")
+        self.assertIsNotNone(parsed)
+        through = recent_pi_sessions.parse_timestamp("2026-01-03T10:30:00Z")
+        before_summary = recent_pi_sessions.summarize_session(parsed, through)
+        self.assertIsNotNone(before_summary)
+        before = recent_pi_sessions.summary_dict(before_summary)
+
+        parsed.entries.append(
+            {
+                "type": "session_info",
+                "id": "future-entry",
+                "parentId": parsed.entries[-1]["id"],
+                "timestamp": "2026-01-04T00:00:00Z",
+                "name": "future content",
+            }
+        )
+        parsed.malformed_lines += 1
+        after_summary = recent_pi_sessions.summarize_session(parsed, through)
+        self.assertIsNotNone(after_summary)
+        after = recent_pi_sessions.summary_dict(after_summary)
+
+        self.assertEqual(after, before)
 
     def test_skill_injection_is_not_reported_as_the_ask(self):
         summary = self.scan("skill-injection.jsonl", "2026-01-02T00:00:00Z")
