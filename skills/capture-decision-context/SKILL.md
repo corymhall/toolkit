@@ -1,43 +1,37 @@
 ---
 name: capture-decision-context
-description: Distill the current conversation into a durable, implementation-light decision note or compact GitHub issue draft that preserves motivation, evidence, rationale, tradeoffs, accepted limitations, and open questions without turning session details into an authoritative specification or implementation plan.
+description: Distill the current conversation into a durable decision note or compact GitHub issue draft that preserves motivation, evidence, tradeoffs, and accepted limitations without generating file-by-file tasks or pseudocode.
 disable-model-invocation: true
 ---
 
 # Capture Decision Context
 
-Preserve the parts of the current conversation that a future agent or
-contributor would otherwise lose. Produce a decision/context artifact, not a
-complete implementation specification.
+Preserve critical motivation, rationale, and tradeoffs from the current conversation for future contributors. Produce a decision context artifact, **not** an implementation plan or task list.
 
-Use the conversation as the source of truth. Consult the repository only to
-confirm named facts, links, current status, or the appropriate destination; do
-not restart planning or broaden the investigation. If a repository-note
-destination is unclear, ask the user where it should live.
+---
 
-Capture only what adds durable value:
+## Core Rules
 
-- the problem, motivation, and desired observable outcome
-- evidence that materially shaped the discussion
-- accepted decisions and why they were chosen
-- rejected alternatives when the reason matters later
-- constraints, non-goals, tradeoffs, accepted limitations, and safe fallbacks
-- genuinely open questions
-- concise status, validation evidence, and high-value references when useful
+1. **Source of Truth:** Use the current conversation as primary truth. Consult the repository only to confirm named facts, links, or file paths. Do not restart investigation.
+2. **What to Capture:**
+   - Problem, motivation, and desired observable outcome.
+   - Key evidence and benchmarks shaping the decision.
+   - Accepted choices and why they were selected.
+   - Rejected alternatives and why they were discarded.
+   - Non-goals, tradeoffs, accepted limitations, and safe fallbacks.
+   - Genuine open questions.
+3. **What to Omit:**
+   - File-by-file task lists, test matrices, or pseudocode.
+   - Speculative requirements or easily rediscovered code facts.
+   - Assistant proposals not explicitly accepted by the user.
 
-Distinguish user-accepted decisions from assistant proposals, rejected ideas,
-and unresolved questions. Do not promote suggestions or speculation into
-requirements.
+---
 
-Keep the artifact implementation-light. Avoid file-by-file tasks, exhaustive
-edge-case or test matrices, detailed pseudocode, speculative requirements, and
-facts that are easy to rediscover. Keep an implementation detail only when it
-records an external contract, settled constraint, consequential tradeoff, or
-rationale for rejecting an alternative.
+## Artifact Templates
 
-## Decision Note
+### Option 1: Decision Note (Markdown File)
 
-Adapt this shape and omit empty sections:
+Use this shape for repository documentation (omit empty sections):
 
 ```markdown
 # <Topic> Decision Context
@@ -51,35 +45,29 @@ Adapt this shape and omit empty sections:
 ## References
 ```
 
-## GitHub Issue Draft
+### Option 2: GitHub Issue Draft
 
-When the user wants to snapshot the investigation as an issue, keep the visible
-body compact and move supporting context into an expandable section:
+Use this compact shape when snapshotting an investigation into a GitHub Issue:
 
 ```markdown
 ## Problem
 
-## Proposed direction
+## Proposed Direction
 
-## Done when
+## Done When
 
 <details>
 <summary>Context and evidence</summary>
 
+### Key Tradeoffs & Rejected Alternatives
+### Supporting History & Links
+
 </details>
 ```
 
-Make every visible sentence change the reader's understanding of the current
-problem or desired outcome. Keep `Done when` outcome-oriented and omit it when
-it adds no scope clarity. Use the details section for only the most relevant
-history, evidence, rationale, tradeoffs, limitations, rejected directions, and
-links; do not copy the full session note into it. Label API or architecture
-sketches as proposals unless the user settled them.
+---
 
-Draft in chat by default. Create or post the issue only when the user explicitly
-asks, and do not also create a repository context note unless requested.
+## Workflow & Output
 
-Prefer a short concrete artifact over comprehensive session summarization.
-Preserve uncertainty rather than resolving it by inference. A future agent
-should use the artifact with the current repository and maintainer conversation,
-not treat it as authoritative implementation instructions.
+- **Default Location:** Draft in chat unless an explicit file path or GitHub issue destination is requested.
+- **Handling Uncertainty:** Preserve open questions as unresolved. Do not attempt to resolve uncertainties by guessing.

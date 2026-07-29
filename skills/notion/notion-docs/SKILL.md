@@ -1,122 +1,63 @@
 ---
 name: notion-docs
-description: Use the authenticated Notion CLI (`ntn`) to find, read, and link Notion pages, inspect a page's direct or recursive sub-page structure, and create Markdown documents under a specific Notion parent. Use for company-doc requests involving Notion URLs, page IDs, page titles, destination pages, or page trees. Do not use for Notion Workers, file uploads, database administration, or broad API automation.
+description: Use the authenticated Notion CLI (`ntn`) to find, read, and link Notion pages, review unresolved comments, inspect page hierarchy, synchronize Notion documents to local Markdown, and create documents under a specific parent. Use for Notion page URLs, IDs, titles, comments, local document sync, or page trees. Do not use for Notion Workers, file uploads, database administration, or broad API automation.
 ---
 
 # Notion Docs
 
-Use `ntn` for ordinary documentation work while keeping page identity, hierarchy,
-and write destinations explicit.
+Use the `ntn` CLI to perform documentation operations with explicit page identity, hierarchy, and write targets.
 
-## Resolve Pages
+---
 
-Prefer a supplied page ID or URL. Extract the 32 hexadecimal page ID from a
-Notion URL (hyphens are optional); do not treat unrelated query parameters as the
-page ID.
+## Master Command Reference
 
-When only a title or location name is available, search by title:
+| Task | Command | Key Flags / Notes |
+| :--- | :--- | :--- |
+| **Search Page by Title** | `jq -n --arg q "$query" '{query:$q, filter:{property:"object", value:"page"}}' \| ntn api v1/search` | Fuzzy search; compare titles and parents |
+| **Get Page Metadata** | `ntn api "v1/pages/$PAGE_ID" -X GET` | Returns canonical workspace `url` |
+| **Get Page Content** | `ntn pages get "$PAGE_ID"` | Outputs Markdown; use `--json` to check completeness |
+| **List Unresolved Comments** | `ntn api "v1/comments" -X GET block_id=="$BLOCK_ID" page_size==100` | Paginate when the complete discussion set matters |
+| **List Direct Sub-Pages** | `ntn api "v1/blocks/$PAGE_ID/children" -X GET page_size==100` | Filter blocks by `type == "child_page"` |
+| **Create Markdown Page** | `ntn pages create --parent "page:$PARENT_ID" --json < file.md` | Requires leading H1 as title |
+| **CLI Diagnostics** | `ntn doctor` | Diagnose auth or config boundaries |
 
-```bash
-jq -n --arg query "$query" \
-  '{query:$query, filter:{property:"object", value:"page"}, page_size:100}' |
-  ntn api v1/search
-```
+---
 
-Search is fuzzy. Compare titles and parent metadata, and ask the user to choose
-when multiple plausible pages remain. Follow `has_more` and `next_cursor` when a
-complete result set matters.
+## Workflows
 
-Retrieve page metadata when identity or a link matters:
+### 1. Resolving Pages
+- **URL Extraction:** Extract the 32-hex character ID from Notion URLs (hyphens optional). Ignore query parameters.
+- **Title Search:** If only a title is provided, run `ntn api v1/search`. If multiple pages match, ask the user to pick.
+- **Canonical Links:** Always use the `url` property returned by `v1/pages/$PAGE_ID` for clickable links. Do not reconstruct custom URLs.
 
-```bash
-ntn api "v1/pages/$page_id" -X GET
-```
+### 2. Reading Content
+- Fetch page content with `ntn pages get "$PAGE_ID"`.
+- **Completeness Check:** Use `ntn pages get "$PAGE_ID" --json` when completeness matters. Do not claim an exact read if `truncated` is true or `unknown_block_ids` is non-empty.
+- **Formatting:** Identify source pages by title and canonical URL in output responses.
 
-Use the returned `url` as the canonical workspace link; do not reconstruct a URL
-from an ID or substitute `public_url`. Use the title property from `properties`
-when the display title is needed.
+### 3. Reviewing Comments
+- List unresolved comments for the relevant page or block. Follow `has_more` and `next_cursor` when the complete discussion set matters.
+- Ask users to leave comments unresolved until they have been processed. Retrieve a parent block with `ntn api "v1/blocks/$BLOCK_ID" -X GET` when inline context matters.
+- Preserve the distinction between a comment's author, discussion ID, parent, and text.
+- Treat a `403` as a missing read-comment capability, not proof that no comments exist.
 
-## Read Pages
+### 4. Inspecting Page Structure
+- Fetch block children using `v1/blocks/$BLOCK_ID/children`.
+- Paginate using `start_cursor==<next_cursor>` while `has_more` is true.
+- **Recurse:** Recurse into `child_page` blocks for page trees, and into container blocks (`has_children: true`) for complete layout trees. Track visited IDs to prevent cycles.
 
-Read ordinary page content as Markdown:
+### 5. Synchronizing Local Markdown
+- Establish an explicit page-to-file mapping. Use supplied paths and existing titles as evidence; ask when a mapping is materially ambiguous.
+- Read every mapped page with `ntn pages get "$PAGE_ID" --json`. Require `truncated: false` and an empty `unknown_block_ids` list before claiming an exact sync.
+- Preserve wording and document structure. Normalize only transport-specific markup: repository-standard H1 titles, Markdown line breaks, mapped page mentions as relative links, and generated sub-page navigation that is not body content.
+- Change only mapped files. Do not remove local annexes merely because they are absent from the requested Notion tree.
+- If both Notion and local files changed and the source of truth is unclear, ask which side wins. Report the source URLs and local paths that were synchronized.
 
-```bash
-ntn pages get "$page_id"
-```
+### 6. Creating and Editing Pages
+- **Parent Validation:** Verify the parent ID, title, and canonical URL before creation. Always pass `--parent "page:$PARENT_ID"`.
+- **Content Source:** Pass Markdown via stdin rather than inline shell arguments. Ensure the leading H1 is the page title.
+- **Edits and Destructive Operations:** Do not edit, replace, or trash pages unless explicitly instructed. `ntn pages edit` overwrites page content and child blocks.
 
-If the command warns that Markdown was truncated, rerun with `--json`, inspect
-`unknown_block_ids`, and disclose any content that could not be read. Do not
-claim a complete summary from truncated output.
-
-Fetch only the content needed for the request. A request for structure does not
-require reading every descendant page body. Do not save company documentation
-in repository files unless the user asks for a local artifact.
-
-In the answer, identify the source page by title and canonical URL. For a
-multi-page result, link each page whose metadata was retrieved rather than
-returning bare IDs.
-
-## Inspect Page Structure
-
-List a page or block's children with:
-
-```bash
-ntn api "v1/blocks/$block_id/children" -X GET page_size==100
-```
-
-Continue with `start_cursor==<next_cursor>` until `has_more` is false.
-
-- For immediate sub-pages, report blocks whose `type` is `child_page`, using the
-  block ID and `child_page.title`.
-- For all descendant pages, recursively list each child page's children.
-- For a complete block layout, also recurse into non-page blocks with
-  `has_children: true`; this avoids skipping content nested in columns, toggles,
-  or other containers.
-- Keep the distinction between real child pages and links, mentions, bookmarks,
-  databases, or data sources. Include the latter only when the requested layout
-  calls for them.
-- Prevent cycles or duplicate traversal by tracking visited block/page IDs.
-
-Return a compact indented tree. Retrieve each listed page's metadata when the
-user wants clickable links.
-
-## Create Documents
-
-Before writing, resolve the exact parent page and verify its title and canonical
-URL. Do not omit `--parent` and accidentally create at an unintended workspace
-location. If the destination is ambiguous, ask before creating anything.
-
-Prepare Markdown with the intended title as its leading H1. Pass an existing
-requested artifact or a temporary file outside the repository through stdin
-rather than placing a long document in a shell argument:
-
-```bash
-ntn pages create --parent "page:$parent_id" --json < "$document_path"
-```
-
-An explicit user request to create the document authorizes the write once the
-parent and content are clear; do not add a redundant confirmation. After
-creation, use the returned ID to retrieve the page metadata, verify the title
-and parent, and return its canonical `url`. Remove temporary local content when
-it is no longer needed.
-
-Do not edit, replace, move, or trash existing content unless explicitly asked.
-`ntn pages edit` replaces page content and can affect nested objects, so inspect
-its current help and the target page before any such request.
-
-## Handle CLI Differences and Failures
-
-The CLI and API are beta. Before guessing unsupported syntax, inspect the local
-command:
-
-```bash
-ntn <command> --help
-ntn api ls
-ntn api <path> --help
-ntn api <path> --docs -X <METHOD>
-ntn api <path> --spec -X <METHOD>
-```
-
-On authentication or workspace errors, run `ntn doctor` and report the failing
-boundary. Never print or inspect token values or credential files, and do not
-start an interactive login unless the user asks.
+### 7. CLI Debugging
+- If CLI commands fail, run `ntn <command> --help` or `ntn doctor`.
+- Never print or expose tokens or credentials in logs or chat output.

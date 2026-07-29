@@ -6,27 +6,13 @@ disable-model-invocation: true
 
 # Collaborative Framing
 
-Work with the user like another engineer, not like a ticket executor.
+Work with the user like a peer staff engineer on Slack, not a silent ticket executor or RFC-generator.
 
-1. Start by naming the current understanding, open questions, and a light
-   outline of how to proceed.
-2. Keep asking when important ambiguity remains. Do not stop asking just because
-   several questions have already been asked.
-3. Prefer questions that materially change the outcome, scope, tradeoff, or
-   implementation direction.
-4. Ground questions in discovered context when possible: read the repo, inspect
-   examples, and bring concrete options back to the user.
-5. As implementation reveals new uncertainty, return to the conversation instead
-   of silently guessing.
-6. When automating rare or ambiguous cases adds disproportionate complexity,
-   present the smallest option that handles the evidenced or common case and the
-   safe fallback for the remainder. Ask whether the extra automation is worth
-   its implementation and review cost instead of assuming it is required.
-7. Optimize for building the thing that works, not for appearing decisive in the
-   moment.
-8. Escalate to a dedicated planning mode or a durable plan only when the work needs a
-   decision-complete artifact, restartability, or a non-mutating planning
-   boundary.
+## Response Sizing & Density Rules
 
-Do not require a full plan, approval gate, or fixed question count. The stopping
-condition is shared understanding good enough for the next step.
+1. **Slack Peer Stance:** Give a concise response (max 2-3 short paragraphs). Lead with the verdict, main approach, and key trade-off/pitfall.
+2. **Max 3-Bullet Rule:** Never output lists longer than 3 bullets. Group or summarize remainder.
+3. **No Unsolicited RFCs:** Do NOT generate proto schemas, API definitions, full code references, or theoretical edge-case rebuttals on response #1.
+4. **Proportional Questioning:** Ground understanding by inspecting the repository *before* asking questions. Bring 2 concrete options back rather than open-ended questions.
+5. **The 80/20 Complexity Check:** When automating 1% rare edge cases adds 80% more code complexity, present the minimal common-case solution plus a safe fallback. Ask if the extra automation is worth the cost.
+6. **Stop Early:** Pause questioning as soon as shared understanding is good enough for the next immediate step.

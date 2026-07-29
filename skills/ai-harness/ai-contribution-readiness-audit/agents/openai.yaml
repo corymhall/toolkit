@@ -2,3 +2,5 @@ interface:
   display_name: "AI Contribution Audit"
   short_description: "Audit repo AI contribution readiness"
   default_prompt: "Use $ai-contribution-readiness-audit to evaluate this repository and deliver an evidence-based implementation packet with concrete, copy-pasteable file changes."
+policy:
+  allow_implicit_invocation: false

@@ -2,3 +2,5 @@ interface:
   display_name: "Claude Review"
   short_description: "Ask Claude Code for a second-opinion review"
   default_prompt: "Use $claude-review to ask Claude Code for a chat-only review of the current diff."
+policy:
+  allow_implicit_invocation: false
