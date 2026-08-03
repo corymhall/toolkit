@@ -1,6 +1,6 @@
 ---
 name: notion-docs
-description: Use the authenticated Notion CLI (`ntn`) to find, read, and link Notion pages, inspect a page's direct or recursive sub-page structure, and create Markdown documents under a specific Notion parent. Use for company-doc requests involving Notion URLs, page IDs, page titles, destination pages, or page trees. Do not use for Notion Workers, file uploads, database administration, or broad API automation.
+description: Use the authenticated Notion CLI (`ntn`) to find, read, and link Notion pages, review unresolved comments, inspect page hierarchy, synchronize Notion documents to local Markdown, and create documents under a specific parent. Use for Notion page URLs, IDs, titles, comments, local document sync, or page trees. Do not use for Notion Workers, file uploads, database administration, or broad API automation.
 ---
 
 # Notion Docs
@@ -56,6 +56,20 @@ In the answer, identify the source page by title and canonical URL. For a
 multi-page result, link each page whose metadata was retrieved rather than
 returning bare IDs.
 
+## Review Comments
+
+List unresolved comments for the relevant page or block:
+
+```bash
+ntn api "v1/comments" -X GET block_id=="$block_id" page_size==100
+```
+
+Follow `has_more` and `next_cursor` when the complete discussion set matters.
+Ask users to leave comments unresolved until they have been processed. Retrieve
+a parent block when inline context matters, and preserve the distinction between
+a comment's author, discussion ID, parent, and text. Treat a `403` as missing
+read-comment capability, not proof that no comments exist.
+
 ## Inspect Page Structure
 
 List a page or block's children with:
@@ -79,6 +93,22 @@ Continue with `start_cursor==<next_cursor>` until `has_more` is false.
 
 Return a compact indented tree. Retrieve each listed page's metadata when the
 user wants clickable links.
+
+## Synchronize Local Markdown
+
+Establish an explicit page-to-file mapping. Use supplied paths and existing
+titles as evidence, and ask when a mapping is materially ambiguous. Read every
+mapped page with `ntn pages get "$page_id" --json`; require `truncated: false`
+and an empty `unknown_block_ids` list before claiming an exact sync.
+
+Preserve wording and document structure. Normalize only transport-specific
+markup such as repository-standard H1 titles, Markdown line breaks, mapped page
+mentions as relative links, and generated sub-page navigation that is not body
+content. Change only mapped files, and do not remove local annexes merely because
+they are absent from the requested Notion tree.
+
+If both Notion and local files changed and the source of truth is unclear, ask
+which side wins. Report the source URLs and local paths that were synchronized.
 
 ## Create Documents
 

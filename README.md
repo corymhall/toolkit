@@ -245,7 +245,7 @@ checkout.
 | Area | Skills |
 |------|--------|
 | Review | `prepare-for-review`, `request-review`, `review-pr`, `explain-pr`, `claude-review` |
-| AI harness | `ai-contribution-readiness-audit`, `ai-harness-bootstrap`, `harness-evaluation` |
+| AI harness | `ai-contribution-readiness-audit`, `ai-harness-bootstrap`, `skill-authoring`, `harness-evaluation` |
 | Development | `go-development`, `neovim-plugin-development` |
 | General workflows | `collaborate`, `capture-decision-context`, `multi-model-evaluate`, `git-spice-stack-prs` |
 | GitHub | `create-pr`, `github-search-cli` |
@@ -286,7 +286,12 @@ The toolkit intentionally does not provide a generic subagent extension.
 Sidecars are for bounded research and independent review, not parallel ownership
 of overlapping implementation work.
 
-## Harness Evaluation
+## Skill Authoring And Harness Evaluation
+
+`skill-authoring` is a manually invoked workflow for new skills, revisions,
+de-slop passes, and semantic reviews. It requires an evidence-backed change
+contract, accounts for behavior added or removed, and keeps independent review
+read-only so completeness bias cannot silently expand the prompt.
 
 `harness-evaluation` is a manually invoked personal field-evaluation workflow.
 It can review named Pi or Codex session JSONL files or scan a recent time window

@@ -37,7 +37,7 @@ import {
 } from "./herdr-command.ts";
 
 const DEFAULT_STATUS_LINES = 120;
-const MAX_STATUS_WAIT_MS = 30_000;
+const MAX_STATUS_WAIT_MS = 30 * 60_000;
 const SUBMISSION_GRACE_MS = 2_000;
 
 const START_PARAMETERS = Type.Object({
@@ -48,7 +48,7 @@ const START_PARAMETERS = Type.Object({
 
 const STATUS_PARAMETERS = Type.Object({
   waitMs: Type.Optional(Type.Integer({
-    description: "Optionally wait up to this many milliseconds for the current command to finish (default: return immediately)",
+    description: "Optionally wait up to this many milliseconds for the current command to finish, up to 30 minutes (default: return immediately)",
     minimum: 1_000,
     maximum: MAX_STATUS_WAIT_MS,
   })),
@@ -531,10 +531,11 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
   pi.registerTool({
     name: HERDR_COMMAND_STATUS_TOOL_NAME,
     label: "Herdr Command Status",
-    description: "Inspect the latest command started by herdr_start_command. Returns its running or completed state, exit code, foreground processes, and recent pane output. Returns immediately unless waitMs requests a bounded wait of at most 30 seconds. Check status before relying on command artifacts or reporting success.",
-    promptSnippet: "Inspect or briefly wait for the latest command in the managed Herdr pane",
+    description: "Inspect the latest command started by herdr_start_command. Returns its running or completed state, exit code, foreground processes, and recent pane output. Returns immediately unless waitMs requests a bounded wait of at most 30 minutes, and returns early when the command finishes. Check status before relying on command artifacts or reporting success.",
+    promptSnippet: "Inspect or wait for the latest command in the managed Herdr pane",
     promptGuidelines: [
-      "Use herdr_command_status to inspect a previously started Herdr command when its result becomes relevant; omit waitMs for an immediate check or use a bounded wait instead of rapid polling.",
+      "Use herdr_command_status to inspect a previously started Herdr command when its result becomes relevant; omit waitMs for an immediate check.",
+      "When no independent work remains, call herdr_command_status with waitMs instead of using bash sleep or repeatedly polling; it returns as soon as the command finishes.",
       "Before relying on artifacts or claiming success from herdr_start_command, confirm completion with herdr_command_status.",
     ],
     parameters: STATUS_PARAMETERS,

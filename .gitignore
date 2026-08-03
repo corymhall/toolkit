@@ -1,5 +1,6 @@
 .runtime/
 .claude/commands/
+.antigravitycli/
 .logs/
 mail
 __pycache__/

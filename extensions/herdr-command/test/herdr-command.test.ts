@@ -91,6 +91,7 @@ function loadExtension(exec: (command: string, args: string[]) => Promise<any>, 
     name: string;
     description?: string;
     promptGuidelines?: string[];
+    parameters?: { properties?: { waitMs?: { maximum?: number } } };
     execute: (...args: any[]) => Promise<any>;
   }> = [];
   const handlers = new Map<string, (...args: any[]) => any>();
@@ -100,6 +101,7 @@ function loadExtension(exec: (command: string, args: string[]) => Promise<any>, 
       name: string;
       description?: string;
       promptGuidelines?: string[];
+      parameters?: { properties?: { waitMs?: { maximum?: number } } };
       execute: (...args: any[]) => Promise<any>;
     }) { tools.push(tool); },
     on(event: string, handler: (...args: any[]) => any) { handlers.set(event, handler); },
@@ -241,7 +243,9 @@ test("starts one visible command and returns without waiting or reading output",
     const statusTool = tool(loaded, HERDR_COMMAND_STATUS_TOOL_NAME);
     assert.match(startTool.description ?? "", /return immediately/);
     assert.match(startTool.promptGuidelines?.join("\n") ?? "", /continue useful independent work/);
-    assert.match(statusTool.description ?? "", /Returns immediately unless waitMs/);
+    assert.match(statusTool.description ?? "", /bounded wait of at most 30 minutes/);
+    assert.match(statusTool.promptGuidelines?.join("\n") ?? "", /instead of using bash sleep/);
+    assert.equal(statusTool.parameters?.properties?.waitMs?.maximum, 30 * 60_000);
     const result = await startTool.execute(
       "call",
       { command: "make build", cwd: directory, label: "build" },

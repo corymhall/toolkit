@@ -1,0 +1,6 @@
+interface:
+  display_name: "Skill Authoring"
+  short_description: "Author and review skills without prompt slop"
+  default_prompt: "Use $skill-authoring to create, revise, de-slopify, or review the target Agent Skill while preserving behavior and requiring evidence for prompt weight."
+policy:
+  allow_implicit_invocation: false

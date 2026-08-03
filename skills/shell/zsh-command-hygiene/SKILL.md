@@ -11,22 +11,17 @@ Keep multi-line zsh commands boring and explicit.
 
 - Do not assign to zsh special parameters such as `status`, `pipestatus`,
   `signals`, `options`, `path`, `fpath`, `argv`, `ARGC`, `RANDOM`, or `SECONDS`.
-- Preserve command exit codes in a neutral variable name such as `cmd_status`,
-  `gh_status`, or `exit_code`.
-- When capturing a pipeline result in zsh, never write
-  `status=${pipestatus[1]}`. Use a neutral name such as
-  `cmd_status=${pipestatus[1]}` after `cmd 2>&1 | sed ...`, or avoid the
-  pipeline if truncation is not needed.
-- Prefer `jq` for short JSON filters. Avoid nested Python f-strings with
-  backslash-escaped dictionary keys inside `python3 -c`; shell and Python
-  quoting interact badly. If Python is necessary, use a heredoc or a simple
-  expression that does not nest quote syntaxes.
-- Prefer `trap` for temp-file cleanup instead of manual `rm` after a command
-  whose status you need to preserve.
-- Quote temp paths and heredoc variables. Use single-quoted heredoc markers
+  Store exit codes in a neutral name such as `cmd_status`, `gh_status`, or
+  `exit_code`; read pipeline status with `cmd_status=${pipestatus[1]}`.
+- Prefer `jq` for short JSON filters. If Python is necessary, use a heredoc or a
+  simple expression instead of nesting shell quoting, Python quoting, and
+  backslash-escaped dictionary keys inside `python3 -c`.
+- Use `trap` for temp-file cleanup, quote paths, and single-quote heredoc markers
   when the body should not expand shell variables.
-- Keep optional file paths out of positional `rg` arguments unless you have
-  verified they exist; use `--glob` filters or preflight with `test -e`.
+- Keep optional paths out of positional `rg` arguments unless they exist; use
+  `--glob` filters or preflight with `test -e`.
+- Use `eval` only for fixed, agent-authored command strings. Never interpolate
+  untrusted or remotely sourced text into an evaluated command.
 
 ## Safe Patterns
 

@@ -13,6 +13,14 @@ Before drafting, identify what the reader needs to know or do and why. If the
 reason for a rule or warning is unclear, ask the user instead of filling the gap
 with generic caution.
 
+Lead with the decision or action the reader needs now. Add summaries, matrices,
+or appendices only when they help navigate the actual material; do not force a
+fixed document shape onto a short answer.
+
+Keep operative guidance in the main path. Move research history, raw evidence,
+and rare-case detail to an appendix when mixing them with the rules would obscure
+what the reader should do.
+
 ## Compression Test
 
 Replace a sentence mentally with “check everything,” “be careful,” or “follow
@@ -56,10 +64,10 @@ future task.
 
 Before finishing:
 
-1. Remove throat-clearing, meta-commentary, and claims about being safe,
+1. Remove throat-clearing, heading restatements, and claims about being safe,
    thorough, robust, or comprehensive that add no mechanism or evidence.
-2. Remove sentences that only restate a heading or nearby sentence.
-3. Challenge every list with the membership test.
-4. Move uncommon scenarios out of the main path.
-5. Delete or rewrite anything that does not add a needed fact, reason, action,
-   constraint, or clarifying example.
+2. Challenge every list with the membership test, and skip edits that only add
+   stylistic polish without changing a reader's decision or removing friction.
+3. Move uncommon scenarios and supporting research out of the main path, then
+   delete anything that adds no needed fact, reason, action, constraint, or
+   clarifying example.

@@ -203,6 +203,30 @@ that preserves the lifecycle discriminator.
 - live tests duplicated unit matrices without deterministic service behavior;
 - temporary transcripts replaced a maintainable repository artifact.
 
+## `skill-authoring`
+
+**Intended intervention:** Create, revise, compress, or review skills without
+losing domain behavior or adding unsupported prompt weight.
+
+**Expected activation:** Explicit skill authoring, semantic review, or de-slop
+work.
+
+**Positive signals:**
+
+- an evidence-backed change contract separated preserved behavior from ceremony;
+- revisions accounted for behavior added, removed, and changed;
+- references provided progressive disclosure instead of repeating the skill;
+- independent review reported findings without editing or broadening scope;
+- realistic trigger, boundary, and non-trigger cases caught semantic regressions.
+
+**Harm signals:**
+
+- the contract became a large required artifact for a trivial correction;
+- compression optimized line count while weakening a gate or stopping condition;
+- unsupported completeness was added during review;
+- toy scenarios were presented as proof of field effectiveness;
+- authoring guidance leaked into the runtime skill being authored.
+
 ## `harness-evaluation`
 
 **Intended intervention:** Turn real session evidence into conservative,

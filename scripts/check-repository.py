@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections import defaultdict
 import json
 from pathlib import Path
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,9 +45,26 @@ def skill_files() -> list[Path]:
 
 
 def source_files() -> list[Path]:
-    files: list[Path] = []
+    result = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(ROOT),
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "-z",
+        ],
+        check=True,
+        stdout=subprocess.PIPE,
+    )
     managed_skills = ROOT / ".agents" / "skills"
-    for path in ROOT.rglob("*"):
+    files: list[Path] = []
+    for raw_path in result.stdout.split(b"\0"):
+        if not raw_path:
+            continue
+        path = ROOT / raw_path.decode(sys.getfilesystemencoding(), errors="surrogateescape")
         if (
             not path.is_file()
             or path.is_relative_to(managed_skills)

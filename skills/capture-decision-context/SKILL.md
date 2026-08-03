@@ -54,7 +54,9 @@ Adapt this shape and omit empty sections:
 ## GitHub Issue Draft
 
 When the user wants to snapshot the investigation as an issue, keep the visible
-body compact and move supporting context into an expandable section:
+body compact and move supporting context into an expandable section. Include a
+proposed direction only when the user accepted it or label it explicitly as
+provisional. Include `Done when` only when it clarifies the observable outcome.
 
 ```markdown
 ## Problem
@@ -66,15 +68,17 @@ body compact and move supporting context into an expandable section:
 <details>
 <summary>Context and evidence</summary>
 
+### Relevant evidence and history
+### Tradeoffs, limitations, and rejected directions
+
 </details>
 ```
 
-Make every visible sentence change the reader's understanding of the current
-problem or desired outcome. Keep `Done when` outcome-oriented and omit it when
-it adds no scope clarity. Use the details section for only the most relevant
-history, evidence, rationale, tradeoffs, limitations, rejected directions, and
-links; do not copy the full session note into it. Label API or architecture
-sketches as proposals unless the user settled them.
+Omit inapplicable headings. Make every visible sentence change the reader's
+understanding of the current problem or desired outcome. Keep only the most
+relevant history, evidence, rationale, tradeoffs, limitations, rejected
+directions, and links in the details section; do not copy the full session note.
+Label API or architecture sketches as proposals unless the user settled them.
 
 Draft in chat by default. Create or post the issue only when the user explicitly
 asks, and do not also create a repository context note unless requested.

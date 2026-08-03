@@ -55,10 +55,11 @@ reporting that the command succeeded.
 - The extension never closes its pane or kills its command automatically.
 
 `herdr_command_status` returns immediately by default. Its optional `waitMs`
-parameter waits only for completion and is capped at 30 seconds, providing a
-bounded synchronization point without making command launch synchronous.
-Status output is capped at 50KB and defaults to the latest 120 lines; up to
-2,000 lines can be requested. Full output remains in terminal scrollback.
+parameter waits only for completion and is capped at 30 minutes. The wait
+returns as soon as the command finishes, so use it instead of a fixed shell
+sleep when no independent work remains. Status output is capped at 50KB and
+defaults to the latest 120 lines; up to 2,000 lines can be requested. Full
+output remains in terminal scrollback.
 
 ## Tool parameters
 
@@ -70,8 +71,8 @@ Status output is capped at 50KB and defaults to the latest 120 lines; up to
 
 ### `herdr_command_status`
 
-- `waitMs`: optional completion wait in milliseconds, from 1 to 30 seconds;
-  omitted for an immediate check
+- `waitMs`: optional completion wait in milliseconds, from 1 second to 30
+  minutes; omitted for an immediate check
 - `lines`: recent output lines to return, defaulting to 120 and capped at 2,000
 
 ## Requirements
