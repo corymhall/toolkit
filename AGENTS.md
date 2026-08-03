@@ -51,8 +51,10 @@ mise run skills:update
 APM manages ordinary third-party skill directories through `apm.yml` and
 `apm.lock.yaml`. Herdr's `SKILL.md` is at its repository root, so
 `scripts/update-herdr-skill.sh` downloads that file without copying the entire
-application repository. Review managed skill and lockfile diffs before
-committing them.
+application repository. `skill-invocation.yaml` owns model-invocation policy
+for first-party and managed skills; run `mise run skills:sync-invocation` rather
+than editing the rendered Pi or Codex policy fields by hand. Review managed
+skill and lockfile diffs before committing them.
 
 The root `package.json` exposes the recursive `skills/` tree and
 `.agents/skills/*` to Pi. Keep Codex CLI-only skills out of that manifest. The local

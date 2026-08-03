@@ -1,0 +1,6 @@
+interface:
+  display_name: Browser tools
+  short_description: Tools for interacting with the chrome web browser
+  default_prompt: Use $browser-tools to interact with the chrome browser.
+policy:
+  allow_implicit_invocation: false

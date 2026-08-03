@@ -38,6 +38,16 @@ List available tasks with `mise tasks`. Common entry points include
 dependency provider runs `npm ci` automatically before `mise run` or `mise x`
 when the manifests change or `node_modules/` is missing.
 
+`skill-invocation.yaml` is the source of truth for whether each skill may be
+invoked implicitly by the model. `mise run skills:sync-invocation` renders Pi's
+`disable-model-invocation` frontmatter and Codex's
+`policy.allow_implicit_invocation`; `codex_model_invocable` records an optional
+Codex-specific exception. An optional `openai` mapping supplies the complete
+`agents/openai.yaml` when an explicit-only upstream skill omits one. Enabled
+skills use each harness's default and are left unmodified. The normal validation
+graph rejects missing policy entries and stale rendered metadata. `mise run
+skills:update` reapplies this policy after APM and Herdr updates.
+
 ### Git lifecycle
 
 The repository pins [hk](https://hk.jdx.dev/) for non-mutating Git lifecycle
@@ -334,9 +344,9 @@ mise run validate
 ```
 
 The graph validates every shared, managed, and Codex-only skill against the
-Agent Skills specification, checks repository policy and text hygiene, runs
-ShellCheck, tests all extensions, and exercises the helper scripts, local
-installer, memory guard, and Pi package. Pi's
+Agent Skills specification, checks repository policy, invocation metadata, and
+text hygiene, runs ShellCheck, tests all extensions, and exercises the helper
+scripts, local installer, memory guard, and Pi package. Pi's
 `disable-model-invocation` frontmatter extension is type-checked locally and
 removed only from the temporary copy passed to the specification validator.
 The Pi package smoke test uses the global `pi` executable on `PATH`; Pi is not

@@ -1,0 +1,74 @@
+version: 1
+skills:
+  ai-contribution-readiness-audit:
+    model_invocable: false
+  ai-harness-bootstrap:
+    model_invocable: false
+  bridge-parity-investigation:
+    model_invocable: true
+  browser-tools:
+    model_invocable: true
+    codex_model_invocable: false
+    openai:
+      interface:
+        display_name: Browser tools
+        short_description: Tools for interacting with the chrome web browser
+        default_prompt: Use $browser-tools to interact with the chrome browser.
+  capture-decision-context:
+    model_invocable: false
+  claude-review:
+    model_invocable: false
+  collaborate:
+    model_invocable: false
+  create-pr:
+    model_invocable: true
+  explain-pr:
+    model_invocable: false
+  git-spice-stack-prs:
+    model_invocable: true
+  github-search-cli:
+    model_invocable: true
+  go-development:
+    model_invocable: true
+  harness-evaluation:
+    model_invocable: false
+  herdr:
+    model_invocable: true
+  high-signal-docs:
+    model_invocable: false
+  investigate-converted-provider-docs:
+    model_invocable: true
+  memory-guard:
+    model_invocable: true
+  multi-model-evaluate:
+    model_invocable: false
+  neovim-plugin-development:
+    model_invocable: true
+  notion-docs:
+    model_invocable: true
+  prepare-for-review:
+    model_invocable: false
+  pulumi-rpc-lifecycle-investigation:
+    model_invocable: true
+  pulumi-test-rationalization-audit:
+    model_invocable: false
+  pulumi-upgrade-provider:
+    model_invocable: true
+  request-review:
+    model_invocable: false
+  review-pr:
+    model_invocable: false
+  skill-authoring:
+    model_invocable: false
+  spec-to-goal:
+    model_invocable: true
+  stage-pulumi-provider-repro:
+    model_invocable: true
+  stage-terraform-provider-repro:
+    model_invocable: true
+  triage-provider-issue:
+    model_invocable: true
+  upstream-patches:
+    model_invocable: true
+  zsh-command-hygiene:
+    model_invocable: true

@@ -38,6 +38,10 @@ run = "uv run --script scripts/lint-skills.py"
 description = "Check repository-specific skill and source policies"
 run = "uv run --script scripts/check-repository.py"
 
+[tasks."check:skill-invocation"]
+description = "Check cross-harness skill invocation metadata"
+run = "uv run --script scripts/sync-skill-invocation.py --check"
+
 [tasks."check:local-install"]
 description = "Check live skill links and the memory guard proxy"
 run = "scripts/check-local-install.sh"
@@ -58,22 +62,28 @@ run = '''
 scripts/test-claude-review.sh
 scripts/test-local-installer.sh
 scripts/test-update-herdr-skill.sh
+scripts/test-sync-skill-invocation.sh
 scripts/test-memory-guard.sh
 scripts/test-pi-package.sh
 '''
 
 [tasks.validate]
 description = "Run all repository validation"
-depends = ["lint:shell", "lint:skills", "check:repository", "check:hooks", "test", "test:integration"]
+depends = ["lint:shell", "lint:skills", "check:repository", "check:skill-invocation", "check:hooks", "test", "test:integration"]
 
 [tasks."skills:list"]
 description = "List project-managed Agent Skills"
 run = "apm deps tree"
 
+[tasks."skills:sync-invocation"]
+description = "Synchronize cross-harness skill invocation metadata"
+run = "uv run --script scripts/sync-skill-invocation.py"
+
 [tasks."skills:update"]
-description = "Update project-managed Agent Skills"
+description = "Update project-managed Agent Skills and reapply local invocation policy"
 run = '''
 set -eu
 apm update --yes
 scripts/update-herdr-skill.sh
+uv run --script scripts/sync-skill-invocation.py
 '''
