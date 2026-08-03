@@ -1,45 +1,17 @@
 # Provider Implementation Families
 
-Use this reference to identify the first ownership boundaries to inspect. It is a routing aid, not a substitute for repository evidence.
+Routing guide for identifying initial resource ownership boundaries across Pulumi provider families.
 
-## Bridged Provider
+---
 
-Typical boundaries include:
+| Provider Family | Subsystem Ownership Boundaries | Key Discriminator Strategy |
+| :--- | :--- | :--- |
+| **Bridged Provider** | • Pulumi engine lifecycle & checkpoints<br>• Pulumi-to-TF bridge translation (`pkg/bridge`)<br>• Provider metadata, overlays, & patches<br>• Upstream Terraform provider schema/runtime<br>• `tfgen` & docs converter tools | **Conditional TF Parity vs Direct Source:** Terraform parity *can* be decisive when appropriate, but **direct source code evidence (Go source, AST, parser logic, schema metadata) can settle ownership directly without requiring a Terraform repro.** |
+| **Native Provider** | • Pulumi engine lifecycle<br>• Native provider runtime (`pulumi-aws-native`)<br>• Schema generation & OpenAPI/CloudControl specs<br>• Cloud API / SDK runtime behavior<br>• Resource ID, import, refresh, & state normalization | **Cloud Spec & Schema Check:** Do **not** use TF parity. Check generated schema vs underlying Cloud API spec or native runtime code. |
+| **Component Provider** | • Component construct logic (`pulumi-awsx`)<br>• Parent & child resource options propagation<br>• Language host vs provider execution<br>• Underlying resource provider behavior | **Parent-Child Dataflow:** Preserve resource options & options propagation when staging repros. |
 
-- Pulumi engine lifecycle and checkpoint behavior
-- Pulumi-to-Terraform bridge translation
-- provider metadata, overlays, mappings, and patches
-- upstream Terraform provider schema and runtime behavior
-- converters and language generators for generated examples
+---
 
-Terraform parity can be a decisive discriminator. Use installed bridged-provider skills for Terraform repros, bridge cross-tests, or detailed bridge lifecycle work.
+## Direct Source Evidence Principle
 
-## Native Provider
-
-Typical boundaries include:
-
-- Pulumi engine lifecycle behavior
-- native provider runtime behavior
-- schema source and generated schema
-- cloud API or SDK behavior
-- identifier, import, refresh, and state normalization
-- native code generation
-
-Do not substitute Terraform parity for native-provider evidence. Ask which observation would actually change the ownership recommendation.
-
-## Component Provider
-
-Typical boundaries include:
-
-- component construction logic
-- parent and child resource options
-- provider propagation to child resources
-- language host versus provider execution
-- component schema and generated SDKs
-- behavior inherited from underlying resource providers
-
-Preserve the parent-to-child dataflow and resource options when staging a repro.
-
-## Unknown Or Mixed Family
-
-Inspect the repository layout and resource implementation before selecting a family. Some repositories contain more than one implementation style. Route the specific resource or failing path rather than assigning one family to the entire repository by name alone.
+If direct source code inspection (log traces, Go code, parser logic, AST, or schema metadata) identifies the bug boundary, **settle ownership directly**. Do not defer a source-supported diagnosis or demand a Terraform repro when repository evidence is already sufficient.
