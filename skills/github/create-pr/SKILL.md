@@ -5,55 +5,93 @@ description: Create, draft, or update a GitHub pull request using a direct, tech
 
 # Create PR
 
-Author concise, reviewer-focused PR titles and descriptions, and execute GitHub PR creation/update operations.
+Create the smallest reviewer-facing pull request that makes the change and its
+reasoning easy to understand. Match the explanation to the change: a mechanical
+fix may need a few sentences, while a risky behavior change may need examples,
+tradeoffs, migration guidance, or focused review questions.
 
-> ℹ️ **Authorization Rule:** A request to create, open, draft, or update a PR authorizes the GitHub operation. Use `--body-file` with a temporary file to avoid multiline shell escaping errors.
+Read [references/tone.md](references/tone.md) and use that tone when writing the
+title and description. Treat it as engineering guidance, not a fixed template.
 
----
+A request to create, open, or update a PR authorizes that GitHub operation. A
+request for only a draft title or description is non-mutating; return Markdown.
+A request to create a draft PR still authorizes creation. Do not add a separate
+approval gate unless important ambiguity remains.
 
-## Quick Reference Command Table
+## Establish The Story
 
-| Operation | Command Sequence | Key Flags / Notes |
-| :--- | :--- | :--- |
-| **Check Existing PRs** | `gh pr list --head "$BRANCH" --json number,url` | Check if head branch already has an open PR |
-| **Create Draft PR** | `gh pr create --draft --title "$TITLE" --body-file /tmp/pr-body.md` | Non-interactive PR creation |
-| **Update PR Description** | `gh pr edit <PR> --title "$TITLE" --body-file /tmp/pr-body.md` | Update title and body on existing PR |
-| **Verify PR Creation** | `gh pr view <PR> --json number,title,url,isDraft,baseRefName` | Verify final state after creation |
+Inspect the repository instructions and PR template, the current conversation,
+the complete branch diff, commit history, linked issues, existing PR body, and
+actual validation evidence.
 
----
+Understand enough to explain only what matters:
 
-## PR Structure & Description Template
+- what happens today and why it matters
+- what behavior or workflow changes
+- why this approach was chosen
+- what evidence supports the important claims
+- what tradeoff, compatibility boundary, migration, fallback, follow-up, or
+  reviewer decision is consequential
 
-Write for a busy reviewer. Lead with the problem, follow with the behavioral change, and list specific validation evidence.
+Treat the conversation as the source of truth for intent and accepted decisions.
+Use the repository to verify implementation facts. Distinguish observed
+behavior, accepted decisions, proposals, and uncertainty. Do not invent issue
+relationships, rationale, alternatives, metrics, validation, or certainty.
 
-```markdown
-## Problem
-<Describe current behavior and why it matters/fails. State the root cause if known.>
+Before creating a PR, check repository status and whether the head branch
+already has a PR. If uncommitted changes appear to belong in the requested PR,
+do not silently omit them; resolve their intended scope first.
 
-## Solution
-<Describe the direct behavioral or technical change. Highlight consequential tradeoffs, migration steps, or fallbacks.>
+## Write For Reviewers
 
-## Validation
-<List specific test suites or commands executed, e.g. `go test ./pkg/resource/...` - distinguishing tests added from tests run.>
+Choose a concise title that describes the outcome and follows repository
+conventions.
 
-Fixes #<issue-number>
-```
+Open the description with the problem or direct behavioral change. Follow the
+causal chain from current behavior to its consequence and then to the changed
+behavior. Explain implementation details at the behavioral boundary rather than
+walking the diff file by file.
 
----
+Use a real scenario, before/after example, output, state shape, or short list
+when it makes the behavior easier to understand. For consequential changes,
+state the relevant tradeoff, rejected alternative, compatibility impact,
+migration, conservative fallback, deliberate limitation, or follow-up. Ask a
+reviewer question only when a real decision remains.
 
-## Authoring Rules (Anti-Slop Checklist)
+Report validation specifically and proportionally. Distinguish tests added from
+tests actually run, and name missing validation when it affects confidence. Use
+closing issue keywords only when the relationship is known and intentional.
 
-- [ ] **Outcome-Oriented Title:** Use a concise title matching repository conventions (e.g. `pkg/resource: fix panic on missing ID`).
-- [ ] **Behavioral Focus:** Explain what behavior changes at the system boundary rather than walking the diff file by file.
-- [ ] **No Generic Fluff:** Never use meaningless filler phrases (*"improves robustness"*, *"enhances maintainability"*, *"code cleanup"*). State the exact fix.
-- [ ] **Proportional Detail:** Match detail to change risk: a mechanical fix needs 3 sentences; a breaking architectural change needs tradeoffs and examples.
-- [ ] **Clean Metadata:** Omit empty or optional template boilerplate sections. Use closing issue keywords (`Fixes #123`) only when the relationship is intentional.
-- [ ] **Body File Execution:** Always pass the PR body via `--body-file <temp-file>` instead of multiline shell arguments.
+Keep ordinary descriptions in short paragraphs. Add descriptive headings only
+when they help navigate a complex or risky change. Preserve required repository
+template sections, but omit optional or empty boilerplate. Every visible
+sentence should change the reviewer's understanding.
 
----
+Avoid:
 
-## Stacked PR Integration
+- converting the commit message or diff summary directly into the PR body
+- mandatory `Summary`, `Changes`, `Testing`, `Risk`, or `Rollback` sections
+- listing files without explaining behavior
+- generic claims such as “improves robustness” or “enhances maintainability”
+- repeating a linked issue instead of explaining the chosen change
+- exhaustive logs or edge-case lists that do not affect review
+- a polished recap after the useful explanation is complete
 
-For stacked PR workflows:
-- Use `git-spice-stack-prs` to manage branch relationships, restacking, and submission.
-- Treat commit-derived `--fill` bodies as temporary, and use this skill to write a deliberate, reviewer-facing body for each PR in the stack.
+## Create Or Update The PR
+
+For a new PR, determine the intended base, head, title, draft state, and required
+metadata from the request and repository conventions. Push the current branch
+when needed, but do not rewrite published history or force-push unless separately
+authorized. Use a body file rather than embedding multiline Markdown in shell
+arguments.
+
+For stacked changes, let `git-spice-stack-prs` own branch relationships,
+restacking, and submission. Treat a commit-derived `--fill` body as temporary
+and replace it with a deliberate description using this guidance.
+
+After creating or updating the PR, verify its title, body, base, head, draft
+state, and URL. Report the URL and any metadata, validation, or reviewer decision
+that still needs attention.
+
+Do not commit changes, post review comments, or modify unrelated GitHub metadata
+unless the user requested those actions.

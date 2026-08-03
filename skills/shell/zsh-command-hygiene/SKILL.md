@@ -5,32 +5,32 @@ description: "Use when writing or repairing multi-line zsh shell commands, espec
 
 # Zsh Command Hygiene
 
-Guidelines and safe patterns for multi-line zsh commands, status preservation, and clean subshell execution.
+Keep multi-line zsh commands boring and explicit.
 
----
+## Guardrails
 
-## Anti-Pattern vs. Safe Pattern Quick Reference
+- Do not assign to zsh special parameters such as `status`, `pipestatus`,
+  `signals`, `options`, `path`, `fpath`, `argv`, `ARGC`, `RANDOM`, or `SECONDS`.
+- Preserve command exit codes in a neutral variable name such as `cmd_status`,
+  `gh_status`, or `exit_code`.
+- When capturing a pipeline result in zsh, never write
+  `status=${pipestatus[1]}`. Use a neutral name such as
+  `cmd_status=${pipestatus[1]}` after `cmd 2>&1 | sed ...`, or avoid the
+  pipeline if truncation is not needed.
+- Prefer `jq` for short JSON filters. Avoid nested Python f-strings with
+  backslash-escaped dictionary keys inside `python3 -c`; shell and Python
+  quoting interact badly. If Python is necessary, use a heredoc or a simple
+  expression that does not nest quote syntaxes.
+- Prefer `trap` for temp-file cleanup instead of manual `rm` after a command
+  whose status you need to preserve.
+- Quote temp paths and heredoc variables. Use single-quoted heredoc markers
+  when the body should not expand shell variables.
+- Keep optional file paths out of positional `rg` arguments unless you have
+  verified they exist; use `--glob` filters or preflight with `test -e`.
 
-| Dangerous Anti-Pattern | Safe Alternative | Reason |
-| :--- | :--- | :--- |
-| `status=$?` or `status=${pipestatus[1]}` | `cmd_status=$?` or `cmd_status=${pipestatus[1]}` | `status` is a read-only reserved variable in Zsh. |
-| `python3 -c "import json; print(d[\"key\"])"` | `jq -r --arg k "key" '.[$k]'` or heredoc | Prevents nested backslash quote-escaping bugs. |
-| Manual `rm "$tmp"` after command execution | `tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT` | Guarantees temp cleanup without clobbering exit status `$?`. |
-| Unquoted heredoc `cat <<EOF` containing `$` | `cat <<'EOF'` (single-quoted marker) | Prevents unintended shell variable expansion inside heredoc. |
-| `rg "pattern" non_existent_file.md` | `[ -e file.md ] && roots+=(file.md)` | Prevents `ripgrep` from failing due to missing positional args. |
+## Safe Patterns
 
----
-
-## Reserved Zsh Variables (DO NOT ASSIGN)
-
-Never assign to these Zsh special parameters:
-`status`, `pipestatus`, `signals`, `options`, `path`, `fpath`, `argv`, `ARGC`, `RANDOM`, `SECONDS`.
-
----
-
-## Copy-Pasteable Safe Patterns
-
-### 1. Temp File Cleanup & Status Preservation
+Temp file plus status preservation:
 
 ```zsh
 tmp_file="$(mktemp)"
@@ -45,7 +45,7 @@ cmd_status=$?
 exit "$cmd_status"
 ```
 
-### 2. Multi-File Cleanup with Log Capture
+Multiple cleanup paths:
 
 ```zsh
 tmp_body="$(mktemp)"
@@ -63,7 +63,24 @@ fi
 exit "$cmd_status"
 ```
 
-### 3. Safe Pipeline Status Capture (`pipestatus`)
+Optional search roots:
+
+```zsh
+roots=(README.md .github)
+[ -e CONTRIBUTING.md ] && roots+=(CONTRIBUTING.md)
+rg -n "pull request|commit|release" "${roots[@]}"
+```
+
+JSON filtering without nested quote escaping:
+
+```zsh
+workspace_id="wE"
+herdr pane list |
+  jq -r --arg workspace "$workspace_id" \
+    '.result.panes[] | select(.workspace_id == $workspace) | [.pane_id, .cwd] | @tsv'
+```
+
+Looped probes with pipeline status:
 
 ```zsh
 set +e
@@ -79,8 +96,10 @@ for command_text in "${commands[@]}"; do
 done
 ```
 
----
+## Recovery
 
-## Recovery Checklist
-
-- [ ] **Check Side Effects First:** If a command fails during cleanup after creating an external resource (e.g. `gh pr create` printed a URL then wrapper errored), verify state with `gh pr view <number>` before rerunning the write command.
+If a command already created the intended external effect before failing during
+cleanup, verify the external state directly instead of rerunning the write. For
+example, after `gh pr create` prints a URL and then zsh reports a wrapper error,
+run `gh pr view <number> --json number,url,state,isDraft` before trying to
+create another PR.

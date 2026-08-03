@@ -6,27 +6,83 @@ disable-model-invocation: true
 
 # Prepare For Review
 
-Perform an author-side self-review pass on the current implementation before submitting for independent review.
+Prepare the current implementation for independent review. This is an author
+pass in the main session: use the conversation context, inspect the complete
+diff, and fix clear author-owned issues. Do not launch sidecars from this skill.
 
-> ℹ️ **Scope & Rules:** This is a read-write author pass in the main session. Inspect the diff, simplify code, fix author-owned issues, and run test gates. **Do not launch sidecar agents.**
+Default to the complete current change unless the user names another target. If
+the current branch or pull request has an obvious base, include its committed
+diff together with working-tree changes. Otherwise use the working-tree diff.
+When the tree is clean and no base or review range is clear, ask for the intended
+branch, pull request, or ref range instead of concluding there is nothing to
+prepare.
 
----
+The session conversation is the source of truth for intent. Plans, design notes,
+and task descriptions are useful but lossy context; do not promote every detail
+in them into a requirement.
 
-## Author Review Matrix
+## Author Pass
 
-| Step | Focus Area | Actionable Checklist |
-| :--- | :--- | :--- |
-| **1. Intent Alignment** | Reconcile with conversation | - Compare implementation against agreed outcomes, constraints, and non-goals.<br>- If unagreed scope decisions appear, ask the user before expanding implementation. |
-| **2. Code Simplification** | Remove unnecessary complexity | - Delete dead helpers, unused abstractions, and redundant result types.<br>- Apply the **80/20 Rule:** If a rare edge case adds 80% more code complexity, preserve a conservative fallback and document the limitation. |
-| **3. Domain Guidance** | Apply language/domain standards | - Apply domain skills (e.g. `go-development`) to the final diff rather than copying local patterns uncritically. |
-| **4. Code Documentation** | Maintainability & comments | - Document exported APIs and non-obvious invariants/tradeoffs.<br>- Explain **why** code exists or what contract it preserves. Omit comments that merely narrate obvious code lines. |
-| **5. Hygiene & Validation** | Tests & repository rules | - Ensure tests prove intended behavior and fallbacks.<br>- Run narrowest formatting, lint, and test gates first, then broader repo validation. |
+### 1. Reconcile With Intent
 
----
+Re-read the request and subsequent decisions. Check the implementation against:
 
-## Boundaries & Stop Condition
+- the user-visible outcome
+- constraints and tradeoffs agreed with the user
+- explicit non-goals and deferred work
+- accepted manual steps or conservative fallback behavior
 
-- [ ] Perform **one** focused pass; do not generate new planning or task artifacts.
-- [ ] Ask the user before modifying agreed product scope.
-- [ ] Do **not** commit code, post GitHub comments, or invoke `request-review` automatically.
-- [ ] **Summary Output:** Finish by reporting: (1) Edits made, (2) Validation run, (3) Accepted limitations, and (4) Items needing user judgment.
+If the implementation reveals a product or scope decision that was not settled,
+return to the user instead of silently choosing the larger solution.
+
+### 2. Simplify The Complete Change
+
+Look for complexity that can be removed without losing the intended behavior:
+
+- abstractions, states, or result types that have no distinct caller-visible use
+- automatic inference or recovery that could safely stop with useful guidance
+- speculative edge-case support with no current user, data, or repository evidence
+- duplicated behavior, dead helpers, and tests for deliberately unsupported cases
+- a difficult final 10% whose safe fallback preserves existing behavior
+
+Prefer the smallest durable implementation. Do not expand scope merely to make
+the change feel complete. When rare-case support adds disproportionate code or
+review burden, preserve the fallback and document the limitation.
+
+### 3. Apply Relevant Implementation Guidance
+
+Identify the languages and domains actually changed, then revisit only the
+applicable implementation skills and references. For non-trivial Go changes,
+apply `go-development` to the final diff rather than copying local patterns
+uncritically. Keep domain checks bounded to behavior the change actually owns.
+
+### 4. Document The Code
+
+Use the reasoning retained in this session to make the implementation
+maintainable:
+
+- document exported APIs when appropriate
+- explain non-obvious purpose, invariants, safety boundaries, and tradeoffs
+- add examples when metadata or data flow would otherwise be hard to follow
+- update user-facing documentation when behavior or recovery steps changed
+
+Comments should explain why the code exists or what contract it preserves. Do
+not add comments that merely narrate obvious statements.
+
+### 5. Check Proof And Repository Hygiene
+
+- Ensure tests prove the intended behavior and meaningful fallback.
+- Do not add a matrix of hypothetical cases that the implementation does not
+  claim to support.
+- Read and follow applicable repository instructions.
+- Check generated outputs and file placement when relevant.
+- Run the narrowest meaningful formatting, lint, and test gates, then broader
+  repository-standard validation when justified and practical.
+
+## Boundaries
+
+- Perform one focused pass; do not create a new plan or checklist artifact.
+- Make clear local improvements, but ask before changing agreed product scope.
+- Do not commit, post review comments, or invoke `request-review` automatically.
+- Finish by summarizing edits made, validation run, accepted limitations, and
+  anything that still needs user judgment.

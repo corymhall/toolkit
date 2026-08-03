@@ -4,7 +4,7 @@ Use these criteria only when the named skill materially participated in a
 session or should plausibly have activated. They describe the intended
 intervention, not a checklist that every task must satisfy.
 
-## `collaborative-framing`
+## `collaborate`
 
 **Intended intervention:** Build shared understanding when intent, scope,
 tradeoffs, or implementation direction remain materially unsettled.
