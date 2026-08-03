@@ -14,6 +14,8 @@ import {
   HERDR_COMMAND_METADATA_SOURCE,
   HERDR_COMMAND_OWNER_TOKEN,
   HERDR_COMMAND_PANE_ENTRY,
+  HERDR_COMMAND_RUN_TOKEN,
+  HERDR_COMMAND_STARTED_AT_TOKEN,
   HERDR_COMMAND_RUN_ENTRY,
   HERDR_COMMAND_STATUS_TOOL_NAME,
   HERDR_START_COMMAND_TOOL_NAME,
@@ -58,7 +60,11 @@ function timeout() {
   return { code: 1, stdout: "", stderr: '{"error":{"code":"timeout"}}', killed: false };
 }
 
-function paneList(created: boolean, ownerTerminalId = "term_parent") {
+function paneList(
+  created: boolean,
+  ownerTerminalId = "term_parent",
+  run?: { runId: string; startedAt: number },
+) {
   return JSON.stringify({
     result: {
       panes: [
@@ -69,7 +75,13 @@ function paneList(created: boolean, ownerTerminalId = "term_parent") {
               terminal_id: "term_command",
               workspace_id: "w1",
               tab_id: "w1:t1",
-              tokens: { [HERDR_COMMAND_OWNER_TOKEN]: ownerTerminalId },
+              tokens: {
+                [HERDR_COMMAND_OWNER_TOKEN]: ownerTerminalId,
+                ...(run ? {
+                  [HERDR_COMMAND_RUN_TOKEN]: run.runId,
+                  [HERDR_COMMAND_STARTED_AT_TOKEN]: String(run.startedAt),
+                } : {}),
+              },
             }]
           : []),
       ],
@@ -244,7 +256,11 @@ test("starts one visible command and returns without waiting or reading output",
     assert.match(startTool.description ?? "", /return immediately/);
     assert.match(startTool.promptGuidelines?.join("\n") ?? "", /continue useful independent work/);
     assert.match(statusTool.description ?? "", /bounded wait of at most 30 minutes/);
-    assert.match(statusTool.promptGuidelines?.join("\n") ?? "", /instead of using bash sleep/);
+    const statusGuidelines = statusTool.promptGuidelines?.join("\n") ?? "";
+    assert.match(statusGuidelines, /instead of fixed bash sleeps/);
+    assert.match(statusGuidelines, /1–2 minute wait/);
+    assert.match(statusGuidelines, /at most 1–2 read-only diagnostics/);
+    assert.match(statusGuidelines, /Never restart or terminate/);
     assert.equal(statusTool.parameters?.properties?.waitMs?.maximum, 30 * 60_000);
     const result = await startTool.execute(
       "call",
@@ -268,12 +284,22 @@ test("starts one visible command and returns without waiting or reading output",
     assert.ok(split);
     assert.equal(split[split.indexOf("--direction") + 1], "down");
     assert.equal(split[split.indexOf("--ratio") + 1], "0.9");
-    const metadata = calls.find(args => args[0] === "pane" && args[1] === "report-metadata");
-    assert.deepEqual(metadata, [
+    const metadata = calls.filter(args => args[0] === "pane" && args[1] === "report-metadata");
+    assert.deepEqual(metadata[0], [
       "pane", "report-metadata", "w1:p2",
       "--source", HERDR_COMMAND_METADATA_SOURCE,
       "--token", `${HERDR_COMMAND_OWNER_TOKEN}=term_parent`,
     ]);
+    assert.deepEqual(metadata[1], [
+      "pane", "report-metadata", "w1:p2",
+      "--source", HERDR_COMMAND_METADATA_SOURCE,
+      "--token", `${HERDR_COMMAND_RUN_TOKEN}=${FIXED_RUN_ID}`,
+      "--token", `${HERDR_COMMAND_STARTED_AT_TOKEN}=1000`,
+    ]);
+    assert.ok(
+      calls.findIndex(args => args === metadata[1]) < calls.findIndex(args => args[0] === "pane" && args[1] === "run"),
+      "run metadata must be stored before pane run",
+    );
     assert.deepEqual(loaded.entries.map(entry => entry.customType), [
       HERDR_COMMAND_PANE_ENTRY,
       HERDR_COMMAND_RUN_ENTRY,
@@ -297,6 +323,7 @@ test("adopts a tagged command pane across Pi sessions instead of splitting", asy
     if (args[0] === "pane" && args[1] === "list") return success(paneList(true));
     if (args[0] === "pane" && args[1] === "process-info") return success(processInfo(true));
     if (args[0] === "pane" && args[1] === "rename") return success();
+    if (args[0] === "pane" && args[1] === "report-metadata") return success();
     if (args[0] === "pane" && args[1] === "run") return success();
     throw new Error(`Unexpected args: ${args.join(" ")}`);
   }, {
@@ -315,12 +342,71 @@ test("adopts a tagged command pane across Pi sessions instead of splitting", asy
 
   assert.equal(result.details.paneId, "w1:p2");
   assert.equal(calls.some(args => args[0] === "pane" && args[1] === "split"), false);
-  assert.equal(calls.some(args => args[0] === "pane" && args[1] === "report-metadata"), false);
+  assert.equal(
+    calls.some(args => args[0] === "pane" && args[1] === "report-metadata" && args.includes(`${HERDR_COMMAND_OWNER_TOKEN}=term_parent`)),
+    false,
+  );
+  assert.equal(
+    calls.some(args => args[0] === "pane" && args[1] === "report-metadata" && args.includes(`${HERDR_COMMAND_RUN_TOKEN}=${FIXED_RUN_ID}`)),
+    true,
+  );
   assert.equal(calls.some(args => args[0] === "pane" && args[1] === "run" && args[2] === "w1:p2"), true);
   assert.deepEqual(loaded.entries.map(entry => entry.customType), [
     HERDR_COMMAND_PANE_ENTRY,
     HERDR_COMMAND_RUN_ENTRY,
   ]);
+});
+
+test("retains run metadata when Herdr submission fails after an uncertain client response", async () => {
+  const calls: string[][] = [];
+  const loaded = withHerdrEnv(() => loadExtension(async (_command, args) => {
+    calls.push(args);
+    if (args[0] === "pane" && args[1] === "list") return success(paneList(true));
+    if (args[0] === "pane" && args[1] === "process-info") return success(processInfo(true));
+    if (args[0] === "pane" && args[1] === "report-metadata") return success();
+    if (args[0] === "pane" && args[1] === "run") {
+      return { code: 1, stdout: "", stderr: "connection closed", killed: false };
+    }
+    throw new Error(`Unexpected args: ${args.join(" ")}`);
+  }, { randomUUID: () => FIXED_RUN_ID }));
+
+  await restoreSession(loaded, []);
+  await assert.rejects(
+    tool(loaded, HERDR_START_COMMAND_TOOL_NAME).execute(
+      "call",
+      { command: "make build", cwd: "/" },
+      undefined,
+      undefined,
+      { cwd: "/" },
+    ),
+    /herdr pane run failed: connection closed/,
+  );
+
+  const metadata = calls.find(args => args[0] === "pane" && args[1] === "report-metadata");
+  assert.ok(metadata?.includes(`${HERDR_COMMAND_RUN_TOKEN}=${FIXED_RUN_ID}`));
+  assert.equal(calls.some(args => args.includes("--clear-token")), false);
+});
+
+test("recovers a silent running command from pane metadata after Pi exits before session persistence", async () => {
+  const markers = buildRunMarkers(FIXED_RUN_ID);
+  const loaded = withHerdrEnv(() => loadExtension(async (_command, args) => {
+    if (args[0] === "pane" && args[1] === "list") {
+      return success(paneList(true, "term_parent", { runId: FIXED_RUN_ID, startedAt: 1_000 }));
+    }
+    if (args[0] === "pane" && args[1] === "read") return success(markers.start);
+    if (args[0] === "pane" && args[1] === "process-info") return success(processInfo(false));
+    throw new Error(`Unexpected args: ${args.join(" ")}`);
+  }, { now: () => 4_000 }));
+
+  await restoreSession(loaded, []);
+  const result = await tool(loaded, HERDR_COMMAND_STATUS_TOOL_NAME).execute("call", {}, undefined);
+
+  assert.equal(result.details.state, "running");
+  assert.equal(result.details.runId, FIXED_RUN_ID);
+  assert.equal(result.details.startedAt, 1_000);
+  assert.equal(result.details.command, undefined);
+  assert.match(result.content[0].text, /still running after 3\.0s/);
+  assert.match(result.content[0].text, /\(no output yet\)/);
 });
 
 test("tags an untagged pane restored from an older Pi session", async () => {

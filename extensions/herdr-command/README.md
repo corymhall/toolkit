@@ -45,9 +45,14 @@ reporting that the command succeeded.
   the command. Status uses those markers to distinguish running commands from
   successful and nonzero completion.
 - The extension stores pane and latest-run metadata in non-context Pi session
-  entries so `/reload` and session resume can recover status. Herdr pane
-  metadata stores only the owning Pi terminal ID needed for cross-session pane
-  adoption.
+  entries so `/reload` and session resume can recover status. Before submitting
+  a command, it also stores that run's opaque ID and start time in Herdr pane
+  metadata. A replacement Pi session can therefore recover the marker protocol
+  for an adopted pane even if Pi exits between submission and session persistence.
+  A failed `pane run` response does not clear that record: Herdr may already
+  have accepted the input, and the next start safely replaces a stale record.
+  Command text and its working directory remain in Pi session entries, not
+  pane metadata visible to Herdr clients.
 - If the managed pane is already busy, start refuses to submit another command
   instead of interleaving shell input. A new Pi session can detect an adopted
   busy pane even when that session has no metadata for the command already
@@ -60,6 +65,17 @@ returns as soon as the command finishes, so use it instead of a fixed shell
 sleep when no independent work remains. Status output is capped at 50KB and
 defaults to the latest 120 lines; up to 2,000 lines can be requested. Full
 output remains in terminal scrollback.
+
+## Monitoring policy
+
+Use short waits while a command is new or uncertain: 1–2 minutes, then 5
+minutes. If expected progress remains absent, preserve the command and run at
+most 1–2 read-only checks of its known processes, logs, dependencies, disk, or
+resource pressure. Once output, dependencies, and resource use show a stable
+phase, use 10–30 minute waits or wait for completion. Return to short waits
+when the command changes phase, stops progressing, emits an error, or resource
+pressure changes; never restart or terminate it solely because no new output
+arrived.
 
 ## Tool parameters
 

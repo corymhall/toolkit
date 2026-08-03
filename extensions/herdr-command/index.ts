@@ -16,6 +16,8 @@ import {
   HERDR_COMMAND_METADATA_SOURCE,
   HERDR_COMMAND_OWNER_TOKEN,
   HERDR_COMMAND_PANE_ENTRY,
+  HERDR_COMMAND_RUN_TOKEN,
+  HERDR_COMMAND_STARTED_AT_TOKEN,
   HERDR_COMMAND_RUN_ENTRY,
   HERDR_COMMAND_STATUS_TOOL_NAME,
   HERDR_START_COMMAND_TOOL_NAME,
@@ -27,6 +29,7 @@ import {
   normalizeLabel,
   paneRecordOwnerTerminalId,
   paneRecordToManagedPane,
+  paneRecordToManagedRun,
   parsePaneList,
   parsePaneProcessInfo,
   parsePaneRead,
@@ -161,18 +164,35 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     return caller;
   };
 
-  const tagManagedPane = async (
+  const reportPaneMetadata = async (
     pane: ManagedPane,
-    ownerTerminalId: string,
+    args: string[],
     signal?: AbortSignal,
   ): Promise<void> => {
     const result = await herdr([
       "pane", "report-metadata", pane.paneId,
       "--source", HERDR_COMMAND_METADATA_SOURCE,
-      "--token", `${HERDR_COMMAND_OWNER_TOKEN}=${ownerTerminalId}`,
+      ...args,
     ], { signal, timeout: 10_000 });
-    if (result.code !== 0) throw execFailure("tagging Herdr command pane", result);
+    if (result.code !== 0) throw execFailure("updating Herdr command pane metadata", result);
   };
+
+  const tagManagedPane = async (
+    pane: ManagedPane,
+    ownerTerminalId: string,
+    signal?: AbortSignal,
+  ): Promise<void> => reportPaneMetadata(pane, [
+    "--token", `${HERDR_COMMAND_OWNER_TOKEN}=${ownerTerminalId}`,
+  ], signal);
+
+  const tagManagedRun = async (
+    pane: ManagedPane,
+    run: ManagedRun,
+    signal?: AbortSignal,
+  ): Promise<void> => reportPaneMetadata(pane, [
+    "--token", `${HERDR_COMMAND_RUN_TOKEN}=${run.runId}`,
+    "--token", `${HERDR_COMMAND_STARTED_AT_TOKEN}=${run.startedAt}`,
+  ], signal);
 
   const recoverManagedPane = async (
     panes: ReturnType<typeof parsePaneList>,
@@ -199,6 +219,18 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     }
     const adopted = owned[0] && paneRecordToManagedPane(owned[0]);
     return adopted ? rememberManagedPane(adopted) : undefined;
+  };
+
+  const recoverManagedRun = (
+    panes: ReturnType<typeof parsePaneList>,
+    pane: ManagedPane | undefined,
+  ): void => {
+    if (!pane) return;
+    const record = panes.find(candidate => candidate.terminal_id === pane.terminalId);
+    const recovered = record && paneRecordToManagedRun(record);
+    if (!recovered) return;
+    if (latestRun?.terminalId === recovered.terminalId && latestRun.runId === recovered.runId) return;
+    latestRun = recovered;
   };
 
   const refreshManagedPane = async (signal?: AbortSignal): Promise<ManagedPane | undefined> => {
@@ -357,16 +389,26 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
       throw new Error(`Herdr command pane ${pane.paneId} is no longer present`);
     }
 
-    const result = await herdr(["pane", "run", current.paneId, paneCommand], { signal, timeout: 10_000 });
-    if (result.code !== 0) throw execFailure("herdr pane run", result);
-
-    latestRun = {
+    // Herdr metadata survives a Pi crash or session replacement. Write it before
+    // pane run so a later Pi session can reconstruct the marker protocol even if
+    // this process dies before appendEntry below.
+    const run: ManagedRun = {
       runId,
       terminalId: current.terminalId,
       command,
       cwd,
       startedAt: now(),
     };
+    await tagManagedRun(current, run, signal);
+    const result = await herdr(["pane", "run", current.paneId, paneCommand], { signal, timeout: 10_000 });
+    if (result.code !== 0) {
+      // Keep metadata if the client lost the response after Herdr accepted input.
+      // A later start overwrites a stale record; removing it here could make a
+      // live command impossible for a replacement Pi session to monitor.
+      throw execFailure("herdr pane run", result);
+    }
+
+    latestRun = run;
     pi.appendEntry(HERDR_COMMAND_RUN_ENTRY, latestRun);
 
     return {
@@ -502,7 +544,8 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     }
 
     const panes = await listPanes();
-    await recoverManagedPane(panes, callingPane(panes));
+    const pane = await recoverManagedPane(panes, callingPane(panes));
+    recoverManagedRun(panes, pane);
   });
 
   pi.registerTool({
@@ -512,7 +555,7 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     promptSnippet: "Start a long-running command in a visible Herdr pane without waiting for completion",
     promptGuidelines: [
       "Use herdr_start_command for long-running builds, test suites, generation, or similar commands that should remain visible while independent work continues; use bash for short commands or results needed immediately.",
-      "After herdr_start_command returns, continue useful independent work instead of polling; call herdr_command_status only when the result is needed.",
+      "After herdr_start_command returns, continue useful independent work instead of polling. Use herdr_command_status when its result becomes relevant, with short waits while the command is new or uncertain and longer waits only after stable progress is observed.",
     ],
     parameters: START_PARAMETERS,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
@@ -535,8 +578,9 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     promptSnippet: "Inspect or wait for the latest command in the managed Herdr pane",
     promptGuidelines: [
       "Use herdr_command_status to inspect a previously started Herdr command when its result becomes relevant; omit waitMs for an immediate check.",
-      "When no independent work remains, call herdr_command_status with waitMs instead of using bash sleep or repeatedly polling; it returns as soon as the command finishes.",
-      "Before relying on artifacts or claiming success from herdr_start_command, confirm completion with herdr_command_status.",
+      "For a new or uncertain command, use herdr_command_status with a 1–2 minute wait and then a 5 minute wait instead of fixed bash sleeps. When expected progress remains absent, keep the command running and use at most 1–2 read-only diagnostics for its foreground processes, logs, dependencies, disk, or resource pressure.",
+      "After herdr_command_status shows stable output, dependencies, and resource use, use 10–30 minute waits or wait for completion. Return to short waits when the command changes phase, progress stops, an error appears, or resource pressure changes.",
+      "Never restart or terminate a command solely because herdr_command_status shows no new output; confirm completion with herdr_command_status before relying on artifacts or reporting success.",
     ],
     parameters: STATUS_PARAMETERS,
     async execute(_toolCallId, params, signal) {

@@ -6,6 +6,8 @@ export const HERDR_COMMAND_PANE_ENTRY = "herdr-command-pane";
 export const HERDR_COMMAND_RUN_ENTRY = "herdr-command-run";
 export const HERDR_COMMAND_METADATA_SOURCE = "pi:herdr-command";
 export const HERDR_COMMAND_OWNER_TOKEN = "pi_command_owner";
+export const HERDR_COMMAND_RUN_TOKEN = "pi_command_run";
+export const HERDR_COMMAND_STARTED_AT_TOKEN = "pi_command_started_at";
 
 export interface ManagedPane {
   paneId: string;
@@ -17,8 +19,11 @@ export interface ManagedPane {
 export interface ManagedRun {
   runId: string;
   terminalId: string;
-  command: string;
-  cwd: string;
+  // Command details stay in the Pi session. Pane metadata is visible to Herdr
+  // clients, so an adopted run can recover its marker protocol without exposing
+  // command text or its working directory.
+  command?: string;
+  cwd?: string;
   startedAt: number;
 }
 
@@ -126,10 +131,25 @@ export function paneRecordToManagedPane(record: PaneRecord): ManagedPane | undef
   };
 }
 
-export function paneRecordOwnerTerminalId(record: PaneRecord): string | undefined {
+function paneRecordToken(record: PaneRecord, name: string): string | undefined {
   if (!record.tokens || typeof record.tokens !== "object" || Array.isArray(record.tokens)) return undefined;
-  const owner = (record.tokens as Record<string, unknown>)[HERDR_COMMAND_OWNER_TOKEN];
-  return typeof owner === "string" && owner ? owner : undefined;
+  const token = (record.tokens as Record<string, unknown>)[name];
+  return typeof token === "string" && token ? token : undefined;
+}
+
+export function paneRecordOwnerTerminalId(record: PaneRecord): string | undefined {
+  return paneRecordToken(record, HERDR_COMMAND_OWNER_TOKEN);
+}
+
+export function paneRecordToManagedRun(record: PaneRecord): ManagedRun | undefined {
+  if (typeof record.terminal_id !== "string") return undefined;
+  const runId = paneRecordToken(record, HERDR_COMMAND_RUN_TOKEN);
+  const startedAt = paneRecordToken(record, HERDR_COMMAND_STARTED_AT_TOKEN);
+  if (!runId || !/^[a-f0-9-]+$/i.test(runId) || !startedAt) return undefined;
+
+  const startedAtNumber = Number(startedAt);
+  if (!Number.isFinite(startedAtNumber) || startedAtNumber < 0) return undefined;
+  return { runId, terminalId: record.terminal_id, startedAt: startedAtNumber };
 }
 
 export function parseSplitPane(stdout: string): ManagedPane {
@@ -241,8 +261,8 @@ export function isManagedRun(value: unknown): value is ManagedRun {
     typeof run.runId === "string" &&
     /^[a-f0-9-]+$/i.test(run.runId) &&
     typeof run.terminalId === "string" &&
-    typeof run.command === "string" &&
-    typeof run.cwd === "string" &&
+    (run.command === undefined || typeof run.command === "string") &&
+    (run.cwd === undefined || typeof run.cwd === "string") &&
     typeof run.startedAt === "number" &&
     Number.isFinite(run.startedAt),
   );
