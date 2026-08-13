@@ -89,7 +89,8 @@ pi install git:github.com/corymhall/toolkit
 The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
 `extensions/codex-commentary`, `extensions/codex-fast-mode`,
-`extensions/skill-autocomplete`, `extensions/system-prompt`,
+`extensions/session-default-model`, `extensions/skill-autocomplete`,
+`extensions/system-prompt`,
 `extensions/status-footer`, `extensions/delegate`, `extensions/herdr-command`,
 and `extensions/herdr-nvim-links` extensions.
 `codex-skills/spec-to-goal` is omitted because Pi does not provide Codex CLI's
@@ -136,6 +137,16 @@ models that advertise Fast mode. The extension leaves reasoning and verbosity
 unchanged, defaults to off, and ignores unsupported models. See
 [extensions/codex-fast-mode/README.md](extensions/codex-fast-mode/README.md) for
 the current capability allowlist and validation behavior.
+
+### Session Default Model extension
+
+`/session-default save` keeps the current model and thinking level as the fixed
+default for new sessions. Later model or thinking changes stay temporary to the
+current session. Resumed, forked, and cloned sessions keep their recorded model
+state. Use `/session-default show` to inspect the saved default and
+`/session-default clear` to return to Pi's normal behavior. See
+[extensions/session-default-model/README.md](extensions/session-default-model/README.md)
+for storage and failure behavior.
 
 ### Skill Autocomplete extension
 

@@ -1,0 +1,144 @@
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { getAgentDir, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
+
+export type SessionDefaultModel = {
+  provider: string;
+  model: string;
+  thinkingLevel: ThinkingLevel;
+};
+
+export function getSessionDefaultModelStatePath(): string {
+  return join(getAgentDir(), "state", "session-default-model.json");
+}
+
+export function isSessionDefaultModel(value: unknown): value is SessionDefaultModel {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const state = value as Record<string, unknown>;
+  return typeof state.provider === "string"
+    && state.provider.length > 0
+    && typeof state.model === "string"
+    && state.model.length > 0
+    && typeof state.thinkingLevel === "string"
+    && THINKING_LEVELS.includes(state.thinkingLevel as ThinkingLevel);
+}
+
+export function loadSessionDefaultModel(
+  statePath = getSessionDefaultModelStatePath(),
+): SessionDefaultModel | undefined {
+  try {
+    const value = JSON.parse(readFileSync(statePath, "utf8")) as unknown;
+    return isSessionDefaultModel(value) ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function saveSessionDefaultModel(
+  state: SessionDefaultModel,
+  statePath = getSessionDefaultModelStatePath(),
+): void {
+  mkdirSync(dirname(statePath), { recursive: true });
+  writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+}
+
+function describe(state: SessionDefaultModel): string {
+  return `${state.provider}/${state.model} ${state.thinkingLevel}`;
+}
+
+export default function sessionDefaultModelExtension(
+  pi: ExtensionAPI,
+  dependencies: {
+    statePath?: string;
+    loadState?: typeof loadSessionDefaultModel;
+    saveState?: typeof saveSessionDefaultModel;
+  } = {},
+) {
+  const statePath = dependencies.statePath ?? getSessionDefaultModelStatePath();
+  const loadState = dependencies.loadState ?? loadSessionDefaultModel;
+  const saveState = dependencies.saveState ?? saveSessionDefaultModel;
+  let savedDefault = loadState(statePath);
+
+  pi.on("session_start", async (_event, ctx) => {
+    // Any existing entry means that Pi loaded or resumed a saved session. Keep
+    // that session's model history instead of replacing it with the new-session
+    // default.
+    if (!savedDefault || ctx.sessionManager.getEntries().length > 0) return;
+
+    const model = ctx.modelRegistry.find(savedDefault.provider, savedDefault.model);
+    if (!model) {
+      if (ctx.hasUI) {
+        ctx.ui.notify(`Session default model is not available: ${describe(savedDefault)}`, "warning");
+      }
+      return;
+    }
+
+    if (ctx.model?.provider !== model.provider || ctx.model?.id !== model.id) {
+      const selected = await pi.setModel(model);
+      if (!selected) {
+        if (ctx.hasUI) {
+          ctx.ui.notify(`Session default model has no configured authentication: ${describe(savedDefault)}`, "warning");
+        }
+        return;
+      }
+    }
+
+    if (pi.getThinkingLevel() !== savedDefault.thinkingLevel) {
+      pi.setThinkingLevel(savedDefault.thinkingLevel);
+    }
+  });
+
+  pi.registerCommand("session-default", {
+    description: "Save, show, or clear the model default for new sessions",
+    getArgumentCompletions(prefix) {
+      const normalized = prefix.trim().toLowerCase();
+      const matches = ["save", "show", "clear"].filter(action => action.startsWith(normalized));
+      return matches.length > 0 ? matches.map(value => ({ value, label: value })) : null;
+    },
+    handler: async (args, ctx) => {
+      const action = args.trim().toLowerCase() || "show";
+
+      if (action === "show") {
+        if (ctx.hasUI) {
+          ctx.ui.notify(
+            savedDefault ? `New session default: ${describe(savedDefault)}` : "No new session default is saved",
+            "info",
+          );
+        }
+        return;
+      }
+
+      if (action === "clear") {
+        savedDefault = undefined;
+        try {
+          rmSync(statePath, { force: true });
+        } catch (error) {
+          if (ctx.hasUI) ctx.ui.notify(`Could not clear the session default: ${String(error)}`, "error");
+          return;
+        }
+        if (ctx.hasUI) ctx.ui.notify("New session default cleared", "info");
+        return;
+      }
+
+      if (action === "save") {
+        if (!ctx.model) {
+          if (ctx.hasUI) ctx.ui.notify("No model is selected", "error");
+          return;
+        }
+        savedDefault = {
+          provider: ctx.model.provider,
+          model: ctx.model.id,
+          thinkingLevel: pi.getThinkingLevel(),
+        };
+        saveState(savedDefault, statePath);
+        if (ctx.hasUI) ctx.ui.notify(`New session default saved: ${describe(savedDefault)}`, "info");
+        return;
+      }
+
+      if (ctx.hasUI) ctx.ui.notify("Usage: /session-default [save|show|clear]", "info");
+    },
+  });
+}

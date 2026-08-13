@@ -63,6 +63,7 @@ expected_extensions = [
     "extensions/web-access/index.ts",
     "extensions/codex-commentary/index.ts",
     "extensions/codex-fast-mode/index.ts",
+    "extensions/session-default-model/index.ts",
     "extensions/skill-autocomplete/index.ts",
     "extensions/system-prompt/index.ts",
     "extensions/status-footer/index.ts",
