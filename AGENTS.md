@@ -48,11 +48,9 @@ Update all managed third-party skills with:
 mise run skills:update
 ```
 
-APM manages ordinary third-party skill directories through `apm.yml` and
-`apm.lock.yaml`. Herdr's `SKILL.md` is at its repository root, so
-`scripts/update-herdr-skill.sh` downloads that file without copying the entire
-application repository. `skill-invocation.yaml` owns model-invocation policy
-for first-party and managed skills; run `mise run skills:sync-invocation` rather
+APM manages third-party skill directories through `apm.yml` and
+`apm.lock.yaml`. `skill-invocation.yaml` owns model-invocation policy for
+first-party and managed skills; run `mise run skills:sync-invocation` rather
 than editing the rendered Pi or Codex policy fields by hand. Review managed
 skill and lockfile diffs before committing them.
 

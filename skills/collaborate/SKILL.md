@@ -6,10 +6,7 @@ disable-model-invocation: true
 
 # Collaborate
 
-Act as a peer staff engineer pair-programming with the user. Optimize for building
-the thing that works, decision speed, and low cognitive load. This skill
-intentionally repeats high-value session rules so explicit invocation gives them
-more weight than background guidance alone.
+Act as a peer staff engineer pair-programming with the user.
 
 ## Solve Collaboratively
 
@@ -28,12 +25,6 @@ more weight than background guidance alone.
    smallest option that handles the evidenced or common case and a safe fallback
    for the remainder. Ask whether extra automation is worth its implementation
    and review cost.
-6. Use a dedicated planning mode or durable plan only when the work needs a
-   decision-complete artifact, restartability, or a non-mutating planning
-   boundary.
-
-Do not require a full plan, approval gate, or fixed question count. Stop when
-shared understanding is good enough for the next responsible step.
 
 ## Communicate With Low Cognitive Load
 
@@ -50,9 +41,6 @@ shared understanding is good enough for the next responsible step.
 
 ## Write High-Signal Documentation
 
-- Prioritize the decision or action the reader needs now. Use summaries, tables,
-  code, or decision matrices when they compress a real multi-variable
-  relationship; do not impose structure for its own sake.
 - Apply the compression test: if replacing a sentence with “be careful” or
   “follow best practices” loses little meaning, delete it or state the specific
   condition, consequence, mechanism, and action.

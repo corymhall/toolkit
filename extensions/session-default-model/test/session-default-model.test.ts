@@ -50,6 +50,7 @@ function state(overrides: Partial<SessionDefaultModel> = {}): SessionDefaultMode
 
 function context(options: {
   entries?: unknown[];
+  messages?: unknown[];
   currentModel?: { provider: string; id: string };
   availableModel?: any;
 } = {}) {
@@ -59,7 +60,10 @@ function context(options: {
       hasUI: true,
       model: options.currentModel ?? { provider: "openai-codex", id: "gpt-5.6-terra" },
       thinkingLevel: "xhigh",
-      sessionManager: { getEntries: () => options.entries ?? [] },
+      sessionManager: {
+        getEntries: () => options.entries ?? [],
+        buildSessionContext: () => ({ messages: options.messages ?? [] }),
+      },
       modelRegistry: {
         find: () => options.availableModel ?? {
           provider: "openai-codex",
@@ -91,13 +95,18 @@ test("validates and loads only complete state", () => {
   }
 });
 
-test("applies the saved default to an empty new session", async () => {
+test("applies the saved default to a new startup session with initial state entries", async () => {
   const directory = mkdtempSync(join(tmpdir(), "session-default-apply-"));
   try {
     const statePath = join(directory, "state.json");
     writeFileSync(statePath, JSON.stringify(state()));
     const harness = extensionHarness(statePath, "xhigh");
-    const { ctx } = context();
+    const { ctx } = context({
+      entries: [
+        { type: "model_change", provider: "openai-codex", modelId: "gpt-5.6-terra" },
+        { type: "thinking_level_change", thinkingLevel: "xhigh" },
+      ],
+    });
 
     await harness.handlers.get("session_start")!({ reason: "startup" }, ctx);
 
@@ -105,6 +114,23 @@ test("applies the saved default to an empty new session", async () => {
       "openai-codex/gpt-5.6-sol",
     ]);
     assert.deepEqual(harness.selectedThinkingLevels, ["medium"]);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("does not replace model state when startup continues an existing conversation", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "session-default-continue-"));
+  try {
+    const statePath = join(directory, "state.json");
+    writeFileSync(statePath, JSON.stringify(state()));
+    const harness = extensionHarness(statePath, "xhigh");
+    const { ctx } = context({ messages: [{ role: "user", content: "Existing conversation" }] });
+
+    await harness.handlers.get("session_start")!({ reason: "startup" }, ctx);
+
+    assert.deepEqual(harness.selectedModels, []);
+    assert.deepEqual(harness.selectedThinkingLevels, []);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

@@ -101,7 +101,10 @@ export default function delegateExtension(
             throw new Error("Delegation cancelled");
           }
 
-          onUpdate?.({ content: [{ type: "text", text: "Validating destination repository..." }] });
+          onUpdate?.({
+            content: [{ type: "text", text: "Validating destination repository..." }],
+            details: {},
+          });
           const repoResult = await pi.exec("git", ["-C", proposal.repository, "rev-parse", "--show-toplevel"], {
             signal,
             timeout: 10_000,
@@ -146,13 +149,19 @@ export default function delegateExtension(
             };
           }
 
-          onUpdate?.({ content: [{ type: "text", text: "Writing delegation context..." }] });
+          onUpdate?.({
+            content: [{ type: "text", text: "Writing delegation context..." }],
+            details: {},
+          });
           const contextFile = await writeContextFile(sessionName, editedContext);
           shouldDisarm = true;
           let destination = repository;
           let worktreeLabel: string;
           if (!proposal.useExistingCheckout) {
-            onUpdate?.({ content: [{ type: "text", text: "Creating Worktrunk worktree and running its start hooks..." }] });
+            onUpdate?.({
+              content: [{ type: "text", text: "Creating Worktrunk worktree and running its start hooks..." }],
+              details: {},
+            });
             const worktreeResult = await pi.exec(
               "wt",
               buildWorktrunkArgs(repository, proposal.branch!, proposal.base),
@@ -170,7 +179,10 @@ export default function delegateExtension(
             worktreeLabel = branchResult.stdout.trim() || sessionName;
           }
 
-          onUpdate?.({ content: [{ type: "text", text: "Opening Herdr worktree and starting Pi..." }] });
+          onUpdate?.({
+            content: [{ type: "text", text: "Opening Herdr worktree and starting Pi..." }],
+            details: {},
+          });
           const openResult = await pi.exec(
             "herdr",
             buildHerdrWorktreeOpenArgs(repository, destination, worktreeLabel),

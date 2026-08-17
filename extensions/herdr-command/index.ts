@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { stat } from "node:fs/promises";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { AgentToolResult, ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
@@ -432,7 +432,7 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
   const commandStatus = async (
     raw: { waitMs?: number; lines?: number },
     signal?: AbortSignal,
-  ) => {
+  ): Promise<AgentToolResult<CommandDetails>> => {
     if (!latestRun) {
       return {
         content: [{ type: "text" as const, text: "No Herdr command is tracked for this Pi session." }],

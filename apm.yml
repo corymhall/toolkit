@@ -9,3 +9,10 @@ dependencies:
   apm:
     - badlogic/pi-skills/browser-tools
     - path: ../../work/provider-agent-skills/packages/bridged
+    - herdrdev/herdr/skills/herdr
+    - github/gh-stack/skills/gh-stack
+    - humanlayer/skills/plugins/show-me/skills/show-me
+    - mattpocock/skills/skills/productivity/grill-me
+    - mattpocock/skills/skills/engineering/grill-with-docs
+    - mattpocock/skills/skills/engineering/domain-modeling
+    - blader/humanizer/skills/humanizer

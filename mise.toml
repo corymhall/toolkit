@@ -61,7 +61,6 @@ description = "Test skill helpers, local installation, memory guard, and the Pi 
 run = '''
 scripts/test-claude-review.sh
 scripts/test-local-installer.sh
-scripts/test-update-herdr-skill.sh
 scripts/test-sync-skill-invocation.sh
 scripts/test-memory-guard.sh
 scripts/test-pi-package.sh
@@ -70,6 +69,16 @@ scripts/test-pi-package.sh
 [tasks.validate]
 description = "Run all repository validation"
 depends = ["lint:shell", "lint:skills", "check:repository", "check:skill-invocation", "check:hooks", "test", "test:integration"]
+
+[tasks.build]
+description = "Prepare the local checkout and run all repository validation"
+run = '''
+set -eu
+uv run --script scripts/sync-skill-invocation.py
+scripts/install-local-skills.sh
+scripts/check-local-install.sh
+mise run validate
+'''
 
 [tasks."skills:list"]
 description = "List project-managed Agent Skills"
@@ -84,6 +93,5 @@ description = "Update project-managed Agent Skills and reapply local invocation 
 run = '''
 set -eu
 apm update --yes
-scripts/update-herdr-skill.sh
 uv run --script scripts/sync-skill-invocation.py
 '''

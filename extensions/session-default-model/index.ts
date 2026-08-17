@@ -62,11 +62,14 @@ export default function sessionDefaultModelExtension(
   const saveState = dependencies.saveState ?? saveSessionDefaultModel;
   let savedDefault = loadState(statePath);
 
-  pi.on("session_start", async (_event, ctx) => {
-    // Any existing entry means that Pi loaded or resumed a saved session. Keep
-    // that session's model history instead of replacing it with the new-session
-    // default.
-    if (!savedDefault || ctx.sessionManager.getEntries().length > 0) return;
+  pi.on("session_start", async (event, ctx) => {
+    if (!savedDefault || event.reason === "reload" || event.reason === "resume" || event.reason === "fork") return;
+
+    // Pi records the initial model and thinking level before session_start, so
+    // an empty new session already has entries. On process startup, use the
+    // same conversation-message check that Pi uses when it decides whether to
+    // restore existing session state.
+    if (event.reason === "startup" && ctx.sessionManager.buildSessionContext().messages.length > 0) return;
 
     const model = ctx.modelRegistry.find(savedDefault.provider, savedDefault.model);
     if (!model) {

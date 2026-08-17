@@ -26,15 +26,17 @@ direct skill links:
 git clone https://github.com/corymhall/toolkit.git
 cd toolkit
 mise install
-scripts/install-local-skills.sh
-mise run check:local-install
+mise run build
 ```
 
-The local-install check is non-mutating and verifies every expected shared and
+`mise run build` synchronizes generated skill invocation metadata, installs and
+checks all local links, and runs the complete repository validation graph. The
+local-install check is non-mutating and verifies every expected shared and
 Codex-only skill link plus the memory guard's `make` proxy against this checkout.
 
 List available tasks with `mise tasks`. Common entry points include
-`mise run validate`, `mise run test`, and `mise run skills:update`. Mise's npm
+`mise run build`, `mise run validate`, `mise run test`, and
+`mise run skills:update`. Mise's npm
 dependency provider runs `npm ci` automatically before `mise run` or `mise x`
 when the manifests change or `node_modules/` is missing.
 
@@ -88,9 +90,8 @@ pi install git:github.com/corymhall/toolkit
 
 The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
-`extensions/codex-commentary`, `extensions/codex-fast-mode`,
-`extensions/session-default-model`, `extensions/skill-autocomplete`,
-`extensions/system-prompt`,
+`extensions/codex-fast-mode`, `extensions/session-default-model`,
+`extensions/skill-autocomplete`, `extensions/system-prompt`,
 `extensions/status-footer`, `extensions/delegate`, `extensions/herdr-command`,
 and `extensions/herdr-nvim-links` extensions.
 `codex-skills/spec-to-goal` is omitted because Pi does not provide Codex CLI's
@@ -121,14 +122,6 @@ dependencies automatically.
 The extension does not bundle an extension-owned skill or use Jina, Gemini,
 Parallel, Brave, Exa, Tavily, or Perplexity. See
 [extensions/web-access/README.md](extensions/web-access/README.md) for details.
-
-### Codex Commentary extension
-
-`extensions/codex-commentary` adds Codex CLI-style progress instructions only
-for `openai-codex` Responses models. Commentary is shown before and between tool
-calls as ordinary assistant text; final answers remain self-contained. See
-[extensions/codex-commentary/README.md](extensions/codex-commentary/README.md)
-for the Pi-specific prompt adaptations.
 
 ### Codex Fast Mode extension
 
@@ -247,11 +240,10 @@ brings in `core` and `package-maintenance` transitively, so their source remains
 in the provider-agent-skills and pulumi/agent-skills repositories rather than
 this repository.
 
-Herdr is the exception: its `SKILL.md` is at the upstream repository root.
-`scripts/update-herdr-skill.sh` downloads only that file into
-`.agents/skills/herdr` instead of copying the entire application repository.
+Herdr is managed from its upstream `skills/herdr` directory like the other APM
+dependencies.
 
-Refresh the APM dependencies and the Herdr skill with:
+Refresh all APM dependencies with:
 
 ```bash
 mise run skills:update

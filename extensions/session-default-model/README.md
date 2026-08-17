@@ -27,10 +27,12 @@ cycling, or thinking-level cycling changes the current session.
 
 ## Session behavior
 
-The saved default applies only when the session has no existing entries. Pi
-sessions opened with `/resume`, `pi -c`, or a session path keep their recorded
-model and thinking-level changes. Forked and cloned sessions also keep their
-existing state.
+The saved default applies to new sessions. Pi writes initial model and
+thinking-level entries before extensions receive the session-start event, so
+these startup entries do not make a new session an existing session. A process
+startup that restores conversation messages, such as `pi -c` or a session path,
+keeps its recorded model and thinking-level changes. Sessions opened with
+`/resume`, and forked or cloned sessions, also keep their existing state.
 
 Pi itself saves interactive model changes in `settings.json`. This extension
 does not try to prevent that write. Instead, it applies its separate saved

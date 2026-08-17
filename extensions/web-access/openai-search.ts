@@ -12,6 +12,13 @@ interface CodexAuth {
   headers: Record<string, string>;
 }
 
+function materializeHeaders(headers: Record<string, string | null> | undefined): Record<string, string> {
+  if (!headers) return {};
+  return Object.fromEntries(
+    Object.entries(headers).filter((entry): entry is [string, string] => entry[1] !== null),
+  );
+}
+
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split(".");
   if (parts.length !== 3 || !parts[1]) return null;
@@ -36,14 +43,13 @@ function extractAccountId(token: string): string | undefined {
 }
 
 async function resolveCodexAuth(ctx: ExtensionContext): Promise<CodexAuth> {
-  const { getModel } = await import("@earendil-works/pi-ai/compat");
   for (const modelId of CODEX_MODELS) {
-    const model = getModel("openai-codex", modelId);
+    const model = ctx.modelRegistry.find("openai-codex", modelId);
     if (!model) continue;
     try {
       const resolved = await ctx.modelRegistry.getApiKeyAndHeaders(model);
       if (resolved.ok && resolved.apiKey) {
-        return { apiKey: resolved.apiKey, model: modelId, headers: resolved.headers ?? {} };
+        return { apiKey: resolved.apiKey, model: modelId, headers: materializeHeaders(resolved.headers) };
       }
     } catch {
       // Try the next currently supported Codex model.
@@ -209,7 +215,12 @@ function extractResponse(output: unknown[], limit: number | undefined): SearchRe
   return { answer: answerParts.join("\n").trim(), results: results.slice(0, max) };
 }
 
-export async function searchWithCodex(query: string, options: SearchOptions, ctx: ExtensionContext): Promise<SearchResponse> {
+export async function searchWithCodex(
+  query: string,
+  options: SearchOptions,
+  ctx: ExtensionContext,
+  fetchImpl: typeof fetch = fetch,
+): Promise<SearchResponse> {
   const auth = await resolveCodexAuth(ctx);
   const headers: Record<string, string> = {
     ...auth.headers,
@@ -235,7 +246,7 @@ export async function searchWithCodex(query: string, options: SearchOptions, ctx
   };
   const timeout = AbortSignal.timeout(SEARCH_TIMEOUT_MS);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
-  const response = await fetch(CODEX_RESPONSES_URL, { method: "POST", headers, body: JSON.stringify(body), signal });
+  const response = await fetchImpl(CODEX_RESPONSES_URL, { method: "POST", headers, body: JSON.stringify(body), signal });
   if (!response.ok) {
     const error = (await readResponseText(response, 64 * 1024)).replace(/\s+/g, " ").slice(0, 300);
     throw new Error(`OpenAI Codex web search failed (${response.status}): ${error}`);

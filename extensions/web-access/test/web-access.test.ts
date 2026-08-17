@@ -2,13 +2,42 @@ import assert from "node:assert/strict";
 import { readFile, rm, stat } from "node:fs/promises";
 import http from "node:http";
 import test from "node:test";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import webAccessExtension, { formatSearchSources } from "../index.ts";
 import { fetchGitHubContent, parseGitHubUrl } from "../github.ts";
 import { buildGitHubSearchQuery, searchGitHub } from "../github-search.ts";
 import { fetchHttpContent } from "../http.ts";
-import { parseOpenAIResponse } from "../openai-search.ts";
+import { parseOpenAIResponse, searchWithCodex } from "../openai-search.ts";
 import { createPinnedRequestOptions, fetchRemoteUrl, requestPinnedUrl, validateRemoteUrl } from "../ssrf.ts";
+
+test("drops provider header deletion markers before Codex web search", async () => {
+  const ctx = {
+    modelRegistry: {
+      find(provider: string, modelId: string) {
+        return { provider, id: modelId };
+      },
+      async getApiKeyAndHeaders() {
+        return {
+          ok: true,
+          apiKey: "test-token",
+          headers: { "x-keep": "value", "x-delete": null },
+        };
+      },
+    },
+  } as unknown as ExtensionContext;
+
+  const fetchImpl: typeof fetch = async (_input, init) => {
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get("x-keep"), "value");
+    assert.equal(headers.has("x-delete"), false);
+    return new Response(JSON.stringify({
+      output: [{ type: "message", content: [{ type: "output_text", text: "answer" }] }],
+    }), { status: 200 });
+  };
+
+  const result = await searchWithCodex("query", {}, ctx, fetchImpl);
+  assert.equal(result.answer, "answer");
+});
 
 test("parses supported GitHub URLs and rejects unrelated pages", () => {
   assert.deepEqual(parseGitHubUrl("https://github.com/acme/widgets"), {

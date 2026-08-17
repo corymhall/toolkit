@@ -72,3 +72,32 @@ skills:
     model_invocable: true
   zsh-command-hygiene:
     model_invocable: true
+  bro:
+    model_invocable: true
+  grill-me:
+    model_invocable: false
+  humanizer:
+    model_invocable: false
+    openai:
+      interface:
+        display_name: "Humanizer"
+        short_description: "Make AI-written text sound like the writer"
+        default_prompt: "Use $humanizer to rewrite this text in my voice without changing its facts."
+  grill-with-docs:
+    model_invocable: false
+  domain-modeling:
+    model_invocable: true
+  show-me:
+    openai:
+      interface:
+        display_name: Show Me
+        short_description: Help the user understand the current topic visually with concise diagrams, code-shape sketches, and focused HTML artifacts.
+        default_prompt: This is too much content $show-me
+    model_invocable: false
+  gh-stack:
+    openai:
+      interface:
+        display_name: GH Stack
+        short_description: Manage GitHub stacked PRs
+        default_prompt: Use $gh-stack to manage stacked PRs
+    model_invocable: false
