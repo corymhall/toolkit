@@ -6,6 +6,7 @@ import test from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import delegateExtension from "../index.ts";
 import {
+  buildConversationContext,
   buildDelegatePrompt,
   buildDelegatedSessionPrompt,
   buildHerdrWorktreeOpenArgs,
@@ -13,8 +14,10 @@ import {
   buildWorktrunkArgs,
   DELEGATE_TOOL_NAME,
   detectPiCommand,
+  latestAssistantText,
   normalizeSessionName,
   paneStillBelongsToWorkspace,
+  parseDelegateRequest,
   parseOpenedWorktree,
   parseWorktreeResult,
   shellQuote,
@@ -46,23 +49,54 @@ test("builds argument-safe Worktrunk and Pi launches", () => {
   assert.deepEqual(detectPiCommand("/opt/mise/pi", undefined), ["/opt/mise/pi"]);
 });
 
-test("builds a lightweight delegation prompt and defaults to a new worktree", () => {
-  const prompt = buildDelegatePrompt("Look into the bridge behavior", "/tmp/source");
+test("builds a solution-free research delegation prompt", () => {
+  const prompt = buildDelegatePrompt("research", "Look into the bridge behavior", "/tmp/source");
   assert.match(prompt, /Do not implement or research the delegated task/);
-  assert.match(prompt, /background for independent investigation, not a specification/);
-  assert.match(prompt, /Do not turn it into an implementation plan/);
+  assert.match(prompt, /Problem:/);
+  assert.match(prompt, /Task:/);
+  assert.match(prompt, /Starting sources:/);
+  assert.match(prompt, /Do not include a proposed implementation/);
   assert.match(prompt, /new Worktrunk worktree is the default/);
   assert.match(prompt, new RegExp(DELEGATE_TOOL_NAME));
   assert.match(prompt, /Look into the bridge behavior/);
   assert.match(prompt, /\/tmp\/source/);
 });
 
-test("frames delegated context as background for independent investigation", () => {
-  const prompt = buildDelegatedSessionPrompt("The source session noticed surprising bridge behavior.");
-  assert.match(prompt, /context generated from another Pi session/);
-  assert.match(prompt, /not as a specification or settled implementation plan/);
-  assert.match(prompt, /look into the request independently/);
-  assert.match(prompt, /surprising bridge behavior/);
+test("builds a conversation delegation from the request and prior response", () => {
+  const prompt = buildDelegatePrompt(
+    "conversation",
+    "Help me refine this approach",
+    "/tmp/source",
+    "We could use a structured handoff.",
+  );
+  assert.match(prompt, /My request:\nHelp me refine this approach/);
+  assert.match(prompt, /Prior conversation:\nWe could use a structured handoff/);
+  assert.match(prompt, /without summarizing or rewriting/);
+  assert.equal(
+    buildConversationContext("Help me refine this approach", "We could use a structured handoff."),
+    "My request:\nHelp me refine this approach\n\nPrior conversation:\nWe could use a structured handoff.",
+  );
+});
+
+test("frames delegated prompts for their selected mode", () => {
+  const research = buildDelegatedSessionPrompt("Problem:\nUnexpected behavior", "research");
+  assert.match(research, /independent research request/);
+  assert.match(research, /do not implement a change unless I ask later/);
+
+  const conversation = buildDelegatedSessionPrompt("My request:\nHelp me decide", "conversation");
+  assert.match(conversation, /Continue this discussion with me/);
+  assert.match(conversation, /not an authoritative specification/);
+});
+
+test("parses explicit modes and finds the latest assistant response", () => {
+  assert.deepEqual(parseDelegateRequest("research inspect this"), { mode: "research", goal: "inspect this" });
+  assert.deepEqual(parseDelegateRequest("conversation"), { mode: "conversation", goal: "" });
+  assert.deepEqual(parseDelegateRequest("inspect this"), { goal: "inspect this" });
+  assert.equal(latestAssistantText([
+    { type: "message", message: { role: "assistant", content: [{ type: "text", text: "First" }] } },
+    { type: "message", message: { role: "user", content: [{ type: "text", text: "Question" }] } },
+    { type: "message", message: { role: "assistant", content: [{ type: "thinking", thinking: "hidden" }, { type: "text", text: "Latest" }] } },
+  ]), "Latest");
 });
 
 test("normalizes Pi session names", () => {
@@ -131,7 +165,7 @@ test("does not register an agent tool until /delegate is invoked", async () => {
       mode: "tui",
       cwd: "/tmp/source",
       waitForIdle: async () => {},
-      ui: { notify() {}, setStatus() {} },
+      ui: { notify() {}, setStatus() {}, select: async () => "Independent research" },
     });
   } finally {
     if (previousHerdrEnv === undefined) delete process.env.HERDR_ENV;
@@ -225,7 +259,7 @@ test("opens new and existing checkouts as non-focused Herdr worktrees", async ()
       editor: async (_title: string, initial: string) => initial,
       confirm: async () => true,
     };
-    await commands.get("delegate")!.handler("implement in target", {
+    await commands.get("delegate")!.handler("research implement in target", {
       mode: "tui",
       cwd: "/tmp/source",
       waitForIdle: async () => {},
@@ -257,13 +291,16 @@ test("opens new and existing checkouts as non-focused Herdr worktrees", async ()
     assert.deepEqual(activeTools.at(-1), ["read", "bash"]);
     assert.equal(
       await readFile(result.details.contextFile, "utf8"),
-      `${buildDelegatedSessionPrompt("Draft context")}\n`,
+      `${buildDelegatedSessionPrompt("Draft context", "research")}\n`,
     );
 
-    await commands.get("delegate")!.handler("continue in existing checkout", {
+    await commands.get("delegate")!.handler("conversation Help me reconsider this", {
       mode: "tui",
       cwd: "/tmp/source",
       waitForIdle: async () => {},
+      sessionManager: { getBranch: () => [
+        { type: "message", message: { role: "assistant", content: [{ type: "text", text: "Prior answer" }] } },
+      ] },
       ui,
     });
     const existingResult = await tool.execute("call-existing", {
@@ -287,7 +324,10 @@ test("opens new and existing checkouts as non-focused Herdr worktrees", async ()
     assert.match(paneRuns[1], /^'pi' --name 'existing checkout task' '@.*delegations.*\.md'$/);
     assert.equal(
       await readFile(existingResult.details.contextFile, "utf8"),
-      `${buildDelegatedSessionPrompt("Draft existing context")}\n`,
+      `${buildDelegatedSessionPrompt(
+        buildConversationContext("Help me reconsider this", "Prior answer"),
+        "conversation",
+      )}\n`,
     );
   } finally {
     if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;

@@ -173,14 +173,15 @@ requirements and account-matching caveats.
 
 ### Delegate extension
 
-`/delegate [goal]` asks the current agent to prepare a destination and concise
-context from the existing conversation, then—after user confirmation—starts a
-normal Pi session in a checkout opened as a non-focused native Herdr worktree.
-The source agent is told not to research the task or prescribe an implementation;
-the destination session receives the context as background for independent
-investigation. A new Worktrunk worktree is the default; the existing destination
-checkout is used only when explicitly requested. The agent-facing tool is
-registered only after `/delegate` is invoked and is disabled again after use.
+`/delegate research <goal>` creates a solution-free problem report for
+independent research. `/delegate conversation <request>` copies the new request
+and the last assistant response so another session can continue the discussion.
+If no mode is present, Pi asks the user to select one. After user confirmation,
+the extension starts a normal Pi session in a checkout opened as a non-focused
+native Herdr worktree. A new Worktrunk worktree is the default; the existing
+destination checkout is used only when explicitly requested. The agent-facing
+tool is registered only after `/delegate` is invoked and is disabled again after
+use.
 See [extensions/delegate/README.md](extensions/delegate/README.md)
 for requirements and failure behavior.
 

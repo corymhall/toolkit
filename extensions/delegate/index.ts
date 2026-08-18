@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { Type } from "typebox";
 import { getAgentDir, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
+  buildConversationContext,
   buildDelegatePrompt,
   buildDelegatedSessionPrompt,
   buildHerdrWorktreeOpenArgs,
@@ -11,10 +12,13 @@ import {
   buildWorktrunkArgs,
   DELEGATE_TOOL_NAME,
   detectPiCommand,
+  latestAssistantText,
   normalizeSessionName,
+  parseDelegateRequest,
   paneStillBelongsToWorkspace,
   parseOpenedWorktree,
   parseWorktreeResult,
+  type DelegateMode,
   type DelegationProposal,
   validateProposal,
 } from "./delegate.ts";
@@ -59,12 +63,16 @@ export default function delegateExtension(
   const piCommand = dependencies.piCommand ?? detectPiCommand();
   let toolRegistered = false;
   let armed = false;
+  let armedMode: DelegateMode | undefined;
+  let armedConversationContext: string | undefined;
   let toolsBeforeDelegate: string[] | undefined;
 
   const disarm = (ctx: ExtensionContext) => {
     if (toolsBeforeDelegate) pi.setActiveTools(toolsBeforeDelegate);
     toolsBeforeDelegate = undefined;
     armed = false;
+    armedMode = undefined;
+    armedConversationContext = undefined;
     ctx.ui.setStatus("delegate", undefined);
   };
 
@@ -82,14 +90,15 @@ export default function delegateExtension(
       ],
       parameters: DELEGATE_PARAMETERS,
       async execute(_toolCallId, rawProposal, signal, onUpdate, ctx) {
-        if (!armed) throw new Error("Delegation is not armed; the user must invoke /delegate first");
+        if (!armed || !armedMode) throw new Error("Delegation is not armed; the user must invoke /delegate first");
+        const mode = armedMode;
 
         const proposal: DelegationProposal = {
           repository: rawProposal.repository.trim(),
           branch: rawProposal.branch?.trim() || undefined,
           base: rawProposal.base?.trim() || undefined,
           sessionName: rawProposal.sessionName?.trim() || undefined,
-          context: rawProposal.context,
+          context: armedConversationContext ?? rawProposal.context,
           useExistingCheckout: rawProposal.useExistingCheckout === true,
         };
 
@@ -122,7 +131,7 @@ export default function delegateExtension(
           }
 
           const sessionName = normalizeSessionName(proposal.sessionName, proposal.branch, repository);
-          const delegatedPrompt = buildDelegatedSessionPrompt(proposal.context);
+          const delegatedPrompt = buildDelegatedSessionPrompt(proposal.context, mode);
           const editedContext = await ctx.ui.editor("Edit delegation context", delegatedPrompt);
           if (editedContext === undefined || !editedContext.trim()) {
             shouldDisarm = true;
@@ -232,10 +241,10 @@ export default function delegateExtension(
   };
 
   pi.registerCommand("delegate", {
-    description: "Start a normal Pi session in another repo or worktree with conversation context; use /delegate cancel to disarm",
+    description: "Delegate independent research or continue a conversation in another repo or worktree; use /delegate cancel to disarm",
     handler: async (args, ctx) => {
-      const goal = args.trim();
-      if (goal === "cancel") {
+      const value = args.trim();
+      if (value === "cancel") {
         if (armed) {
           if (!ctx.isIdle()) ctx.abort();
           disarm(ctx);
@@ -258,6 +267,17 @@ export default function delegateExtension(
       await ctx.waitForIdle();
       if (armed) disarm(ctx);
 
+      const request = parseDelegateRequest(value);
+      const mode = request.mode ?? await ctx.ui.select(
+        "What kind of delegation is this?",
+        ["Independent research", "Continue a conversation"],
+      ).then(choice => choice === "Independent research"
+        ? "research" as const
+        : choice === "Continue a conversation"
+          ? "conversation" as const
+          : undefined);
+      if (!mode) return;
+
       for (const command of ["herdr", "wt"]) {
         if (!await checkExecutable(pi, command)) {
           ctx.ui.notify(`delegate requires ${command} on PATH`, "error");
@@ -269,8 +289,15 @@ export default function delegateExtension(
       registerDelegateTool();
       pi.setActiveTools([...new Set([...toolsBeforeDelegate, DELEGATE_TOOL_NAME])]);
       armed = true;
-      ctx.ui.setStatus("delegate", "delegation armed");
-      pi.sendUserMessage(buildDelegatePrompt(goal, ctx.cwd));
+      armedMode = mode;
+      ctx.ui.setStatus("delegate", `${mode} delegation armed`);
+      const priorAssistantResponse = mode === "conversation"
+        ? latestAssistantText(ctx.sessionManager.getBranch())
+        : undefined;
+      armedConversationContext = mode === "conversation"
+        ? buildConversationContext(request.goal, priorAssistantResponse)
+        : undefined;
+      pi.sendUserMessage(buildDelegatePrompt(mode, request.goal, ctx.cwd, priorAssistantResponse));
     },
   });
 

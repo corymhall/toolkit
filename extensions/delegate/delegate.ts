@@ -2,6 +2,8 @@ import { basename, isAbsolute } from "node:path";
 
 export const DELEGATE_TOOL_NAME = "delegate_session";
 
+export type DelegateMode = "research" | "conversation";
+
 export interface DelegationProposal {
   repository: string;
   context: string;
@@ -21,29 +23,107 @@ export interface WorktreeResult {
   branch?: string;
 }
 
-export function buildDelegatePrompt(goal: string, cwd: string): string {
-  const requestedGoal = goal.trim() || "Capture the relevant context from this conversation for another session.";
-  return `Prepare the lightweight delegation that I explicitly requested. Do not implement or research the delegated task in this session.
+export function parseDelegateRequest(value: string): { mode?: DelegateMode; goal: string } {
+  const trimmed = value.trim();
+  const match = /^(research|conversation)(?:\s+([\s\S]*))?$/.exec(trimmed);
+  if (!match) return { goal: trimmed };
+  return { mode: match[1] as DelegateMode, goal: match[2]?.trim() ?? "" };
+}
 
-Goal:
+export function latestAssistantText(entries: readonly unknown[]): string | undefined {
+  for (let index = entries.length - 1; index >= 0; index--) {
+    const entry = entries[index] as {
+      type?: unknown;
+      message?: { role?: unknown; content?: unknown };
+    };
+    if (entry.type !== "message" || entry.message?.role !== "assistant") continue;
+    const content = entry.message.content;
+    if (typeof content === "string" && content.trim()) return content.trim();
+    if (!Array.isArray(content)) continue;
+    const text = content
+      .filter((block): block is { type: "text"; text: string } =>
+        typeof block === "object" && block !== null &&
+        (block as { type?: unknown }).type === "text" &&
+        typeof (block as { text?: unknown }).text === "string")
+      .map(block => block.text)
+      .join("\n")
+      .trim();
+    if (text) return text;
+  }
+  return undefined;
+}
+
+export function buildConversationContext(goal: string, priorAssistantResponse?: string): string {
+  const requestedGoal = goal.trim() || "Continue the prior conversation in the destination repository.";
+  const prior = priorAssistantResponse?.trim() || "No prior assistant response is available.";
+  return `My request:
 ${requestedGoal}
 
-Use the existing conversation to identify the destination repository and capture what the other session should know. The current working directory is ${cwd}. Inspect the filesystem or repository only when needed to resolve the destination or checkout choice, not to investigate the task itself.
+Prior conversation:
+${prior}`;
+}
+
+export function buildDelegatePrompt(
+  mode: DelegateMode,
+  goal: string,
+  cwd: string,
+  priorAssistantResponse?: string,
+): string {
+  const requestedGoal = goal.trim() || (mode === "research"
+    ? "Investigate the problem in the destination repository."
+    : "Continue the prior conversation in the destination repository.");
+  const shared = `Prepare the ${mode} delegation that I explicitly requested. Do not implement or research the delegated task in this session.
+
+The current working directory is ${cwd}. Use the existing conversation to identify the destination repository. Inspect the filesystem or repository only when needed to resolve the destination or checkout choice, not to investigate the task itself.
 
 Call ${DELEGATE_TOOL_NAME} exactly once with:
 - an absolute path to the local destination repository
 - a concise new branch name; a new Worktrunk worktree is the default
 - an optional base branch only when the default branch is not appropriate
 - a short semantic Pi session name
-- concise context from this conversation: the user's goal, relevant background or pointers already surfaced, and any open questions or uncertainty
-
-The context is background for independent investigation, not a specification. Do not turn it into an implementation plan, prescribe a solution, add speculative requirements, or add research and validation steps that were not already part of the conversation.
+- delegation context in the format below
 
 Set useExistingCheckout only when I explicitly asked not to create a worktree or a new worktree is clearly inappropriate. Ask me before calling the tool only if the destination or checkout choice is materially uncertain. The tool will show me the final context and proposal before creating anything.`;
+
+  if (mode === "research") {
+    return `${shared}
+
+Use exactly this context structure:
+
+Problem:
+- State what capability is missing or what behavior is wrong.
+- State why the destination repository owns the problem.
+
+Task:
+Investigate the problem independently. Do not ask for a specific implementation.
+
+Starting sources:
+- Include relevant local paths, documentation, issues, or upstream sources.
+
+Observed evidence is optional. Include only concrete symptoms, errors, or reproductions.
+
+Do not include a proposed implementation, inferred root cause, files or code to change, required design choices, source-agent acceptance criteria, version recommendations, research conclusions, or test and release plans. User-set requirements remain valid constraints.
+
+Requested research:
+${requestedGoal}`;
+  }
+
+  return `${shared}
+
+Use this exact delegation context without summarizing or rewriting it:
+
+${buildConversationContext(requestedGoal, priorAssistantResponse)}
+
+The prior conversation is discussion context. Do not convert it into requirements, an implementation plan, or a research report.`;
 }
 
-export function buildDelegatedSessionPrompt(context: string): string {
-  return `Here is context generated from another Pi session. Treat it as background, not as a specification or settled implementation plan. Please look into the request independently, verify relevant details in this checkout, and ask me about unresolved intent when needed.
+export function buildDelegatedSessionPrompt(context: string, mode: DelegateMode): string {
+  if (mode === "research") {
+    return `This is an independent research request from another Pi session. Investigate the problem in this checkout. Do not treat the report as a proposed solution, and do not implement a change unless I ask later.
+
+${context.trim()}`;
+  }
+  return `Continue this discussion with me. The prior response is conversation context, not an authoritative specification. Address my request above and ask me about unresolved intent when needed.
 
 ${context.trim()}`;
 }

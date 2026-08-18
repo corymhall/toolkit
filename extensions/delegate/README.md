@@ -1,16 +1,31 @@
 # Delegate extension
 
-`/delegate [goal]` transfers lightweight context from the current conversation
-into a normal, persisted Pi session in another local repository or a new
-Worktrunk worktree.
+`/delegate` transfers a focused request from the current conversation into a
+normal, persisted Pi session in another local repository or a new Worktrunk
+worktree. It supports two modes:
+
+```text
+/delegate research <goal>
+/delegate conversation <request>
+```
+
+If no mode is present, Pi asks the user to select one.
+
+Research mode creates a strict `Problem` / `Task` / `Starting sources` report.
+It excludes solutions, inferred causes, implementation instructions, and plans
+created by the source agent. The destination session performs independent
+research and does not implement a change unless the user asks later.
+
+Conversation mode creates a new request followed by the last visible assistant
+response from the source session. It copies both parts without summarizing or
+rewriting them. The destination session continues the discussion and treats the
+prior response as conversation context, not as an authoritative specification.
 
 The extension is intentionally dormant until the command is invoked. It then
-temporarily exposes `delegate_session` to the current agent so the agent can use
-the existing conversation to propose a destination, branch, and concise context
-note. The source agent is told not to research the delegated task, prescribe a
-solution, or turn the context into an implementation plan. Before anything is
-created, Pi frames the note as background for independent investigation, opens
-the resulting destination prompt for editing, and asks for confirmation.
+temporarily exposes `delegate_session` to the current agent so the agent can
+propose a destination, branch, and mode-specific context note. Before anything
+is created, Pi opens the resulting destination prompt for editing and asks for
+confirmation.
 
 After confirmation the extension:
 
@@ -23,10 +38,9 @@ After confirmation the extension:
 4. disables the temporary delegation tool.
 
 The launched process is an ordinary interactive Pi session with normal session
-persistence and configured model defaults. It receives the note as background,
-with an explicit request to investigate independently and verify details in the
-destination checkout. Worktrunk remains responsible for worktree layout and
-repository hooks.
+persistence and configured model defaults. It receives the research report or
+conversation excerpt with instructions for the selected mode. Worktrunk remains
+responsible for worktree layout and repository hooks.
 
 ## Requirements
 
