@@ -7,6 +7,7 @@ import {
   buildHerdrNvimUrl,
   HerdrNvimLinkComponent,
   rewriteFileHyperlinks,
+  rewriteFileUrlsInMarkdown,
   type HerdrLinkContext,
 } from "../herdr-nvim-links.ts";
 
@@ -55,8 +56,67 @@ test("rewrites BEL- and ST-terminated file hyperlinks only", () => {
   assert.match(rewritten, /herdr-nvim:\/\/open\?/);
   assert.match(rewritten, /id=x;herdr-nvim:\/\/open\?/);
   assert.match(rewritten, /https:\/\/example\.com/);
-  assert.match(rewritten, /\x1b\]8;;\x07/);
-  assert.match(rewritten, /\x1b\]8;;\x1b\\/);
+  assert.ok(rewritten.includes("\u001b]8;;\u0007"));
+  assert.ok(rewritten.includes("\u001b]8;;\u001b\\"));
+});
+
+test("rewrites file URLs throughout Markdown without changing visible labels", () => {
+  const markdown = [
+    '[source](file:///repo/main.ts "Main source")',
+    "<file:///repo/README.md>",
+    "See file:///repo/config.json.",
+    "Keep https://example.com and file://server/share unchanged.",
+    "[file:///repo/label.ts](https://example.com/file)",
+    "[remote](file://server/share)",
+  ].join("\n\n");
+  const rewritten = rewriteFileUrlsInMarkdown(markdown, context);
+
+  assert.match(rewritten, /^\[source\]\(herdr-nvim:\/\/open\?/);
+  assert.match(rewritten, /"Main source"\)/);
+  assert.match(rewritten, /\[file:\/\/\/repo\/README\.md\]\(herdr-nvim:\/\/open\?/);
+  assert.match(rewritten, /See \[file:\/\/\/repo\/config\.json\]\(herdr-nvim:\/\/open\?[^\n]+\)\./);
+  assert.match(rewritten, /https:\/\/example\.com/);
+  assert.match(rewritten, /file:\/\/server\/share unchanged/);
+  assert.match(rewritten, /\[file:\/\/\/repo\/label\.ts\]\(https:\/\/example\.com\/file\)/);
+  assert.match(rewritten, /\[remote\]\(file:\/\/server\/share\)/);
+
+  const targets = [...rewritten.matchAll(/herdr-nvim:\/\/open\?[^)\s]+/g)].map(
+    (match) => new URL(match[0]),
+  );
+  assert.deepEqual(
+    targets.map((target) => target.searchParams.get("file")),
+    ["file:///repo/main.ts", "file:///repo/README.md", "file:///repo/config.json"],
+  );
+});
+
+test("rewrites reference destinations but not code or raw HTML", () => {
+  const markdown = [
+    "[source][main]",
+    "",
+    '[main]: file:///repo/main.ts "Main source"',
+    "",
+    "`file:///repo/inline.ts`",
+    "",
+    "```text",
+    "file:///repo/block.ts",
+    "```",
+    "",
+    "<span>file:///repo/raw.ts</span>",
+    "",
+    "- `file:///repo/list-code.ts` and file:///repo/list.ts",
+    "",
+    "> `file:///repo/quote-code.ts` and file:///repo/quote.ts",
+  ].join("\n");
+  const rewritten = rewriteFileUrlsInMarkdown(markdown, context);
+
+  assert.match(rewritten, /^\[source\]\[main\]/);
+  assert.match(rewritten, /\[main\]: herdr-nvim:\/\/open\?/);
+  assert.match(rewritten, /`file:\/\/\/repo\/inline\.ts`/);
+  assert.match(rewritten, /```text\nfile:\/\/\/repo\/block\.ts\n```/);
+  assert.match(rewritten, /<span>file:\/\/\/repo\/raw\.ts<\/span>/);
+  assert.match(rewritten, /`file:\/\/\/repo\/list-code\.ts` and \[file:\/\/\/repo\/list\.ts\]/);
+  assert.match(rewritten, /`file:\/\/\/repo\/quote-code\.ts` and \[file:\/\/\/repo\/quote\.ts\]/);
+  assert.equal((rewritten.match(/herdr-nvim:\/\/open\?/g) ?? []).length, 3);
 });
 
 test("component delegates lifecycle and rewrites rendered lines", () => {
@@ -65,8 +125,12 @@ test("component delegates lifecycle and rewrites rendered lines", () => {
   const inner: Component = {
     wantsKeyRelease: true,
     render: () => ["\x1b]8;;file:///repo/main.go\x07main.go\x1b]8;;\x07"],
-    handleInput: value => { input = value; },
-    invalidate: () => { invalidated = true; },
+    handleInput: (value) => {
+      input = value;
+    },
+    invalidate: () => {
+      invalidated = true;
+    },
   };
   const wrapped = new HerdrNvimLinkComponent(inner, context);
 
@@ -82,12 +146,17 @@ test("overrides only local built-in file tools in TUI mode", () => {
   withHerdrEnvironment(() => {
     const handlers = new Map<string, (...args: any[]) => void>();
     const registered: any[] = [];
+    const markdownTransformers: Array<(markdown: string, context: unknown) => string> = [];
     const baseComponent: Component = {
       render: () => ["\x1b]8;;file:///repo/main.ts\x07main.ts\x1b]8;;\x07"],
       invalidate() {},
     };
     let renderCalls = 0;
-    const renderCall = (_args: unknown, _theme: unknown, renderContext: { lastComponent?: Component }) => {
+    const renderCall = (
+      _args: unknown,
+      _theme: unknown,
+      renderContext: { lastComponent?: Component },
+    ) => {
       assert.equal(renderContext.lastComponent, renderCalls === 0 ? undefined : baseComponent);
       renderCalls++;
       return baseComponent;
@@ -98,7 +167,9 @@ test("overrides only local built-in file tools in TUI mode", () => {
       { name: "write", execute() {}, renderCall },
     ];
     const pi = {
-      on(name: string, handler: (...args: any[]) => void) { handlers.set(name, handler); },
+      on(name: string, handler: (...args: any[]) => void) {
+        handlers.set(name, handler);
+      },
       getAllTools() {
         return [
           { name: "read", sourceInfo: { source: "builtin" } },
@@ -106,13 +177,30 @@ test("overrides only local built-in file tools in TUI mode", () => {
           { name: "write", sourceInfo: { source: "builtin" } },
         ];
       },
-      registerTool(definition: any) { registered.push(definition); },
+      registerTool(definition: any) {
+        registered.push(definition);
+      },
+      registerMarkdownTransformer(transformer: (markdown: string, context: unknown) => string) {
+        markdownTransformers.push(transformer);
+      },
     } as unknown as ExtensionAPI;
 
     herdrNvimLinksExtension(pi, { createDefinitions: () => definitions });
     handlers.get("session_start")?.({}, { mode: "tui", cwd: "/repo" });
 
-    assert.deepEqual(registered.map(tool => tool.name), ["read", "write"]);
+    assert.equal(markdownTransformers.length, 1);
+    const streamed = markdownTransformers[0]("[source](file:///repo/main.ts)", {
+      messageType: "assistant",
+      isStreaming: true,
+      availableWidth: 80,
+    });
+    assert.match(streamed, /^\[source\]\(herdr-nvim:\/\/open\?/);
+    assert.match(streamed, /sourcePane=w1%3Ap1/);
+
+    assert.deepEqual(
+      registered.map((tool) => tool.name),
+      ["read", "write"],
+    );
     const first = registered[0].renderCall(
       { offset: 7 },
       {},
@@ -134,7 +222,11 @@ test("does not override tools outside Herdr or outside TUI mode", () => {
   delete process.env.HERDR_ENV;
   try {
     let subscribed = false;
-    herdrNvimLinksExtension({ on() { subscribed = true; } } as unknown as ExtensionAPI);
+    herdrNvimLinksExtension({
+      on() {
+        subscribed = true;
+      },
+    } as unknown as ExtensionAPI);
     assert.equal(subscribed, false);
   } finally {
     if (previous === undefined) delete process.env.HERDR_ENV;
@@ -145,9 +237,14 @@ test("does not override tools outside Herdr or outside TUI mode", () => {
     const handlers = new Map<string, (...args: any[]) => void>();
     let registrations = 0;
     const pi = {
-      on(name: string, handler: (...args: any[]) => void) { handlers.set(name, handler); },
+      on(name: string, handler: (...args: any[]) => void) {
+        handlers.set(name, handler);
+      },
       getAllTools: () => [{ name: "read", sourceInfo: { source: "builtin" } }],
-      registerTool() { registrations++; },
+      registerTool() {
+        registrations++;
+      },
+      registerMarkdownTransformer() {},
     } as unknown as ExtensionAPI;
     herdrNvimLinksExtension(pi, { createDefinitions: () => [] });
     handlers.get("session_start")?.({}, { mode: "rpc", cwd: "/repo" });

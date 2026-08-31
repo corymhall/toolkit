@@ -8,6 +8,7 @@ import {
 import {
   HerdrNvimLinkComponent,
   isUsableHerdrContext,
+  rewriteFileUrlsInMarkdown,
   type HerdrLinkContext,
 } from "./herdr-nvim-links.ts";
 
@@ -43,10 +44,7 @@ function requestedLine(args: unknown): number | undefined {
     : undefined;
 }
 
-export default function herdrNvimLinksExtension(
-  pi: ExtensionAPI,
-  dependencies: Dependencies = {},
-) {
+export default function herdrNvimLinksExtension(pi: ExtensionAPI, dependencies: Dependencies = {}) {
   if (process.env.HERDR_ENV !== "1") return;
 
   const environment = {
@@ -58,6 +56,17 @@ export default function herdrNvimLinksExtension(
   };
   if (!isUsableHerdrContext(environment)) return;
 
+  const markdownContext: HerdrLinkContext = {
+    sourcePane: environment.sourcePane,
+    workspace: environment.workspace,
+    tab: environment.tab,
+    cwd: environment.cwd,
+    ...(environment.socket ? { socket: environment.socket } : {}),
+  };
+  pi.registerMarkdownTransformer((markdown) =>
+    rewriteFileUrlsInMarkdown(markdown, markdownContext),
+  );
+
   const createDefinitions = dependencies.createDefinitions ?? defaultDefinitions;
 
   pi.on("session_start", (_event, ctx) => {
@@ -65,9 +74,7 @@ export default function herdrNvimLinksExtension(
 
     const tools = pi.getAllTools();
     const localBuiltins = new Set(
-      tools
-        .filter(tool => tool.sourceInfo.source === "builtin")
-        .map(tool => tool.name),
+      tools.filter((tool) => tool.sourceInfo.source === "builtin").map((tool) => tool.name),
     );
 
     for (const definition of createDefinitions(ctx.cwd)) {
@@ -77,9 +84,10 @@ export default function herdrNvimLinksExtension(
       pi.registerTool({
         ...definition,
         renderCall(args: unknown, theme: unknown, renderContext: RenderContextLike) {
-          const previous = renderContext.lastComponent instanceof HerdrNvimLinkComponent
-            ? renderContext.lastComponent
-            : undefined;
+          const previous =
+            renderContext.lastComponent instanceof HerdrNvimLinkComponent
+              ? renderContext.lastComponent
+              : undefined;
           const component = originalRenderCall(args, theme, {
             ...renderContext,
             lastComponent: previous?.innerComponent,

@@ -1,9 +1,11 @@
 # Herdr Neovim Links
 
-This Pi extension turns the `file://` hyperlinks in Pi's built-in `read`, `edit`,
-and `write` tool titles into `herdr-nvim://` links. On macOS, the accompanying
-URL handler opens the file in the Neovim pane immediately to the right of Pi or
-creates that pane when no right-hand Neovim is available.
+This Pi extension makes local `file://` links in normal Pi chat messages and
+Pi's built-in `read`, `edit`, and `write` tool titles open in Herdr Neovim. The
+visible chat text stays unchanged; the display-only renderer changes each link
+target to `herdr-nvim://`. On macOS, the accompanying URL handler opens the file
+in the Neovim pane immediately to the right of Pi or creates that pane when no
+right-hand Neovim is available.
 
 ## Requirements
 
@@ -87,11 +89,16 @@ Herdr pane.
 
 ## Current boundary
 
-Pi has no global link-click or renderer middleware API. This extension therefore
-overrides only local built-in `read`, `edit`, and `write` definitions so it can
-wrap their existing renderers. It skips a tool already owned by another
-extension rather than replacing custom execution behavior. Assistant Markdown
-links and links rendered by other custom tools are unchanged.
+The extension uses Pi's display-only Markdown transformer for normal user,
+assistant, and thinking messages. It handles explicit Markdown links, angle
+bracket autolinks, reference destinations, and bare absolute local `file://`
+URLs. It does not change URLs in code or raw HTML.
+
+Pi has no global link-click or renderer middleware API. The extension therefore
+also overrides the local built-in `read`, `edit`, and `write` definitions so it
+can wrap their existing title renderers. It skips a tool already owned by
+another extension rather than replacing custom execution behavior. Links from
+custom message renderers and other custom tool renderers are unchanged.
 
 ## Troubleshooting
 

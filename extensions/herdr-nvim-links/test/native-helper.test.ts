@@ -23,19 +23,19 @@ before(async () => {
   herdrLog = join(directory, "herdr.log");
   nvimLog = join(directory, "nvim.log");
 
-  execFileSync("swiftc", [
-    "extensions/herdr-nvim-links/macos/HerdrNvimOpen.swift",
-    "-o",
-    helper,
-  ]);
+  execFileSync("swiftc", ["extensions/herdr-nvim-links/macos/HerdrNvimOpen.swift", "-o", helper]);
   execFileSync("swiftc", [
     "extensions/herdr-nvim-links/macos/URLHandler.swift",
-    "-framework", "AppKit",
-    "-o", join(directory, "url-handler"),
+    "-framework",
+    "AppKit",
+    "-o",
+    join(directory, "url-handler"),
   ]);
   execFileSync("plutil", ["-lint", "extensions/herdr-nvim-links/macos/Info.plist"]);
 
-  await writeFile(fakeHerdr, `#!/bin/sh
+  await writeFile(
+    fakeHerdr,
+    `#!/bin/sh
 printf '%s\\n' "$*" >>"$TEST_HERDR_LOG"
 case "$1 $2" in
   "pane list")
@@ -68,10 +68,14 @@ case "$1 $2" in
     exit 2
     ;;
 esac
-`);
-  await writeFile(fakeNvim, `#!/bin/sh
+`,
+  );
+  await writeFile(
+    fakeNvim,
+    `#!/bin/sh
 for arg in "$@"; do printf '<%s>\\n' "$arg"; done >>"$TEST_NVIM_LOG"
-`);
+`,
+  );
   await chmod(fakeHerdr, 0o755);
   await chmod(fakeNvim, 0o755);
 });
@@ -107,68 +111,89 @@ async function invoke(scenario: string, uri: string) {
   });
 }
 
-test("native helper opens the right Neovim through RPC and focuses it", {
-  skip: process.platform !== "darwin",
-}, async () => {
-  await invoke("existing", link("/tmp/file with spaces.ts", 27));
-  const herdrCalls = await readFile(herdrLog, "utf8");
-  const nvimCalls = await readFile(nvimLog, "utf8");
+test(
+  "native helper opens the right Neovim through RPC and focuses it",
+  {
+    skip: process.platform !== "darwin",
+  },
+  async () => {
+    await invoke("existing", link("/tmp/file with spaces.ts", 27));
+    const herdrCalls = await readFile(herdrLog, "utf8");
+    const nvimCalls = await readFile(nvimLog, "utf8");
 
-  assert.match(herdrCalls, /pane list --workspace w1/);
-  assert.match(herdrCalls, /pane neighbor --direction right --pane w1:p1/);
-  assert.match(herdrCalls, /pane process-info --pane w1:p2/);
-  assert.match(herdrCalls, /pane focus --direction right --pane w1:p1/);
-  assert.match(nvimCalls, /<--server>\n<\/tmp\/nvim\.sock>\n<--remote-expr>/);
-  assert.match(nvimCalls, /fnameescape\("\\\/tmp\\\/file with spaces\.ts"\)/);
-  assert.match(nvimCalls, /cursor\(27, 1\)/);
-});
+    assert.match(herdrCalls, /pane list --workspace w1/);
+    assert.match(herdrCalls, /pane neighbor --direction right --pane w1:p1/);
+    assert.match(herdrCalls, /pane process-info --pane w1:p2/);
+    assert.match(herdrCalls, /pane focus --direction right --pane w1:p1/);
+    assert.match(nvimCalls, /<--server>\n<\/tmp\/nvim\.sock>\n<--remote-expr>/);
+    assert.match(nvimCalls, /fnameescape\("\\\/tmp\\\/file with spaces\.ts"\)/);
+    assert.match(nvimCalls, /cursor\(27, 1\)/);
+  },
+);
 
-test("native helper refuses to inject keys into an unadvertised Neovim", {
-  skip: process.platform !== "darwin",
-}, async () => {
-  await assert.rejects(
-    () => invoke("missing-server", link("/tmp/file.ts")),
-    /advertised an RPC server/,
-  );
-  assert.equal(await readFile(nvimLog, "utf8"), "");
-});
+test(
+  "native helper refuses to inject keys into an unadvertised Neovim",
+  {
+    skip: process.platform !== "darwin",
+  },
+  async () => {
+    await assert.rejects(
+      () => invoke("missing-server", link("/tmp/file.ts")),
+      /advertised an RPC server/,
+    );
+    assert.equal(await readFile(nvimLog, "utf8"), "");
+  },
+);
 
-test("native helper creates and starts a right pane when Neovim is absent", {
-  skip: process.platform !== "darwin",
-}, async () => {
-  await invoke("create", link("/tmp/it's here.ts", 9));
-  const herdrCalls = await readFile(herdrLog, "utf8");
+test(
+  "native helper creates and starts a right pane when Neovim is absent",
+  {
+    skip: process.platform !== "darwin",
+  },
+  async () => {
+    await invoke("create", link("/tmp/it's here.ts", 9));
+    const herdrCalls = await readFile(herdrLog, "utf8");
 
-  assert.match(herdrCalls, /pane split --pane w1:p1 --direction right --ratio 0\.5 --cwd \/tmp --focus/);
-  assert.match(herdrCalls, /pane rename w1:p3 neovim/);
-  assert.match(herdrCalls, /pane run w1:p3 exec '/);
-  assert.match(herdrCalls, /'\"'\"'/);
-  assert.match(herdrCalls, /'\+9'/);
-});
+    assert.match(
+      herdrCalls,
+      /pane split --pane w1:p1 --direction right --ratio 0\.5 --cwd \/tmp --focus/,
+    );
+    assert.match(herdrCalls, /pane rename w1:p3 neovim/);
+    assert.match(herdrCalls, /pane run w1:p3 exec '/);
+    assert.match(herdrCalls, /'"'"'/);
+    assert.match(herdrCalls, /'\+9'/);
+  },
+);
 
 test("Neovim runtime advertises one RPC server and is idempotent", async () => {
   const nvim = process.env.HERDR_NVIM_REAL_NVIM ?? "/opt/homebrew/bin/nvim";
   if (!directory || !process.env.PATH || !requireExecutable(nvim)) return;
   await writeFile(herdrLog, "");
 
-  await execFileAsync(nvim, [
-    "--headless",
-    "-u", "NONE",
-    "--cmd", `set runtimepath+=${process.cwd()}/extensions/herdr-nvim-links/nvim`,
-    "+runtime plugin/herdr_nvim.lua",
-    "+runtime plugin/herdr_nvim.lua",
-    "+sleep 500m",
-    "+qa",
-  ], {
-    env: {
-      ...process.env,
-      PATH: `${directory}:${process.env.PATH}`,
-      HERDR_ENV: "1",
-      HERDR_PANE_ID: "w1:p2",
-      TEST_HERDR_LOG: herdrLog,
-      TEST_SCENARIO: "existing",
+  await execFileAsync(
+    nvim,
+    [
+      "--headless",
+      "-u",
+      "NONE",
+      "--cmd",
+      `set runtimepath+=${process.cwd()}/extensions/herdr-nvim-links/nvim`,
+      "+runtime plugin/herdr_nvim.lua",
+      "+runtime plugin/herdr_nvim.lua",
+      "+sleep 500m",
+      "+qa",
+    ],
+    {
+      env: {
+        ...process.env,
+        PATH: `${directory}:${process.env.PATH}`,
+        HERDR_ENV: "1",
+        HERDR_PANE_ID: "w1:p2",
+        TEST_HERDR_LOG: herdrLog,
+        TEST_SCENARIO: "existing",
+      },
     },
-  });
+  );
 
   const calls = (await readFile(herdrLog, "utf8")).trim().split("\n").filter(Boolean);
   assert.equal(calls.length, 1);
