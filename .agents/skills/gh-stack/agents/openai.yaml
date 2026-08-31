@@ -1,6 +1,0 @@
-interface:
-  display_name: GH Stack
-  short_description: Manage GitHub stacked PRs
-  default_prompt: Use $gh-stack to manage stacked PRs
-policy:
-  allow_implicit_invocation: false

@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-07-24T14:29:24.749594+00:00'
+generated_at: '2026-08-20T14:22:49.518714+00:00'
 apm_version: 0.25.0
 dependencies:
 - repo_url: _local/bridged
@@ -71,45 +71,11 @@ dependencies:
     .agents/skills/browser-tools/package-lock.json: sha256:24e6b9120bc3ae975e3a3f81400f1d0a87dc4f191166ff4f96aac86ab752f2a6
     .agents/skills/browser-tools/package.json: sha256:70e10b3ed27ad993d5491c91b7326d18cce5035c443590d99230d77cd6feffa7
   content_hash: sha256:2eef6bbe215b522a1f9691f9a88e9abddd7e9a590d9c76f90c17e2315b215c55
-- repo_url: blader/humanizer
-  name: humanizer
-  host: github.com
-  resolved_commit: 43c97670b563cfa75e4f16ef00c32e933104d10a
-  version: unknown
-  virtual_path: skills/humanizer
-  is_virtual: true
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/humanizer
-  - .agents/skills/humanizer/SKILL.md
-  deployed_file_hashes:
-    .agents/skills/humanizer/SKILL.md: sha256:aec2e1f4482f1e614d5001f3b2b958bca9a5ffd4d6b5117085897ba75ff816e7
-  content_hash: sha256:346cc9f11697582fa38814a472c8257ded4ab11f241a3d2f35736577b9dcbd4a
-- repo_url: github/gh-stack
-  name: gh-stack
-  host: github.com
-  resolved_commit: 14fc42ed9b6c376a53b2f999f138d3bd26dac546
-  version: unknown
-  virtual_path: skills/gh-stack
-  is_virtual: true
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/gh-stack
-  - .agents/skills/gh-stack/SKILL.md
-  - .agents/skills/gh-stack/references/commands.md
-  - .agents/skills/gh-stack/references/stack-design.md
-  - .agents/skills/gh-stack/references/troubleshooting.md
-  deployed_file_hashes:
-    .agents/skills/gh-stack/SKILL.md: sha256:1ff5a23a7f66a3f5853ef411e48ae66ebe0b47d98d248a3a41ee0de8e237a796
-    .agents/skills/gh-stack/references/commands.md: sha256:362bca643fa84aae90627c4d1797c2343aaf5427713e6aa8572e04454c555fa9
-    .agents/skills/gh-stack/references/stack-design.md: sha256:4a61e3065ce61a5d129a30f5dcbebe73bfde250e34c382277facdc31d2c4e5ce
-    .agents/skills/gh-stack/references/troubleshooting.md: sha256:fe1958036e663c7471a0d3efdf1fefe47ee65e06713b13a96e3db95becccdc47
-  content_hash: sha256:0d9f11ad344eda3becb92d0d195a08491a5ab2ba72a3890ff1e9db6c3de25f27
 - repo_url: herdrdev/herdr
   name: herdr
   host: github.com
-  resolved_commit: b7dca4bb2a2cf488407ae051b40782f03fcabc62
-  version: unknown
+  resolved_commit: 9d7b6c24c4d251a62a861f37c2c394078e083ca8
+  version: 1.0.0
   virtual_path: skills/herdr
   is_virtual: true
   package_type: claude_skill
@@ -117,13 +83,13 @@ dependencies:
   - .agents/skills/herdr
   - .agents/skills/herdr/SKILL.md
   deployed_file_hashes:
-    .agents/skills/herdr/SKILL.md: sha256:0786182f02ebf92708e09d82d79e4614d1a9c30bfc337643cc2af1d0fb9db29f
-  content_hash: sha256:489d2c6ff7e951e47071fbc5446d99d20ea215fcc5e55b9e4ceaa5a578f22d06
+    .agents/skills/herdr/SKILL.md: sha256:237ad2ab2d8123e2bb37956d3a41eed141f2d22a7c36e415b7876c0397679099
+  content_hash: sha256:77b9fb624aebcbfccfbc84d7ef3b938c70ecb9198c8bbfee95b11751ba20bfb7
 - repo_url: humanlayer/skills
-  name: skills
+  name: show-me
   host: github.com
-  resolved_commit: 4d8d644ca747517973f58d7953f58d7cd07520cd
-  version: unknown
+  resolved_commit: 3c2629142c5d437428269b1b722b08c0b87f574d
+  version: 1.0.0
   virtual_path: plugins/show-me/skills/show-me
   is_virtual: true
   package_type: claude_skill
@@ -131,60 +97,8 @@ dependencies:
   - .agents/skills/show-me
   - .agents/skills/show-me/SKILL.md
   deployed_file_hashes:
-    .agents/skills/show-me/SKILL.md: sha256:2a20c9c8d46747711cb9c3527f6500050da9e81cd0cdbcc27ecd75a585b8edb6
-  content_hash: sha256:258c662730a2898dd42ae5dd1cdb80de373d37bc43167c6035c2241a56d299d3
-- repo_url: mattpocock/skills
-  name: skills
-  host: github.com
-  resolved_commit: 8b78b531ab965735c5dc74f6f7a219e1e37326df
-  version: unknown
-  virtual_path: skills/productivity/grill-me
-  is_virtual: true
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/grill-me
-  - .agents/skills/grill-me/SKILL.md
-  - .agents/skills/grill-me/agents/openai.yaml
-  deployed_file_hashes:
-    .agents/skills/grill-me/SKILL.md: sha256:6189dfceb7304a6e5558f75d87e68fa3bc7fcf7ba120e44f21f8a61fe01eba54
-    .agents/skills/grill-me/agents/openai.yaml: sha256:c061e39c3e0f9d865fb1b97556d485704af2a8a58f4b8221a8917a5c2074a32b
-  content_hash: sha256:0ac1a28d5e7ab05c4a51046c9d74fd7bfc070ba6a3b9ec8451bd274e746d67b6
-- repo_url: mattpocock/skills
-  name: skills
-  host: github.com
-  resolved_commit: 8b78b531ab965735c5dc74f6f7a219e1e37326df
-  version: unknown
-  virtual_path: skills/engineering/grill-with-docs
-  is_virtual: true
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/grill-with-docs
-  - .agents/skills/grill-with-docs/SKILL.md
-  - .agents/skills/grill-with-docs/agents/openai.yaml
-  deployed_file_hashes:
-    .agents/skills/grill-with-docs/SKILL.md: sha256:610d091047bcfb9db0f75c057d15538481a721111579fc5ec7f83ad9131a2165
-    .agents/skills/grill-with-docs/agents/openai.yaml: sha256:94cd0ab161fb468a836349f5ed482ba58ce8e709a05c57ce533d739dbd35cca9
-  content_hash: sha256:c3a266bcc09eab29358eaae6e288f9a2cd492fd0af2bcaeeec55fd6207da9a89
-- repo_url: mattpocock/skills
-  name: skills
-  host: github.com
-  resolved_commit: 8b78b531ab965735c5dc74f6f7a219e1e37326df
-  version: unknown
-  virtual_path: skills/engineering/domain-modeling
-  is_virtual: true
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/domain-modeling
-  - .agents/skills/domain-modeling/ADR-FORMAT.md
-  - .agents/skills/domain-modeling/CONTEXT-FORMAT.md
-  - .agents/skills/domain-modeling/SKILL.md
-  - .agents/skills/domain-modeling/agents/openai.yaml
-  deployed_file_hashes:
-    .agents/skills/domain-modeling/ADR-FORMAT.md: sha256:f1f36cd3f8d3b6474ddd5855da4e233bfc4ae1a1c5024909ccf11871819a41b2
-    .agents/skills/domain-modeling/CONTEXT-FORMAT.md: sha256:b8cc318f2a4285b530e908b6bc43901c3c5cd11100362636bbc4216639bef597
-    .agents/skills/domain-modeling/SKILL.md: sha256:9617041db9b0f6606ecf974e2061c83596b05059b5bb20ddb884c60f147c70e9
-    .agents/skills/domain-modeling/agents/openai.yaml: sha256:f6bf2aa996c6e6f53fdd0708e18a0d16a56aed8322cca59fedbe3c0d2c75f06b
-  content_hash: sha256:4aef9775ec12ff74fc2fc31b52b1b73419e2613cc2246297418169e01fb616f6
+    .agents/skills/show-me/SKILL.md: sha256:bea6da70a58096730b9aeb0bae293ddf4726103a98efc9ce13c481619942a810
+  content_hash: sha256:de32a72f802801f08a84641b467f2c6306d35a58ce5e59ea607ac3a993a18c91
 - repo_url: _local/core
   name: pulumi-provider-core
   version: 0.1.0
@@ -223,7 +137,7 @@ dependencies:
 - repo_url: pulumi/agent-skills
   name: pulumi-package-maintenance
   host: github.com
-  resolved_commit: 49e2562105dbd3bd0e1829c32c023163d139452b
+  resolved_commit: b490e6cec81ad09b78bc089d2d017c23a1b85179
   resolved_ref: main
   version: 1.0.4
   virtual_path: package-maintenance
@@ -407,150 +321,6 @@ deployments:
   content_hash: sha256:70e10b3ed27ad993d5491c91b7326d18cce5035c443590d99230d77cd6feffa7
 - kind: project-relative
   target: agents
-  value: .agents/skills/domain-modeling
-  runtime: null
-  scope: project
-  owners:
-  - mattpocock/skills/skills/engineering/domain-modeling
-  active_owner: mattpocock/skills/skills/engineering/domain-modeling
-  content_hash: null
-- kind: project-relative
-  target: agents
-  value: .agents/skills/domain-modeling/ADR-FORMAT.md
-  runtime: null
-  scope: project
-  owners:
-  - mattpocock/skills/skills/engineering/domain-modeling
-  active_owner: mattpocock/skills/skills/engineering/domain-modeling
-  content_hash: sha256:f1f36cd3f8d3b6474ddd5855da4e233bfc4ae1a1c5024909ccf11871819a41b2
-- kind: project-relative
-  target: agents
-  value: .agents/skills/domain-modeling/CONTEXT-FORMAT.md
-  runtime: null
-  scope: project
-  owners:
-  - mattpocock/skills/skills/engineering/domain-modeling
-  active_owner: mattpocock/skills/skills/engineering/domain-modeling
-  content_hash: sha256:b8cc318f2a4285b530e908b6bc43901c3c5cd11100362636bbc4216639bef597
-- kind: project-relative
-  target: agents
-  value: .agents/skills/domain-modeling/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - mattpocock/skills/skills/engineering/domain-modeling
-  active_owner: mattpocock/skills/skills/engineering/domain-modeling
-  content_hash: sha256:9617041db9b0f6606ecf974e2061c83596b05059b5bb20ddb884c60f147c70e9
-- kind: project-relative
-  target: agents
-  value: .agents/skills/domain-modeling/agents/openai.yaml
-  runtime: null
-  scope: project
-  owners:
-  - mattpocock/skills/skills/engineering/domain-modeling
-  active_owner: mattpocock/skills/skills/engineering/domain-modeling
-  content_hash: sha256:f6bf2aa996c6e6f53fdd0708e18a0d16a56aed8322cca59fedbe3c0d2c75f06b
-- kind: project-relative
-  target: agents
-  value: .agents/skills/gh-stack
-  runtime: null
-  scope: project
-  owners:
-  - github/gh-stack/skills/gh-stack
-  active_owner: github/gh-stack/skills/gh-stack
-  content_hash: null
-- kind: project-relative
-  target: agents
-  value: .agents/skills/gh-stack/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - github/gh-stack/skills/gh-stack
-  active_owner: github/gh-stack/skills/gh-stack
-  content_hash: sha256:1ff5a23a7f66a3f5853ef411e48ae66ebe0b47d98d248a3a41ee0de8e237a796
-- kind: project-relative
-  target: agents
-  value: .agents/skills/gh-stack/references/commands.md
-  runtime: null
-  scope: project
-  owners:
-  - github/gh-stack/skills/gh-stack
-  active_owner: github/gh-stack/skills/gh-stack
-  content_hash: sha256:362bca643fa84aae90627c4d1797c2343aaf5427713e6aa8572e04454c555fa9
-- kind: project-relative
-  target: agents
-  value: .agents/skills/gh-stack/references/stack-design.md
-  runtime: null
-  scope: project
-  owners:
-  - github/gh-stack/skills/gh-stack
-  active_owner: github/gh-stack/skills/gh-stack
-  content_hash: sha256:4a61e3065ce61a5d129a30f5dcbebe73bfde250e34c382277facdc31d2c4e5ce
-- kind: project-relative
-  target: agents
-  value: .agents/skills/gh-stack/references/troubleshooting.md
-  runtime: null
-  scope: project
-  owners:
-  - github/gh-stack/skills/gh-stack
-  active_owner: github/gh-stack/skills/gh-stack
-  content_hash: sha256:fe1958036e663c7471a0d3efdf1fefe47ee65e06713b13a96e3db95becccdc47
-- kind: project-relative
-  target: agents
-  value: .agents/skills/grill-me
-  runtime: null
-  scope: project
-  owners:
-  - mattpocock/skills/skills/productivity/grill-me
-  active_owner: mattpocock/skills/skills/productivity/grill-me
-  content_hash: null
-- kind: project-relative
-  target: agents
-  value: .agents/skills/grill-me/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - mattpocock/skills/skills/productivity/grill-me
-  active_owner: mattpocock/skills/skills/productivity/grill-me
-  content_hash: sha256:6189dfceb7304a6e5558f75d87e68fa3bc7fcf7ba120e44f21f8a61fe01eba54
-- kind: project-relative
-  target: agents
-  value: .agents/skills/grill-me/agents/openai.yaml
-  runtime: null
-  scope: project
-  owners:
-  - mattpocock/skills/skills/productivity/grill-me
-  active_owner: mattpocock/skills/skills/productivity/grill-me
-  content_hash: sha256:c061e39c3e0f9d865fb1b97556d485704af2a8a58f4b8221a8917a5c2074a32b
-- kind: project-relative
-  target: agents
-  value: .agents/skills/grill-with-docs
-  runtime: null
-  scope: project
-  owners:
-  - mattpocock/skills/skills/engineering/grill-with-docs
-  active_owner: mattpocock/skills/skills/engineering/grill-with-docs
-  content_hash: null
-- kind: project-relative
-  target: agents
-  value: .agents/skills/grill-with-docs/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - mattpocock/skills/skills/engineering/grill-with-docs
-  active_owner: mattpocock/skills/skills/engineering/grill-with-docs
-  content_hash: sha256:610d091047bcfb9db0f75c057d15538481a721111579fc5ec7f83ad9131a2165
-- kind: project-relative
-  target: agents
-  value: .agents/skills/grill-with-docs/agents/openai.yaml
-  runtime: null
-  scope: project
-  owners:
-  - mattpocock/skills/skills/engineering/grill-with-docs
-  active_owner: mattpocock/skills/skills/engineering/grill-with-docs
-  content_hash: sha256:94cd0ab161fb468a836349f5ed482ba58ce8e709a05c57ce533d739dbd35cca9
-- kind: project-relative
-  target: agents
   value: .agents/skills/herdr
   runtime: null
   scope: project
@@ -566,25 +336,7 @@ deployments:
   owners:
   - herdrdev/herdr/skills/herdr
   active_owner: herdrdev/herdr/skills/herdr
-  content_hash: sha256:0786182f02ebf92708e09d82d79e4614d1a9c30bfc337643cc2af1d0fb9db29f
-- kind: project-relative
-  target: agents
-  value: .agents/skills/humanizer
-  runtime: null
-  scope: project
-  owners:
-  - blader/humanizer/skills/humanizer
-  active_owner: blader/humanizer/skills/humanizer
-  content_hash: null
-- kind: project-relative
-  target: agents
-  value: .agents/skills/humanizer/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - blader/humanizer/skills/humanizer
-  active_owner: blader/humanizer/skills/humanizer
-  content_hash: sha256:aec2e1f4482f1e614d5001f3b2b958bca9a5ffd4d6b5117085897ba75ff816e7
+  content_hash: sha256:237ad2ab2d8123e2bb37956d3a41eed141f2d22a7c36e415b7876c0397679099
 - kind: project-relative
   target: agents
   value: .agents/skills/investigate-converted-provider-docs
@@ -701,7 +453,7 @@ deployments:
   owners:
   - humanlayer/skills/plugins/show-me/skills/show-me
   active_owner: humanlayer/skills/plugins/show-me/skills/show-me
-  content_hash: sha256:2a20c9c8d46747711cb9c3527f6500050da9e81cd0cdbcc27ecd75a585b8edb6
+  content_hash: sha256:bea6da70a58096730b9aeb0bae293ddf4726103a98efc9ce13c481619942a810
 - kind: project-relative
   target: agents
   value: .agents/skills/stage-pulumi-provider-repro
