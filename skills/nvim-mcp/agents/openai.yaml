@@ -1,0 +1,6 @@
+interface:
+  display_name: "Neovim MCP"
+  short_description: "Access running Neovim instances"
+  default_prompt: "$nvim-mcp find the correct neovim session and connect"
+policy:
+  allow_implicit_invocation: false
