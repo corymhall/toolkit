@@ -1,4 +1,4 @@
 interface:
   display_name: "Go Development"
-  short_description: "Write simple, idiomatic, repository-aware Go"
-  default_prompt: "Use $go-development to implement this Go change with direct concrete design, explicit ownership and failure behavior, semantic tests, and repository tooling for mechanical checks."
+  short_description: "Apply manual Go judgment and pinned modernization"
+  default_prompt: "Use $go-development to implement this Go change with direct design, explicit ownership and lifecycle behavior, focused tests, and the pinned analyzer for mechanical modernization."

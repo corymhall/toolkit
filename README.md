@@ -381,6 +381,7 @@ skill path.
 ## Acknowledgements
 
 - [spf13/go-skills](https://github.com/spf13/go-skills) — concrete-first, anti-layering Go guidance adapted into `go-development`
+- [Go modernize analyzer](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize) — version-aware mechanical modernization used by `go-development`
 - [max-sixty/worktrunk](https://github.com/max-sixty/worktrunk) — worktree lifecycle and hook-based automation
 - [obra/superpowers](https://github.com/obra/superpowers) — thinking and review patterns that still influence the repo
 - [steveyegge/gastown](https://github.com/steveyegge/gastown) — reference material that informed earlier experiments
