@@ -1,152 +1,73 @@
 ---
 name: notion-docs
-description: Use the authenticated Notion CLI (`ntn`) to find, read, and link Notion pages, review unresolved comments, inspect page hierarchy, synchronize Notion documents to local Markdown, and create documents under a specific parent. Use for Notion page URLs, IDs, titles, comments, local document sync, or page trees. Do not use for Notion Workers, file uploads, database administration, or broad API automation.
+description: Search, read, comment on, create, and update Notion documentation through the official hosted Notion MCP server with mcporter. Use for Notion page URLs, IDs, titles, comments, workspace documentation, or creating a document under a specific parent. Do not use for file uploads, database administration, Notion agents, or broad workspace automation.
+compatibility: Requires Node.js with npx, network access, and an authenticated `notion` server in mcporter.
 ---
 
 # Notion Docs
 
-Use `ntn` for ordinary documentation work while keeping page identity, hierarchy,
-and write destinations explicit.
-
-## Resolve Pages
-
-Prefer a supplied page ID or URL. Extract the 32 hexadecimal page ID from a
-Notion URL (hyphens are optional); do not treat unrelated query parameters as the
-page ID.
-
-When only a title or location name is available, search by title:
+Use the configured official Notion MCP server through `mcporter`:
 
 ```bash
-jq -n --arg query "$query" \
-  '{query:$query, filter:{property:"object", value:"page"}, page_size:100}' |
-  ntn api v1/search
+npx mcporter list notion --brief
 ```
 
-Search is fuzzy. Compare titles and parent metadata, and ask the user to choose
-when multiple plausible pages remain. Follow `has_more` and `next_cursor` when a
-complete result set matters.
+## Find and Read Pages
 
-Retrieve page metadata when identity or a link matters:
+Prefer a supplied page URL or ID. Fetch it directly:
 
 ```bash
-ntn api "v1/pages/$page_id" -X GET
+npx mcporter call 'notion.notion-fetch(id: "<page-url-or-id>", include_discussions: true)'
 ```
 
-Use the returned `url` as the canonical workspace link; do not reconstruct a URL
-from an ID or substitute `public_url`. Use the title property from `properties`
-when the display title is needed.
-
-## Read Pages
-
-Read ordinary page content as Markdown:
+When only a title or topic is available, search first:
 
 ```bash
-ntn pages get "$page_id"
+npx mcporter call 'notion.notion-search(query: "<one focused query>", content_search_mode: "workspace_search")'
 ```
 
-If the command warns that Markdown was truncated, rerun with `--json`, inspect
-`unknown_block_ids`, and disclose any content that could not be read. Do not
-claim a complete summary from truncated output.
+Use `ai_search` only when semantic search or connected sources are relevant. Search is not exact identity resolution. Compare titles, URLs, and parent context, and ask the user to choose when multiple plausible pages remain.
 
-Fetch only the content needed for the request. A request for structure does not
-require reading every descendant page body. Do not save company documentation
-in repository files unless the user asks for a local artifact.
-
-In the answer, identify the source page by title and canonical URL. For a
-multi-page result, link each page whose metadata was retrieved rather than
-returning bare IDs.
+Fetch the selected result before making claims about its content. In the answer, identify source pages by title and returned URL. Fetch only the pages needed for the request, and do not save workspace documentation in repository files unless the user asks.
 
 ## Review Comments
 
-List unresolved comments for the relevant page or block:
+Fetch unresolved page and block discussions when review context matters:
 
 ```bash
-ntn api "v1/comments" -X GET block_id=="$block_id" page_size==100
+npx mcporter call 'notion.notion-get-comments(page_id: "<page-id>", include_all_blocks: true, include_resolved: false)'
 ```
 
-Follow `has_more` and `next_cursor` when the complete discussion set matters.
-Ask users to leave comments unresolved until they have been processed. Retrieve
-a parent block when inline context matters, and preserve the distinction between
-a comment's author, discussion ID, parent, and text. Treat a `403` as missing
-read-comment capability, not proof that no comments exist.
+Use a returned discussion URL or ID to retrieve one discussion. Preserve the distinction between page comments, inline discussions, authors, and resolved state.
 
-## Inspect Page Structure
-
-List a page or block's children with:
-
-```bash
-ntn api "v1/blocks/$block_id/children" -X GET page_size==100
-```
-
-Continue with `start_cursor==<next_cursor>` until `has_more` is false.
-
-- For immediate sub-pages, report blocks whose `type` is `child_page`, using the
-  block ID and `child_page.title`.
-- For all descendant pages, recursively list each child page's children.
-- For a complete block layout, also recurse into non-page blocks with
-  `has_children: true`; this avoids skipping content nested in columns, toggles,
-  or other containers.
-- Keep the distinction between real child pages and links, mentions, bookmarks,
-  databases, or data sources. Include the latter only when the requested layout
-  calls for them.
-- Prevent cycles or duplicate traversal by tracking visited block/page IDs.
-
-Return a compact indented tree. Retrieve each listed page's metadata when the
-user wants clickable links.
-
-## Synchronize Local Markdown
-
-Establish an explicit page-to-file mapping. Use supplied paths and existing
-titles as evidence, and ask when a mapping is materially ambiguous. Read every
-mapped page with `ntn pages get "$page_id" --json`; require `truncated: false`
-and an empty `unknown_block_ids` list before claiming an exact sync.
-
-Preserve wording and document structure. Normalize only transport-specific
-markup such as repository-standard H1 titles, Markdown line breaks, mapped page
-mentions as relative links, and generated sub-page navigation that is not body
-content. Change only mapped files, and do not remove local annexes merely because
-they are absent from the requested Notion tree.
-
-If both Notion and local files changed and the source of truth is unclear, ask
-which side wins. Report the source URLs and local paths that were synchronized.
+Create or reply to a comment only when the user explicitly asks. Before an inline comment, fetch the current page and make `selection_with_ellipsis` specific enough to identify one location.
 
 ## Create Documents
 
-Before writing, resolve the exact parent page and verify its title and canonical
-URL. Do not omit `--parent` and accidentally create at an unintended workspace
-location. If the destination is ambiguous, ask before creating anything.
-
-Prepare Markdown with the intended title as its leading H1. Pass an existing
-requested artifact or a temporary file outside the repository through stdin
-rather than placing a long document in a shell argument:
+Before writing, fetch the exact parent and verify its title and URL. Ask when the destination is ambiguous. Inspect the current tool schema before constructing a write:
 
 ```bash
-ntn pages create --parent "page:$parent_id" --json < "$document_path"
+npx mcporter list notion --schema
 ```
 
-An explicit user request to create the document authorizes the write once the
-parent and content are clear; do not add a redundant confirmation. After
-creation, use the returned ID to retrieve the page metadata, verify the title
-and parent, and return its canonical `url`. Remove temporary local content when
-it is no longer needed.
+Create the page with `notion.notion-create-pages`, an explicit `parent`, a title property, and Notion Markdown content. Use `allow_async: true` for large documents and poll the returned task with `notion.notion-get-async-task` using its suggested delay.
 
-Do not edit, replace, move, or trash existing content unless explicitly asked.
-`ntn pages edit` replaces page content and can affect nested objects, so inspect
-its current help and the target page before any such request.
+An explicit request to create a document authorizes that write after the parent and content are clear. After creation, fetch the new page, verify its title and parent, and return its URL.
 
-## Handle CLI Differences and Failures
+## Update Existing Pages
 
-The CLI and API are beta. Before guessing unsupported syntax, inspect the local
-command:
+Do not update, replace, move, duplicate, or delete existing content unless the user explicitly asks. Fetch the current page immediately before an update.
+
+Prefer focused `update_content` or `insert_content` operations. Treat `replace_content` and `allow_deleting_content` as destructive: state what will be replaced and get confirmation unless the user's request already specifies that exact replacement.
+
+Inspect the live schema before a write because the hosted tool surface can change:
 
 ```bash
-ntn <command> --help
-ntn api ls
-ntn api <path> --help
-ntn api <path> --docs -X <METHOD>
-ntn api <path> --spec -X <METHOD>
+npx mcporter list notion --schema
 ```
 
-On authentication or workspace errors, run `ntn doctor` and report the failing
-boundary. Never print or inspect token values or credential files, and do not
-start an interactive login unless the user asks.
+After an update, fetch the page again and verify the requested result.
+
+## Authentication and Failures
+
+If mcporter reports `401` or missing authorization, report that `npx mcporter auth notion` is required. Do not inspect token files or print credentials. Do not start a new authorization flow unless the user asks to configure or reconnect Notion.
