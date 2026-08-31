@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type {
-  ExtensionAPI,
-  SlashCommandInfo,
-} from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, SlashCommandInfo } from "@earendil-works/pi-coding-agent";
 import type { AutocompleteProvider } from "@earendil-works/pi-tui";
 import skillAutocompleteExtension, {
   createSkillAutocompleteProvider,
@@ -43,26 +40,39 @@ const userSkill: SkillChoice = {
 };
 
 test("reads Pi's disable-model-invocation frontmatter consistently", () => {
-  assert.equal(readSkillInvocationMode("skill", () => [
-    "---",
-    "name: commit",
-    "description: Create a commit",
-    "disable-model-invocation: true",
-    "---",
-    "Instructions",
-  ].join("\n")), "user");
+  assert.equal(
+    readSkillInvocationMode("skill", () =>
+      [
+        "---",
+        "name: commit",
+        "description: Create a commit",
+        "disable-model-invocation: true",
+        "---",
+        "Instructions",
+      ].join("\n"),
+    ),
+    "user",
+  );
 
-  assert.equal(readSkillInvocationMode("skill", () => [
-    "---",
-    "name: commit",
-    "description: Create a commit",
-    "disable-model-invocation: false",
-    "---",
-  ].join("\n")), "model");
+  assert.equal(
+    readSkillInvocationMode("skill", () =>
+      [
+        "---",
+        "name: commit",
+        "description: Create a commit",
+        "disable-model-invocation: false",
+        "---",
+      ].join("\n"),
+    ),
+    "model",
+  );
 
-  assert.equal(readSkillInvocationMode("skill", () => {
-    throw new Error("unreadable");
-  }), "unknown");
+  assert.equal(
+    readSkillInvocationMode("skill", () => {
+      throw new Error("unreadable");
+    }),
+    "unknown",
+  );
 });
 
 test("lists only skill commands and classifies each skill from its source file", () => {
@@ -76,14 +86,19 @@ test("lists only skill commands and classifies each skill from its source file",
     },
   ];
 
-  const choices = listSkillChoices(commands, (path) => path.includes("user-skill")
-    ? "---\ndisable-model-invocation: true\n---\n"
-    : "---\ndescription: visible\n---\n");
+  const choices = listSkillChoices(commands, (path) =>
+    path.includes("user-skill")
+      ? "---\ndisable-model-invocation: true\n---\n"
+      : "---\ndescription: visible\n---\n",
+  );
 
-  assert.deepEqual(choices.map(({ name, invocationMode }) => ({ name, invocationMode })), [
-    { name: "model-skill", invocationMode: "model" },
-    { name: "user-skill", invocationMode: "user" },
-  ]);
+  assert.deepEqual(
+    choices.map(({ name, invocationMode }) => ({ name, invocationMode })),
+    [
+      { name: "model-skill", invocationMode: "model" },
+      { name: "user-skill", invocationMode: "user" },
+    ],
+  );
 });
 
 test("autocomplete inserts exact inline skill names and labels user-only skills", async () => {
@@ -107,14 +122,22 @@ test("autocomplete inserts exact inline skill names and labels user-only skills"
   const suggestions = await provider.getSuggestions(["please use $com"], 0, 15, { signal });
   assert.deepEqual(suggestions, {
     prefix: "$com",
-    items: [{
-      value: "$commit",
-      label: "$commit",
-      description: "explicit invocation · Create a commit",
-    }],
+    items: [
+      {
+        value: "$commit",
+        label: "$commit",
+        description: "explicit invocation · Create a commit",
+      },
+    ],
   });
 
-  const completion = provider.applyCompletion(["please use $com here"], 0, 15, suggestions!.items[0]!, "$com");
+  const completion = provider.applyCompletion(
+    ["please use $com here"],
+    0,
+    15,
+    suggestions!.items[0]!,
+    "$com",
+  );
   assert.deepEqual(completion, {
     lines: ["please use $commit here"],
     cursorLine: 0,
@@ -186,32 +209,45 @@ test("the extension installs TUI autocomplete and restores rejected input", asyn
   });
 
   let providerFactory: ((current: AutocompleteProvider) => AutocompleteProvider) | undefined;
-  handlers.get("session_start")!({}, {
-    mode: "tui",
-    ui: {
-      addAutocompleteProvider(factory: typeof providerFactory) {
-        providerFactory = factory;
+  handlers.get("session_start")!(
+    {},
+    {
+      mode: "tui",
+      ui: {
+        addAutocompleteProvider(factory: typeof providerFactory) {
+          providerFactory = factory;
+        },
       },
     },
-  });
+  );
   assert.ok(providerFactory);
 
   const notifications: Array<{ message: string; level: string }> = [];
   const restored: string[] = [];
   const input = handlers.get("input")!;
   const text = "Use $commit and $private-review";
-  const result = await input({ source: "interactive", text }, {
-    mode: "tui",
-    ui: {
-      setEditorText(value: string) { restored.push(value); },
-      notify(message: string, level: string) { notifications.push({ message, level }); },
+  const result = await input(
+    { source: "interactive", text },
+    {
+      mode: "tui",
+      ui: {
+        setEditorText(value: string) {
+          restored.push(value);
+        },
+        notify(message: string, level: string) {
+          notifications.push({ message, level });
+        },
+      },
     },
-  });
+  );
 
   assert.deepEqual(result, { action: "handled" });
   assert.deepEqual(restored, [text]);
-  assert.deepEqual(notifications, [{
-    message: "Pi can explicitly invoke only one user-only skill per prompt: commit, private-review",
-    level: "warning",
-  }]);
+  assert.deepEqual(notifications, [
+    {
+      message:
+        "Pi can explicitly invoke only one user-only skill per prompt: commit, private-review",
+      level: "warning",
+    },
+  ]);
 });

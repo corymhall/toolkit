@@ -56,21 +56,24 @@ export function listSkillChoices(
     const name = command.name.slice(SKILL_COMMAND_PREFIX.length);
     if (!name) return [];
 
-    return [{
-      name,
-      description: command.description,
-      path: command.sourceInfo.path,
-      invocationMode: readSkillInvocationMode(command.sourceInfo.path, readSkillFile),
-    }];
+    return [
+      {
+        name,
+        description: command.description,
+        path: command.sourceInfo.path,
+        invocationMode: readSkillInvocationMode(command.sourceInfo.path, readSkillFile),
+      },
+    ];
   });
 }
 
 function describeSkill(skill: SkillChoice): string | undefined {
-  const prefix = skill.invocationMode === "user"
-    ? "explicit invocation"
-    : skill.invocationMode === "unknown"
-      ? "invocation mode unknown"
-      : undefined;
+  const prefix =
+    skill.invocationMode === "user"
+      ? "explicit invocation"
+      : skill.invocationMode === "unknown"
+        ? "invocation mode unknown"
+        : undefined;
 
   if (!prefix) return skill.description;
   return skill.description ? `${prefix} · ${skill.description}` : prefix;
@@ -88,7 +91,12 @@ export function createSkillAutocompleteProvider(
   return {
     triggerCharacters: ["$"],
 
-    async getSuggestions(lines, cursorLine, cursorCol, options): Promise<AutocompleteSuggestions | null> {
+    async getSuggestions(
+      lines,
+      cursorLine,
+      cursorCol,
+      options,
+    ): Promise<AutocompleteSuggestions | null> {
       if (options.signal.aborted) return null;
 
       const currentLine = lines[cursorLine] ?? "";
@@ -97,7 +105,10 @@ export function createSkillAutocompleteProvider(
         return current.getSuggestions(lines, cursorLine, cursorCol, options);
       }
 
-      const matches = fuzzyFilter(getSkills(), query, (skill) => skill.name).slice(0, MAX_SUGGESTIONS);
+      const matches = fuzzyFilter(getSkills(), query, (skill) => skill.name).slice(
+        0,
+        MAX_SUGGESTIONS,
+      );
       if (matches.length === 0) {
         return current.getSuggestions(lines, cursorLine, cursorCol, options);
       }
@@ -162,22 +173,29 @@ export default function skillAutocompleteExtension(
 
       let invocationMode = invocationModes.get(command.sourceInfo.path);
       if (!invocationMode) {
-        invocationMode = readSkillInvocationMode(command.sourceInfo.path, dependencies.readSkillFile);
+        invocationMode = readSkillInvocationMode(
+          command.sourceInfo.path,
+          dependencies.readSkillFile,
+        );
         invocationModes.set(command.sourceInfo.path, invocationMode);
       }
 
-      return [{
-        name,
-        description: command.description,
-        path: command.sourceInfo.path,
-        invocationMode,
-      }];
+      return [
+        {
+          name,
+          description: command.description,
+          path: command.sourceInfo.path,
+          invocationMode,
+        },
+      ];
     });
   };
 
   pi.on("session_start", (_event, ctx) => {
     if (ctx.mode !== "tui") return;
-    ctx.ui.addAutocompleteProvider((current) => createSkillAutocompleteProvider(current, getSkills));
+    ctx.ui.addAutocompleteProvider((current) =>
+      createSkillAutocompleteProvider(current, getSkills),
+    );
   });
 
   pi.on("input", (event, ctx) => {
