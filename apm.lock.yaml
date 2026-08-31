@@ -85,20 +85,6 @@ dependencies:
   deployed_file_hashes:
     .agents/skills/herdr/SKILL.md: sha256:237ad2ab2d8123e2bb37956d3a41eed141f2d22a7c36e415b7876c0397679099
   content_hash: sha256:77b9fb624aebcbfccfbc84d7ef3b938c70ecb9198c8bbfee95b11751ba20bfb7
-- repo_url: humanlayer/skills
-  name: show-me
-  host: github.com
-  resolved_commit: 3c2629142c5d437428269b1b722b08c0b87f574d
-  version: 1.0.0
-  virtual_path: plugins/show-me/skills/show-me
-  is_virtual: true
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/show-me
-  - .agents/skills/show-me/SKILL.md
-  deployed_file_hashes:
-    .agents/skills/show-me/SKILL.md: sha256:bea6da70a58096730b9aeb0bae293ddf4726103a98efc9ce13c481619942a810
-  content_hash: sha256:de32a72f802801f08a84641b467f2c6306d35a58ce5e59ea607ac3a993a18c91
 - repo_url: _local/core
   name: pulumi-provider-core
   version: 0.1.0
@@ -436,24 +422,6 @@ deployments:
   - pulumi/agent-skills/package-maintenance
   active_owner: pulumi/agent-skills/package-maintenance
   content_hash: sha256:1ef52b6c4d51c26c53b6fee802627a1bf498613dabda215ec0aa86231f6b6dc4
-- kind: project-relative
-  target: agents
-  value: .agents/skills/show-me
-  runtime: null
-  scope: project
-  owners:
-  - humanlayer/skills/plugins/show-me/skills/show-me
-  active_owner: humanlayer/skills/plugins/show-me/skills/show-me
-  content_hash: null
-- kind: project-relative
-  target: agents
-  value: .agents/skills/show-me/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - humanlayer/skills/plugins/show-me/skills/show-me
-  active_owner: humanlayer/skills/plugins/show-me/skills/show-me
-  content_hash: sha256:bea6da70a58096730b9aeb0bae293ddf4726103a98efc9ce13c481619942a810
 - kind: project-relative
   target: agents
   value: .agents/skills/stage-pulumi-provider-repro

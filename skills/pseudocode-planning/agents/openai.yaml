@@ -1,0 +1,6 @@
+interface:
+  display_name: Pseudocode Planning
+  short_description: Work through a design step by step with concise pseudocode.
+  default_prompt: Work through the current design with me as pseudocode. $pseudocode-planning
+policy:
+  allow_implicit_invocation: false

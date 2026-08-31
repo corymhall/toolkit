@@ -70,12 +70,12 @@ skills:
     model_invocable: true
   nvim-mcp:
     model_invocable: false
-  show-me:
+  pseudocode-planning:
     openai:
       interface:
-        display_name: Show Me
-        short_description: Help the user understand the current topic visually with concise diagrams, code-shape sketches, and focused HTML artifacts.
-        default_prompt: This is too much content $show-me
+        display_name: Pseudocode Planning
+        short_description: Work through a design step by step with concise pseudocode.
+        default_prompt: Work through the current design with me as pseudocode. $pseudocode-planning
     model_invocable: false
   aws-documentation-mcp:
     model_invocable: true

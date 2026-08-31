@@ -10,4 +10,3 @@ dependencies:
     - badlogic/pi-skills/browser-tools
     - path: ../../work/provider-agent-skills/packages/bridged
     - herdrdev/herdr/skills/herdr
-    - humanlayer/skills/plugins/show-me/skills/show-me
