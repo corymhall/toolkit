@@ -1,0 +1,4 @@
+interface:
+  display_name: "AWS Docs"
+  short_description: "Search, read, and cite official AWS documentation"
+  default_prompt: "$aws-documentation-mcp search the AWS docs for this information"
