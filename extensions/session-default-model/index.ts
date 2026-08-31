@@ -1,6 +1,10 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { getAgentDir, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import {
+  buildSessionContext,
+  getAgentDir,
+  type ExtensionAPI,
+} from "@earendil-works/pi-coding-agent";
 
 const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
 export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
@@ -11,6 +15,32 @@ export type SessionDefaultModel = {
   thinkingLevel: ThinkingLevel;
 };
 
+export type SessionDefaultCliOverrides = {
+  model: boolean;
+  thinkingLevel: boolean;
+};
+
+export function getSessionDefaultCliOverrides(args: readonly string[]): SessionDefaultCliOverrides {
+  let model = false;
+  let thinkingLevel = false;
+
+  for (let index = 0; index < args.length; index++) {
+    const argument = args[index];
+    if (argument === "--model" && index + 1 < args.length) {
+      model = true;
+      thinkingLevel ||= /:(?:off|minimal|low|medium|high|xhigh|max)$/.test(args[++index]);
+    } else if ((argument === "--provider" || argument === "--models") && index + 1 < args.length) {
+      model = true;
+      index++;
+    } else if (argument === "--thinking" && index + 1 < args.length) {
+      thinkingLevel = true;
+      index++;
+    }
+  }
+
+  return { model, thinkingLevel };
+}
+
 export function getSessionDefaultModelStatePath(): string {
   return join(getAgentDir(), "state", "session-default-model.json");
 }
@@ -18,12 +48,14 @@ export function getSessionDefaultModelStatePath(): string {
 export function isSessionDefaultModel(value: unknown): value is SessionDefaultModel {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
   const state = value as Record<string, unknown>;
-  return typeof state.provider === "string"
-    && state.provider.length > 0
-    && typeof state.model === "string"
-    && state.model.length > 0
-    && typeof state.thinkingLevel === "string"
-    && THINKING_LEVELS.includes(state.thinkingLevel as ThinkingLevel);
+  return (
+    typeof state.provider === "string" &&
+    state.provider.length > 0 &&
+    typeof state.model === "string" &&
+    state.model.length > 0 &&
+    typeof state.thinkingLevel === "string" &&
+    THINKING_LEVELS.includes(state.thinkingLevel as ThinkingLevel)
+  );
 }
 
 export function loadSessionDefaultModel(
@@ -55,41 +87,68 @@ export default function sessionDefaultModelExtension(
     statePath?: string;
     loadState?: typeof loadSessionDefaultModel;
     saveState?: typeof saveSessionDefaultModel;
+    startupArgs?: readonly string[];
   } = {},
 ) {
   const statePath = dependencies.statePath ?? getSessionDefaultModelStatePath();
   const loadState = dependencies.loadState ?? loadSessionDefaultModel;
   const saveState = dependencies.saveState ?? saveSessionDefaultModel;
+  const cliOverrides = getSessionDefaultCliOverrides(
+    dependencies.startupArgs ?? process.argv.slice(2),
+  );
   let savedDefault = loadState(statePath);
 
   pi.on("session_start", async (event, ctx) => {
-    if (!savedDefault || event.reason === "reload" || event.reason === "resume" || event.reason === "fork") return;
+    if (
+      !savedDefault ||
+      event.reason === "reload" ||
+      event.reason === "resume" ||
+      event.reason === "fork"
+    )
+      return;
 
     // Pi records the initial model and thinking level before session_start, so
     // an empty new session already has entries. On process startup, use the
     // same conversation-message check that Pi uses when it decides whether to
     // restore existing session state.
-    if (event.reason === "startup" && ctx.sessionManager.buildSessionContext().messages.length > 0) return;
-
-    const model = ctx.modelRegistry.find(savedDefault.provider, savedDefault.model);
-    if (!model) {
-      if (ctx.hasUI) {
-        ctx.ui.notify(`Session default model is not available: ${describe(savedDefault)}`, "warning");
-      }
+    if (
+      event.reason === "startup" &&
+      buildSessionContext(ctx.sessionManager.getEntries(), ctx.sessionManager.getLeafId()).messages
+        .length > 0
+    )
       return;
-    }
 
-    if (ctx.model?.provider !== model.provider || ctx.model?.id !== model.id) {
-      const selected = await pi.setModel(model);
-      if (!selected) {
+    const startupOverrides =
+      event.reason === "startup" ? cliOverrides : { model: false, thinkingLevel: false };
+    if (startupOverrides.model && startupOverrides.thinkingLevel) return;
+
+    if (!startupOverrides.model) {
+      const model = ctx.modelRegistry.find(savedDefault.provider, savedDefault.model);
+      if (!model) {
         if (ctx.hasUI) {
-          ctx.ui.notify(`Session default model has no configured authentication: ${describe(savedDefault)}`, "warning");
+          ctx.ui.notify(
+            `Session default model is not available: ${describe(savedDefault)}`,
+            "warning",
+          );
         }
         return;
       }
+
+      if (ctx.model?.provider !== model.provider || ctx.model?.id !== model.id) {
+        const selected = await pi.setModel(model);
+        if (!selected) {
+          if (ctx.hasUI) {
+            ctx.ui.notify(
+              `Session default model has no configured authentication: ${describe(savedDefault)}`,
+              "warning",
+            );
+          }
+          return;
+        }
+      }
     }
 
-    if (pi.getThinkingLevel() !== savedDefault.thinkingLevel) {
+    if (!startupOverrides.thinkingLevel && pi.getThinkingLevel() !== savedDefault.thinkingLevel) {
       pi.setThinkingLevel(savedDefault.thinkingLevel);
     }
   });
@@ -98,8 +157,8 @@ export default function sessionDefaultModelExtension(
     description: "Save, show, or clear the model default for new sessions",
     getArgumentCompletions(prefix) {
       const normalized = prefix.trim().toLowerCase();
-      const matches = ["save", "show", "clear"].filter(action => action.startsWith(normalized));
-      return matches.length > 0 ? matches.map(value => ({ value, label: value })) : null;
+      const matches = ["save", "show", "clear"].filter((action) => action.startsWith(normalized));
+      return matches.length > 0 ? matches.map((value) => ({ value, label: value })) : null;
     },
     handler: async (args, ctx) => {
       const action = args.trim().toLowerCase() || "show";
@@ -107,7 +166,9 @@ export default function sessionDefaultModelExtension(
       if (action === "show") {
         if (ctx.hasUI) {
           ctx.ui.notify(
-            savedDefault ? `New session default: ${describe(savedDefault)}` : "No new session default is saved",
+            savedDefault
+              ? `New session default: ${describe(savedDefault)}`
+              : "No new session default is saved",
             "info",
           );
         }
@@ -119,7 +180,8 @@ export default function sessionDefaultModelExtension(
         try {
           rmSync(statePath, { force: true });
         } catch (error) {
-          if (ctx.hasUI) ctx.ui.notify(`Could not clear the session default: ${String(error)}`, "error");
+          if (ctx.hasUI)
+            ctx.ui.notify(`Could not clear the session default: ${String(error)}`, "error");
           return;
         }
         if (ctx.hasUI) ctx.ui.notify("New session default cleared", "info");
@@ -137,7 +199,8 @@ export default function sessionDefaultModelExtension(
           thinkingLevel: pi.getThinkingLevel(),
         };
         saveState(savedDefault, statePath);
-        if (ctx.hasUI) ctx.ui.notify(`New session default saved: ${describe(savedDefault)}`, "info");
+        if (ctx.hasUI)
+          ctx.ui.notify(`New session default saved: ${describe(savedDefault)}`, "info");
         return;
       }
 

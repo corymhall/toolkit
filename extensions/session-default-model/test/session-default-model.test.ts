@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import sessionDefaultModelExtension, {
+  getSessionDefaultCliOverrides,
   isSessionDefaultModel,
   loadSessionDefaultModel,
   type SessionDefaultModel,
@@ -16,26 +17,36 @@ type Command = {
   getArgumentCompletions?: (prefix: string) => Array<{ value: string; label: string }> | null;
 };
 
-function extensionHarness(statePath: string, thinkingLevel = "medium") {
+function extensionHarness(
+  statePath: string,
+  thinkingLevel = "medium",
+  startupArgs: readonly string[] = [],
+) {
   const handlers = new Map<string, Handler>();
   const commands = new Map<string, Command>();
   const selectedModels: any[] = [];
   const selectedThinkingLevels: string[] = [];
   let currentThinkingLevel = thinkingLevel;
   const pi = {
-    on(name: string, handler: Handler) { handlers.set(name, handler); },
-    registerCommand(name: string, command: Command) { commands.set(name, command); },
+    on(name: string, handler: Handler) {
+      handlers.set(name, handler);
+    },
+    registerCommand(name: string, command: Command) {
+      commands.set(name, command);
+    },
     async setModel(model: any) {
       selectedModels.push(model);
       return true;
     },
-    getThinkingLevel() { return currentThinkingLevel; },
+    getThinkingLevel() {
+      return currentThinkingLevel;
+    },
     setThinkingLevel(level: string) {
       currentThinkingLevel = level;
       selectedThinkingLevels.push(level);
     },
   } as unknown as ExtensionAPI;
-  sessionDefaultModelExtension(pi, { statePath });
+  sessionDefaultModelExtension(pi, { statePath, startupArgs });
   return { handlers, commands, selectedModels, selectedThinkingLevels };
 }
 
@@ -48,12 +59,14 @@ function state(overrides: Partial<SessionDefaultModel> = {}): SessionDefaultMode
   };
 }
 
-function context(options: {
-  entries?: unknown[];
-  messages?: unknown[];
-  currentModel?: { provider: string; id: string };
-  availableModel?: any;
-} = {}) {
+function context(
+  options: {
+    entries?: unknown[];
+    messages?: unknown[];
+    currentModel?: { provider: string; id: string };
+    availableModel?: any;
+  } = {},
+) {
   const notifications: Array<{ message: string; level: string }> = [];
   return {
     ctx: {
@@ -61,21 +74,51 @@ function context(options: {
       model: options.currentModel ?? { provider: "openai-codex", id: "gpt-5.6-terra" },
       thinkingLevel: "xhigh",
       sessionManager: {
-        getEntries: () => options.entries ?? [],
-        buildSessionContext: () => ({ messages: options.messages ?? [] }),
+        getEntries: () =>
+          options.entries ??
+          (options.messages ?? []).map((message, index) => ({
+            type: "message",
+            id: `message-${index}`,
+            parentId: index === 0 ? null : `message-${index - 1}`,
+            timestamp: index,
+            message,
+          })),
+        getLeafId: () =>
+          options.messages?.length ? `message-${options.messages.length - 1}` : null,
       },
       modelRegistry: {
-        find: () => options.availableModel ?? {
-          provider: "openai-codex",
-          id: "gpt-5.6-sol",
-          reasoning: true,
+        find: () =>
+          options.availableModel ?? {
+            provider: "openai-codex",
+            id: "gpt-5.6-sol",
+            reasoning: true,
+          },
+      },
+      ui: {
+        notify(message: string, level: string) {
+          notifications.push({ message, level });
         },
       },
-      ui: { notify(message: string, level: string) { notifications.push({ message, level }); } },
     },
     notifications,
   };
 }
+
+test("detects explicit CLI model and thinking overrides", () => {
+  assert.deepEqual(
+    getSessionDefaultCliOverrides(["--model", "openai-codex/gpt-5.6-luna", "--thinking", "xhigh"]),
+    { model: true, thinkingLevel: true },
+  );
+  assert.deepEqual(getSessionDefaultCliOverrides(["--model", "openai-codex/gpt-5.6-luna:high"]), {
+    model: true,
+    thinkingLevel: true,
+  });
+  assert.deepEqual(getSessionDefaultCliOverrides(["--models", "openai-codex/*"]), {
+    model: true,
+    thinkingLevel: false,
+  });
+  assert.deepEqual(getSessionDefaultCliOverrides([]), { model: false, thinkingLevel: false });
+});
 
 test("validates and loads only complete state", () => {
   const directory = mkdtempSync(join(tmpdir(), "session-default-state-"));
@@ -110,9 +153,53 @@ test("applies the saved default to a new startup session with initial state entr
 
     await harness.handlers.get("session_start")!({ reason: "startup" }, ctx);
 
-    assert.deepEqual(harness.selectedModels.map(model => `${model.provider}/${model.id}`), [
-      "openai-codex/gpt-5.6-sol",
+    assert.deepEqual(
+      harness.selectedModels.map((model) => `${model.provider}/${model.id}`),
+      ["openai-codex/gpt-5.6-sol"],
+    );
+    assert.deepEqual(harness.selectedThinkingLevels, ["medium"]);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("keeps an explicit CLI model and thinking level on startup", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "session-default-cli-"));
+  try {
+    const statePath = join(directory, "state.json");
+    writeFileSync(statePath, JSON.stringify(state()));
+    const harness = extensionHarness(statePath, "xhigh", [
+      "--model",
+      "openai-codex/gpt-5.6-luna",
+      "--thinking",
+      "xhigh",
     ]);
+    const { ctx } = context({
+      currentModel: { provider: "openai-codex", id: "gpt-5.6-luna" },
+    });
+
+    await harness.handlers.get("session_start")!({ reason: "startup" }, ctx);
+
+    assert.deepEqual(harness.selectedModels, []);
+    assert.deepEqual(harness.selectedThinkingLevels, []);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("applies only the saved thinking level when the CLI selects a model", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "session-default-cli-model-"));
+  try {
+    const statePath = join(directory, "state.json");
+    writeFileSync(statePath, JSON.stringify(state()));
+    const harness = extensionHarness(statePath, "xhigh", ["--model", "openai-codex/gpt-5.6-luna"]);
+    const { ctx } = context({
+      currentModel: { provider: "openai-codex", id: "gpt-5.6-luna" },
+    });
+
+    await harness.handlers.get("session_start")!({ reason: "startup" }, ctx);
+
+    assert.deepEqual(harness.selectedModels, []);
     assert.deepEqual(harness.selectedThinkingLevels, ["medium"]);
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -142,7 +229,9 @@ test("does not replace model state in a resumed session", async () => {
     const statePath = join(directory, "state.json");
     writeFileSync(statePath, JSON.stringify(state()));
     const harness = extensionHarness(statePath, "xhigh");
-    const { ctx } = context({ entries: [{ type: "thinking_level_change", thinkingLevel: "xhigh" }] });
+    const { ctx } = context({
+      entries: [{ type: "thinking_level_change", thinkingLevel: "xhigh" }],
+    });
 
     await harness.handlers.get("session_start")!({ reason: "resume" }, ctx);
 
@@ -168,7 +257,10 @@ test("save captures the current model and clear disables the default", async () 
       { value: "show", label: "show" },
     ]);
     await command.handler("save", ctx);
-    assert.deepEqual(JSON.parse(readFileSync(statePath, "utf8")), state({ thinkingLevel: "xhigh" }));
+    assert.deepEqual(
+      JSON.parse(readFileSync(statePath, "utf8")),
+      state({ thinkingLevel: "xhigh" }),
+    );
     assert.deepEqual(notifications.at(-1), {
       message: "New session default saved: openai-codex/gpt-5.6-sol xhigh",
       level: "info",
@@ -199,10 +291,12 @@ test("reports an unavailable saved model without changing the session", async ()
 
     assert.deepEqual(harness.selectedModels, []);
     assert.deepEqual(harness.selectedThinkingLevels, []);
-    assert.deepEqual(notifications, [{
-      message: "Session default model is not available: openai-codex/gpt-5.6-sol medium",
-      level: "warning",
-    }]);
+    assert.deepEqual(notifications, [
+      {
+        message: "Session default model is not available: openai-codex/gpt-5.6-sol medium",
+        level: "warning",
+      },
+    ]);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

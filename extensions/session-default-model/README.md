@@ -34,6 +34,12 @@ startup that restores conversation messages, such as `pi -c` or a session path,
 keeps its recorded model and thinking-level changes. Sessions opened with
 `/resume`, and forked or cloned sessions, also keep their existing state.
 
+Explicit startup options have priority over the saved default. `--model`,
+`--provider`, and `--models` keep the model selected by the CLI. `--thinking`
+and a thinking suffix such as `--model openai-codex/gpt-5.6-luna:xhigh` keep
+the thinking level selected by the CLI. These options apply to the initial
+session. A later `/new` uses the saved new-session default.
+
 Pi itself saves interactive model changes in `settings.json`. This extension
 does not try to prevent that write. Instead, it applies its separate saved
 default during the next empty session. Applying the default also returns Pi's
