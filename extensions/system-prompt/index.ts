@@ -30,8 +30,8 @@ export default function systemPromptExtension(pi: ExtensionAPI) {
     description: "View Pi's last effective system prompt",
     getArgumentCompletions(prefix) {
       const normalized = prefix.trim().toLowerCase();
-      const matches = ["last", "current"].filter(value => value.startsWith(normalized));
-      return matches.length > 0 ? matches.map(value => ({ value, label: value })) : null;
+      const matches = ["last", "current"].filter((value) => value.startsWith(normalized));
+      return matches.length > 0 ? matches.map((value) => ({ value, label: value })) : null;
     },
     handler: async (args, ctx) => {
       const source = (args.trim().toLowerCase() || "last") as SystemPromptSource;
@@ -41,11 +41,7 @@ export default function systemPromptExtension(pi: ExtensionAPI) {
       }
       if (!ctx.hasUI) return;
 
-      const selected = selectSystemPrompt(
-        source,
-        ctx.getSystemPrompt(),
-        lastEffectivePrompt,
-      );
+      const selected = selectSystemPrompt(source, ctx.getSystemPrompt(), lastEffectivePrompt);
       if (selected.usedFallback) {
         ctx.ui.notify(
           "No agent run has been captured yet; showing Pi's current assembled system prompt",
@@ -53,9 +49,10 @@ export default function systemPromptExtension(pi: ExtensionAPI) {
         );
       }
 
-      const title = source === "current" || selected.usedFallback
-        ? "Current Pi system prompt (edits are discarded)"
-        : "Last effective Pi system prompt (edits are discarded)";
+      const title =
+        source === "current" || selected.usedFallback
+          ? "Current Pi system prompt (edits are discarded)"
+          : "Last effective Pi system prompt (edits are discarded)";
       await ctx.ui.editor(title, selected.prompt);
     },
   });

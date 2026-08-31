@@ -65,7 +65,10 @@ export function shellQuote(value: string): string {
 }
 
 export function normalizeLabel(label: string | undefined): string {
-  const normalized = label?.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
+  const normalized = label
+    ?.replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   return (normalized || "pi command").slice(0, 80);
 }
 
@@ -74,7 +77,8 @@ export function resolveCommandCwd(sessionCwd: string, requestedCwd: string | und
 }
 
 export function buildRunMarkers(runId: string): RunMarkers {
-  if (!/^[a-f0-9-]+$/i.test(runId)) throw new Error("run ID must contain only hexadecimal characters and hyphens");
+  if (!/^[a-f0-9-]+$/i.test(runId))
+    throw new Error("run ID must contain only hexadecimal characters and hyphens");
   const prefix = `__PI_HERDR_${runId.replace(/-/g, "_").toUpperCase()}`;
   return {
     start: `${prefix}_START__`,
@@ -86,7 +90,9 @@ export function buildRunMarkers(runId: string): RunMarkers {
 export function validateCommandText(command: string): void {
   if (!command.trim()) throw new Error("command must not be empty");
   if (/[\r\n\t]/.test(command)) {
-    throw new Error("herdr_start_command accepts one physical command line; use shell separators or a script file instead of tabs or newlines");
+    throw new Error(
+      "herdr_start_command accepts one physical command line; use shell separators or a script file instead of tabs or newlines",
+    );
   }
 }
 
@@ -112,7 +118,8 @@ function parseJson(stdout: string, operation: string): any {
 
 export function parsePaneList(stdout: string): PaneRecord[] {
   const value = parseJson(stdout, "pane list") as { result?: { panes?: unknown } };
-  if (!Array.isArray(value.result?.panes)) throw new Error("Herdr pane list response did not contain panes");
+  if (!Array.isArray(value.result?.panes))
+    throw new Error("Herdr pane list response did not contain panes");
   return value.result.panes as PaneRecord[];
 }
 
@@ -122,7 +129,8 @@ export function paneRecordToManagedPane(record: PaneRecord): ManagedPane | undef
     typeof record.terminal_id !== "string" ||
     typeof record.workspace_id !== "string" ||
     typeof record.tab_id !== "string"
-  ) return undefined;
+  )
+    return undefined;
   return {
     paneId: record.pane_id,
     terminalId: record.terminal_id,
@@ -132,7 +140,8 @@ export function paneRecordToManagedPane(record: PaneRecord): ManagedPane | undef
 }
 
 function paneRecordToken(record: PaneRecord, name: string): string | undefined {
-  if (!record.tokens || typeof record.tokens !== "object" || Array.isArray(record.tokens)) return undefined;
+  if (!record.tokens || typeof record.tokens !== "object" || Array.isArray(record.tokens))
+    return undefined;
   const token = (record.tokens as Record<string, unknown>)[name];
   return typeof token === "string" && token ? token : undefined;
 }
@@ -172,8 +181,9 @@ export function parsePaneProcessInfo(stdout: string): PaneProcessInfo {
   if (typeof info?.shell_pid !== "number" || !Array.isArray(info.foreground_processes)) {
     throw new Error("Herdr pane process-info response was incomplete");
   }
-  const foregroundProcesses = info.foreground_processes.map(process => {
-    if (typeof process.pid !== "number") throw new Error("Herdr pane process-info contained an invalid process");
+  const foregroundProcesses = info.foreground_processes.map((process) => {
+    if (typeof process.pid !== "number")
+      throw new Error("Herdr pane process-info contained an invalid process");
     return {
       pid: process.pid,
       ...(typeof process.name === "string" ? { name: process.name } : {}),
@@ -183,7 +193,7 @@ export function parsePaneProcessInfo(stdout: string): PaneProcessInfo {
   return {
     shellPid: info.shell_pid,
     foregroundProcesses,
-    idle: foregroundProcesses.every(process => process.pid === info.shell_pid),
+    idle: foregroundProcesses.every((process) => process.pid === info.shell_pid),
   };
 }
 
@@ -193,7 +203,9 @@ export function parsePaneIdle(stdout: string): boolean {
 
 export function isWaitTimeout(stdout: string, stderr: string): boolean {
   const combined = `${stdout}\n${stderr}`;
-  return combined.includes('"code":"timeout"') || /timed out waiting for output match/i.test(combined);
+  return (
+    combined.includes('"code":"timeout"') || /timed out waiting for output match/i.test(combined)
+  );
 }
 
 export function parsePaneRead(stdout: string): string {
@@ -226,7 +238,10 @@ export function extractTranscript(text: string, markers: RunMarkers): Transcript
   }
 
   return {
-    output: lines.slice(start + 1, end >= 0 ? end : lines.length).join("\n").trimEnd(),
+    output: lines
+      .slice(start + 1, end >= 0 ? end : lines.length)
+      .join("\n")
+      .trimEnd(),
     exitCode,
     started: true,
     completed: end >= 0,

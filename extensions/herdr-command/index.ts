@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { stat } from "node:fs/promises";
-import type { AgentToolResult, ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type {
+  AgentToolResult,
+  ExtensionAPI,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
@@ -44,22 +48,33 @@ const MAX_STATUS_WAIT_MS = 30 * 60_000;
 const SUBMISSION_GRACE_MS = 2_000;
 
 const START_PARAMETERS = Type.Object({
-  command: Type.String({ description: "Single-line shell command to start in the visible Herdr command pane" }),
-  cwd: Type.Optional(Type.String({ description: "Working directory; relative paths resolve from the Pi session cwd" })),
+  command: Type.String({
+    description: "Single-line shell command to start in the visible Herdr command pane",
+  }),
+  cwd: Type.Optional(
+    Type.String({
+      description: "Working directory; relative paths resolve from the Pi session cwd",
+    }),
+  ),
   label: Type.Optional(Type.String({ description: "Short label for the managed command pane" })),
 });
 
 const STATUS_PARAMETERS = Type.Object({
-  waitMs: Type.Optional(Type.Integer({
-    description: "Optionally wait up to this many milliseconds for the current command to finish, up to 30 minutes (default: return immediately)",
-    minimum: 1_000,
-    maximum: MAX_STATUS_WAIT_MS,
-  })),
-  lines: Type.Optional(Type.Integer({
-    description: `Number of recent output lines to return (default: ${DEFAULT_STATUS_LINES}, maximum: ${DEFAULT_MAX_LINES})`,
-    minimum: 1,
-    maximum: DEFAULT_MAX_LINES,
-  })),
+  waitMs: Type.Optional(
+    Type.Integer({
+      description:
+        "Optionally wait up to this many milliseconds for the current command to finish, up to 30 minutes (default: return immediately)",
+      minimum: 1_000,
+      maximum: MAX_STATUS_WAIT_MS,
+    }),
+  ),
+  lines: Type.Optional(
+    Type.Integer({
+      description: `Number of recent output lines to return (default: ${DEFAULT_STATUS_LINES}, maximum: ${DEFAULT_MAX_LINES})`,
+      minimum: 1,
+      maximum: DEFAULT_MAX_LINES,
+    }),
+  ),
 });
 
 type ExecResult = { code: number; stdout: string; stderr: string; killed: boolean };
@@ -89,28 +104,38 @@ interface Dependencies {
 
 function execFailure(operation: string, result: ExecResult): Error {
   const detail = (result.stderr || result.stdout).trim();
-  return new Error(detail ? `${operation} failed: ${detail}` : `${operation} failed with code ${result.code}`);
+  return new Error(
+    detail ? `${operation} failed: ${detail}` : `${operation} failed with code ${result.code}`,
+  );
 }
 
-function recentOutput(text: string, markers: RunMarkers): { output: string; startUnavailable: boolean } {
+function recentOutput(
+  text: string,
+  markers: RunMarkers,
+): { output: string; startUnavailable: boolean } {
   const transcript = extractTranscript(text, markers);
   if (transcript.started) return { output: transcript.output, startUnavailable: false };
 
   const lines = text.replace(/\r\n/g, "\n").split("\n");
-  const end = lines.findLastIndex(line => {
+  const end = lines.findLastIndex((line) => {
     if (!line.startsWith(markers.endPrefix)) return false;
     return /^[0-9]+$/.test(line.slice(markers.endPrefix.length));
   });
   return {
-    output: lines.slice(0, end >= 0 ? end : lines.length).join("\n").trimEnd(),
+    output: lines
+      .slice(0, end >= 0 ? end : lines.length)
+      .join("\n")
+      .trimEnd(),
     startUnavailable: true,
   };
 }
 
-function processSummary(processes: Array<{ pid: number; name?: string; cmdline?: string }>): string {
-  const visible = processes.filter(process => process.name || process.cmdline);
+function processSummary(
+  processes: Array<{ pid: number; name?: string; cmdline?: string }>,
+): string {
+  const visible = processes.filter((process) => process.name || process.cmdline);
   if (!visible.length) return "";
-  return `\nForeground: ${visible.map(process => process.name || process.cmdline).join(", ")}`;
+  return `\nForeground: ${visible.map((process) => process.name || process.cmdline).join(", ")}`;
 }
 
 export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: Dependencies = {}) {
@@ -127,10 +152,11 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
   const herdr = async (
     args: string[],
     options: { signal?: AbortSignal; timeout?: number } = {},
-  ): Promise<ExecResult> => pi.exec("herdr", args, {
-    signal: options.signal,
-    timeout: options.timeout ?? 15_000,
-  });
+  ): Promise<ExecResult> =>
+    pi.exec("herdr", args, {
+      signal: options.signal,
+      timeout: options.timeout ?? 15_000,
+    });
 
   const listPanes = async (signal?: AbortSignal): Promise<ReturnType<typeof parsePaneList>> => {
     const result = await herdr(["pane", "list"], { signal, timeout: 10_000 });
@@ -159,7 +185,10 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     }
     const caller = panes
       .map(paneRecordToManagedPane)
-      .find((pane): pane is ManagedPane => pane?.paneId === callerPaneId && pane.workspaceId === callerWorkspaceId);
+      .find(
+        (pane): pane is ManagedPane =>
+          pane?.paneId === callerPaneId && pane.workspaceId === callerWorkspaceId,
+      );
     if (!caller) throw new Error(`The calling Herdr pane ${callerPaneId} is no longer present`);
     return caller;
   };
@@ -169,11 +198,10 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     args: string[],
     signal?: AbortSignal,
   ): Promise<void> => {
-    const result = await herdr([
-      "pane", "report-metadata", pane.paneId,
-      "--source", HERDR_COMMAND_METADATA_SOURCE,
-      ...args,
-    ], { signal, timeout: 10_000 });
+    const result = await herdr(
+      ["pane", "report-metadata", pane.paneId, "--source", HERDR_COMMAND_METADATA_SOURCE, ...args],
+      { signal, timeout: 10_000 },
+    );
     if (result.code !== 0) throw execFailure("updating Herdr command pane metadata", result);
   };
 
@@ -181,18 +209,28 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     pane: ManagedPane,
     ownerTerminalId: string,
     signal?: AbortSignal,
-  ): Promise<void> => reportPaneMetadata(pane, [
-    "--token", `${HERDR_COMMAND_OWNER_TOKEN}=${ownerTerminalId}`,
-  ], signal);
+  ): Promise<void> =>
+    reportPaneMetadata(
+      pane,
+      ["--token", `${HERDR_COMMAND_OWNER_TOKEN}=${ownerTerminalId}`],
+      signal,
+    );
 
   const tagManagedRun = async (
     pane: ManagedPane,
     run: ManagedRun,
     signal?: AbortSignal,
-  ): Promise<void> => reportPaneMetadata(pane, [
-    "--token", `${HERDR_COMMAND_RUN_TOKEN}=${run.runId}`,
-    "--token", `${HERDR_COMMAND_STARTED_AT_TOKEN}=${run.startedAt}`,
-  ], signal);
+  ): Promise<void> =>
+    reportPaneMetadata(
+      pane,
+      [
+        "--token",
+        `${HERDR_COMMAND_RUN_TOKEN}=${run.runId}`,
+        "--token",
+        `${HERDR_COMMAND_STARTED_AT_TOKEN}=${run.startedAt}`,
+      ],
+      signal,
+    );
 
   const recoverManagedPane = async (
     panes: ReturnType<typeof parsePaneList>,
@@ -200,7 +238,7 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     signal?: AbortSignal,
   ): Promise<ManagedPane | undefined> => {
     if (managedPane) {
-      const record = panes.find(pane => pane.terminal_id === managedPane!.terminalId);
+      const record = panes.find((pane) => pane.terminal_id === managedPane!.terminalId);
       const current = record && paneRecordToManagedPane(record);
       if (current) {
         const ownerTerminalId = paneRecordOwnerTerminalId(record);
@@ -213,9 +251,11 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
       managedPane = undefined;
     }
 
-    const owned = panes.filter(pane => paneRecordOwnerTerminalId(pane) === caller.terminalId);
+    const owned = panes.filter((pane) => paneRecordOwnerTerminalId(pane) === caller.terminalId);
     if (owned.length > 1) {
-      throw new Error(`Multiple Herdr command panes are tagged for calling terminal ${caller.terminalId}`);
+      throw new Error(
+        `Multiple Herdr command panes are tagged for calling terminal ${caller.terminalId}`,
+      );
     }
     const adopted = owned[0] && paneRecordToManagedPane(owned[0]);
     return adopted ? rememberManagedPane(adopted) : undefined;
@@ -226,10 +266,11 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     pane: ManagedPane | undefined,
   ): void => {
     if (!pane) return;
-    const record = panes.find(candidate => candidate.terminal_id === pane.terminalId);
+    const record = panes.find((candidate) => candidate.terminal_id === pane.terminalId);
     const recovered = record && paneRecordToManagedRun(record);
     if (!recovered) return;
-    if (latestRun?.terminalId === recovered.terminalId && latestRun.runId === recovered.runId) return;
+    if (latestRun?.terminalId === recovered.terminalId && latestRun.runId === recovered.runId)
+      return;
     latestRun = recovered;
   };
 
@@ -256,13 +297,22 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
       throw new Error("Herdr did not provide the calling pane context");
     }
 
-    const split = await herdr([
-      "pane", "split", "--pane", callerPaneId,
-      "--direction", "down",
-      "--ratio", "0.9",
-      "--cwd", cwd,
-      "--no-focus",
-    ], { signal, timeout: 10_000 });
+    const split = await herdr(
+      [
+        "pane",
+        "split",
+        "--pane",
+        callerPaneId,
+        "--direction",
+        "down",
+        "--ratio",
+        "0.9",
+        "--cwd",
+        cwd,
+        "--no-focus",
+      ],
+      { signal, timeout: 10_000 },
+    );
     if (split.code !== 0) throw execFailure("herdr pane split", split);
     const pane = parseSplitPane(split.stdout);
     rememberManagedPane(pane);
@@ -290,12 +340,20 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     if (!current || current.terminalId !== pane.terminalId) {
       throw new Error(`Herdr command pane ${pane.paneId} is no longer present`);
     }
-    const result = await herdr([
-      "pane", "read", current.paneId,
-      "--source", "recent-unwrapped",
-      "--lines", String(DEFAULT_MAX_LINES),
-      "--format", "text",
-    ], { signal, timeout: 10_000 });
+    const result = await herdr(
+      [
+        "pane",
+        "read",
+        current.paneId,
+        "--source",
+        "recent-unwrapped",
+        "--lines",
+        String(DEFAULT_MAX_LINES),
+        "--format",
+        "text",
+      ],
+      { signal, timeout: 10_000 },
+    );
     if (result.code !== 0) throw execFailure("herdr pane read", result);
     return parsePaneRead(result.stdout);
   };
@@ -323,15 +381,25 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     if (!current || current.terminalId !== pane.terminalId) {
       throw new Error(`Herdr command pane ${pane.paneId} is no longer present`);
     }
-    const result = await herdr([
-      "pane", "wait-output", current.paneId,
-      "--regex", markers.endRegex,
-      "--source", "recent-unwrapped",
-      "--lines", String(DEFAULT_MAX_LINES),
-      "--timeout", String(waitMs),
-    ], { signal, timeout: waitMs + 5_000 });
+    const result = await herdr(
+      [
+        "pane",
+        "wait-output",
+        current.paneId,
+        "--regex",
+        markers.endRegex,
+        "--source",
+        "recent-unwrapped",
+        "--lines",
+        String(DEFAULT_MAX_LINES),
+        "--timeout",
+        String(waitMs),
+      ],
+      { signal, timeout: waitMs + 5_000 },
+    );
     if (result.code === 0 || isWaitTimeout(result.stdout, result.stderr)) return;
-    if (signal?.aborted) throw new Error(`Status wait cancelled; the command remains visible in ${current.paneId}`);
+    if (signal?.aborted)
+      throw new Error(`Status wait cancelled; the command remains visible in ${current.paneId}`);
     throw execFailure("waiting for Herdr command", result);
   };
 
@@ -354,15 +422,18 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
       if (info.idle && latestRun?.terminalId === pane.terminalId) {
         const text = await readPane(pane, signal);
         const markers = buildRunMarkers(latestRun.runId);
-        submissionPending = exitCodeFromTranscript(text, markers) === undefined
-          && now() - latestRun.startedAt < SUBMISSION_GRACE_MS;
+        submissionPending =
+          exitCodeFromTranscript(text, markers) === undefined &&
+          now() - latestRun.startedAt < SUBMISSION_GRACE_MS;
       }
       if (!info.idle || submissionPending) {
         return {
-          content: [{
-            type: "text" as const,
-            text: `Herdr command pane ${pane.paneId} is already busy. Use ${HERDR_COMMAND_STATUS_TOOL_NAME} to inspect the current command before starting another.${processSummary(info.foregroundProcesses)}`,
-          }],
+          content: [
+            {
+              type: "text" as const,
+              text: `Herdr command pane ${pane.paneId} is already busy. Use ${HERDR_COMMAND_STATUS_TOOL_NAME} to inspect the current command before starting another.${processSummary(info.foregroundProcesses)}`,
+            },
+          ],
           details: {
             state: "busy",
             paneId: pane.paneId,
@@ -376,7 +447,10 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
       }
 
       if (label !== "pi command") {
-        const rename = await herdr(["pane", "rename", pane.paneId, label], { signal, timeout: 10_000 });
+        const rename = await herdr(["pane", "rename", pane.paneId, label], {
+          signal,
+          timeout: 10_000,
+        });
         if (rename.code !== 0) throw execFailure("herdr pane rename", rename);
       }
     }
@@ -400,7 +474,10 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
       startedAt: now(),
     };
     await tagManagedRun(current, run, signal);
-    const result = await herdr(["pane", "run", current.paneId, paneCommand], { signal, timeout: 10_000 });
+    const result = await herdr(["pane", "run", current.paneId, paneCommand], {
+      signal,
+      timeout: 10_000,
+    });
     if (result.code !== 0) {
       // Keep metadata if the client lost the response after Herdr accepted input.
       // A later start overwrites a stale record; removing it here could make a
@@ -412,10 +489,12 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     pi.appendEntry(HERDR_COMMAND_RUN_ENTRY, latestRun);
 
     return {
-      content: [{
-        type: "text" as const,
-        text: `Started command ${runId} in Herdr pane ${current.paneId}. It is running independently; continue other work and use ${HERDR_COMMAND_STATUS_TOOL_NAME} when its result is needed.`,
-      }],
+      content: [
+        {
+          type: "text" as const,
+          text: `Started command ${runId} in Herdr pane ${current.paneId}. It is running independently; continue other work and use ${HERDR_COMMAND_STATUS_TOOL_NAME} when its result is needed.`,
+        },
+      ],
       details: {
         state: "submitted",
         paneId: current.paneId,
@@ -435,7 +514,9 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
   ): Promise<AgentToolResult<CommandDetails>> => {
     if (!latestRun) {
       return {
-        content: [{ type: "text" as const, text: "No Herdr command is tracked for this Pi session." }],
+        content: [
+          { type: "text" as const, text: "No Herdr command is tracked for this Pi session." },
+        ],
         details: { state: "none" } satisfies CommandDetails,
       };
     }
@@ -443,10 +524,12 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     const pane = await refreshManagedPane(signal);
     if (!pane || pane.terminalId !== latestRun.terminalId) {
       return {
-        content: [{
-          type: "text" as const,
-          text: `The pane for Herdr command ${latestRun.runId} is no longer present.`,
-        }],
+        content: [
+          {
+            type: "text" as const,
+            text: `The pane for Herdr command ${latestRun.runId} is no longer present.`,
+          },
+        ],
         details: {
           state: "lost",
           runId: latestRun.runId,
@@ -477,13 +560,14 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
 
     const transcript = extractTranscript(text, markers);
     const durationMs = now() - latestRun.startedAt;
-    const state: RunState = exitCode !== undefined
-      ? "completed"
-      : !info.idle
-        ? "running"
-        : !transcript.started && durationMs < SUBMISSION_GRACE_MS
-          ? "submitted"
-          : "lost";
+    const state: RunState =
+      exitCode !== undefined
+        ? "completed"
+        : !info.idle
+          ? "running"
+          : !transcript.started && durationMs < SUBMISSION_GRACE_MS
+            ? "submitted"
+            : "lost";
     const output = recentOutput(text, markers);
     const lines = raw.lines ?? DEFAULT_STATUS_LINES;
     const truncation = truncateTail(output.output || "(no output yet)", {
@@ -496,21 +580,24 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     const startNotice = output.startUnavailable
       ? `\n\n[The run's start marker is outside recent terminal scrollback; output may begin mid-stream.]`
       : "";
-    const status = state === "completed"
-      ? exitCode === 0
-        ? `Command ${latestRun.runId} completed successfully in ${(durationMs / 1000).toFixed(1)}s`
-        : `Command ${latestRun.runId} failed with exit code ${exitCode} after ${(durationMs / 1000).toFixed(1)}s`
-      : state === "running"
-        ? `Command ${latestRun.runId} is still running after ${(durationMs / 1000).toFixed(1)}s`
-        : state === "submitted"
-          ? `Command ${latestRun.runId} was submitted ${(durationMs / 1000).toFixed(1)}s ago and has not emitted its start marker yet`
-          : `Command ${latestRun.runId} is no longer running, but no completion marker was found`;
+    const status =
+      state === "completed"
+        ? exitCode === 0
+          ? `Command ${latestRun.runId} completed successfully in ${(durationMs / 1000).toFixed(1)}s`
+          : `Command ${latestRun.runId} failed with exit code ${exitCode} after ${(durationMs / 1000).toFixed(1)}s`
+        : state === "running"
+          ? `Command ${latestRun.runId} is still running after ${(durationMs / 1000).toFixed(1)}s`
+          : state === "submitted"
+            ? `Command ${latestRun.runId} was submitted ${(durationMs / 1000).toFixed(1)}s ago and has not emitted its start marker yet`
+            : `Command ${latestRun.runId} is no longer running, but no completion marker was found`;
 
     return {
-      content: [{
-        type: "text" as const,
-        text: `${status} in Herdr pane ${pane.paneId}.${processSummary(info.foregroundProcesses)}\n\n${truncation.content}${truncationNotice}${startNotice}`,
-      }],
+      content: [
+        {
+          type: "text" as const,
+          text: `${status} in Herdr pane ${pane.paneId}.${processSummary(info.foregroundProcesses)}\n\n${truncation.content}${truncationNotice}${startNotice}`,
+        },
+      ],
       details: {
         state,
         paneId: pane.paneId,
@@ -551,8 +638,10 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
   pi.registerTool({
     name: HERDR_START_COMMAND_TOOL_NAME,
     label: "Herdr Start Command",
-    description: "Start one ordinary long-running shell command in a visible reusable Herdr pane and return immediately after submission. Use for builds, long test suites, code generation, or other work that can continue while the agent does independent tasks. Use bash instead for short commands or when the result is required before the next action. Only one command can occupy the managed pane at a time.",
-    promptSnippet: "Start a long-running command in a visible Herdr pane without waiting for completion",
+    description:
+      "Start one ordinary long-running shell command in a visible reusable Herdr pane and return immediately after submission. Use for builds, long test suites, code generation, or other work that can continue while the agent does independent tasks. Use bash instead for short commands or when the result is required before the next action. Only one command can occupy the managed pane at a time.",
+    promptSnippet:
+      "Start a long-running command in a visible Herdr pane without waiting for completion",
     promptGuidelines: [
       "Use herdr_start_command for long-running builds, test suites, generation, or similar commands that should remain visible while independent work continues; use bash for short commands or results needed immediately.",
       "After herdr_start_command returns, continue useful independent work instead of polling. Use herdr_command_status when its result becomes relevant, with short waits while the command is new or uncertain and longer waits only after stable progress is observed.",
@@ -561,7 +650,9 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       let release!: () => void;
       const previous = launchQueue;
-      launchQueue = new Promise<void>(resolve => { release = resolve; });
+      launchQueue = new Promise<void>((resolve) => {
+        release = resolve;
+      });
       await previous;
       try {
         return await startCommand(params, signal, ctx);
@@ -574,7 +665,8 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
   pi.registerTool({
     name: HERDR_COMMAND_STATUS_TOOL_NAME,
     label: "Herdr Command Status",
-    description: "Inspect the latest command started by herdr_start_command. Returns its running or completed state, exit code, foreground processes, and recent pane output. Returns immediately unless waitMs requests a bounded wait of at most 30 minutes, and returns early when the command finishes. Check status before relying on command artifacts or reporting success.",
+    description:
+      "Inspect the latest command started by herdr_start_command. Returns its running or completed state, exit code, foreground processes, and recent pane output. Returns immediately unless waitMs requests a bounded wait of at most 30 minutes, and returns early when the command finishes. Check status before relying on command artifacts or reporting success.",
     promptSnippet: "Inspect or wait for the latest command in the managed Herdr pane",
     promptGuidelines: [
       "Use herdr_command_status to inspect a previously started Herdr command when its result becomes relevant; omit waitMs for an immediate check.",

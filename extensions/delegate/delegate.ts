@@ -41,11 +41,14 @@ export function latestAssistantText(entries: readonly unknown[]): string | undef
     if (typeof content === "string" && content.trim()) return content.trim();
     if (!Array.isArray(content)) continue;
     const text = content
-      .filter((block): block is { type: "text"; text: string } =>
-        typeof block === "object" && block !== null &&
-        (block as { type?: unknown }).type === "text" &&
-        typeof (block as { text?: unknown }).text === "string")
-      .map(block => block.text)
+      .filter(
+        (block): block is { type: "text"; text: string } =>
+          typeof block === "object" &&
+          block !== null &&
+          (block as { type?: unknown }).type === "text" &&
+          typeof (block as { text?: unknown }).text === "string",
+      )
+      .map((block) => block.text)
       .join("\n")
       .trim();
     if (text) return text;
@@ -54,7 +57,8 @@ export function latestAssistantText(entries: readonly unknown[]): string | undef
 }
 
 export function buildConversationContext(goal: string, priorAssistantResponse?: string): string {
-  const requestedGoal = goal.trim() || "Continue the prior conversation in the destination repository.";
+  const requestedGoal =
+    goal.trim() || "Continue the prior conversation in the destination repository.";
   const prior = priorAssistantResponse?.trim() || "No prior assistant response is available.";
   return `My request:
 ${requestedGoal}
@@ -69,9 +73,11 @@ export function buildDelegatePrompt(
   cwd: string,
   priorAssistantResponse?: string,
 ): string {
-  const requestedGoal = goal.trim() || (mode === "research"
-    ? "Investigate the problem in the destination repository."
-    : "Continue the prior conversation in the destination repository.");
+  const requestedGoal =
+    goal.trim() ||
+    (mode === "research"
+      ? "Investigate the problem in the destination repository."
+      : "Continue the prior conversation in the destination repository.");
   const shared = `Prepare the ${mode} delegation that I explicitly requested. Do not implement or research the delegated task in this session.
 
 The current working directory is ${cwd}. Use the existing conversation to identify the destination repository. Inspect the filesystem or repository only when needed to resolve the destination or checkout choice, not to investigate the task itself.
@@ -128,9 +134,16 @@ ${context.trim()}`;
 ${context.trim()}`;
 }
 
-export function normalizeSessionName(value: string | undefined, branch: string | undefined, repository: string): string {
+export function normalizeSessionName(
+  value: string | undefined,
+  branch: string | undefined,
+  repository: string,
+): string {
   const candidate = value?.trim() || branch?.trim() || basename(repository) || "delegated-work";
-  const normalized = candidate.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
+  const normalized = candidate
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   return (normalized || "delegated-work").slice(0, 80);
 }
 
@@ -151,16 +164,23 @@ export function buildHerdrWorktreeOpenArgs(
   branchLabel: string,
 ): string[] {
   return [
-    "worktree", "open",
-    "--cwd", repository,
-    "--path", path,
-    "--label", branchLabel,
+    "worktree",
+    "open",
+    "--cwd",
+    repository,
+    "--path",
+    path,
+    "--label",
+    branchLabel,
     "--no-focus",
     "--json",
   ];
 }
 
-export function detectPiCommand(execPath = process.execPath, argvEntry = process.argv[1]): string[] {
+export function detectPiCommand(
+  execPath = process.execPath,
+  argvEntry = process.argv[1],
+): string[] {
   const runtime = basename(execPath).toLowerCase();
   if ((runtime === "node" || runtime === "node.exe" || runtime === "bun") && argvEntry) {
     return [execPath, argvEntry];
@@ -168,7 +188,11 @@ export function detectPiCommand(execPath = process.execPath, argvEntry = process
   return [execPath];
 }
 
-export function buildPiLaunchCommand(contextFile: string, sessionName: string, command = detectPiCommand()): string {
+export function buildPiLaunchCommand(
+  contextFile: string,
+  sessionName: string,
+  command = detectPiCommand(),
+): string {
   const prefix = command.map(shellQuote).join(" ");
   return `${prefix} --name ${shellQuote(sessionName)} ${shellQuote(`@${contextFile}`)}`;
 }
@@ -198,7 +222,11 @@ export function parseOpenedWorktree(stdout: string): OpenedWorktree {
     throw new Error("Herdr returned invalid JSON while opening the worktree");
   }
 
-  const result = (value as { result?: { workspace?: { workspace_id?: unknown }; root_pane?: { pane_id?: unknown } } }).result;
+  const result = (
+    value as {
+      result?: { workspace?: { workspace_id?: unknown }; root_pane?: { pane_id?: unknown } };
+    }
+  ).result;
   const workspaceId = result?.workspace?.workspace_id;
   const paneId = result?.root_pane?.pane_id;
   if (typeof workspaceId !== "string" || typeof paneId !== "string") {
@@ -212,9 +240,11 @@ export function paneStillBelongsToWorkspace(stdout: string, opened: OpenedWorktr
     const value = JSON.parse(stdout) as {
       result?: { panes?: Array<{ pane_id?: unknown; workspace_id?: unknown }> };
     };
-    return value.result?.panes?.some(pane =>
-      pane.pane_id === opened.paneId && pane.workspace_id === opened.workspaceId
-    ) ?? false;
+    return (
+      value.result?.panes?.some(
+        (pane) => pane.pane_id === opened.paneId && pane.workspace_id === opened.workspaceId,
+      ) ?? false
+    );
   } catch {
     return false;
   }

@@ -3,6 +3,25 @@ amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.
 min_hk_version = "1.51.0"
 
 local pre_commit_checks = new Mapping<String, Step> {
+  ["format"] {
+    glob = List(
+      ".oxfmtrc.json",
+      "extensions/**/*.ts",
+      "package-lock.json",
+      "package.json"
+    )
+    check = "mise run format:check"
+  }
+  ["typescript"] {
+    glob = List(
+      ".oxlintrc.json",
+      "extensions/**/*.ts",
+      "package-lock.json",
+      "package.json",
+      "tsconfig.json"
+    )
+    check = "mise run lint:typescript"
+  }
   ["shell"] {
     glob = "scripts/*.sh"
     check = "mise run lint:shell"

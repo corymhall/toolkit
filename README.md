@@ -35,8 +35,9 @@ local-install check is non-mutating and verifies every expected shared and
 Codex-only skill link plus the memory guard's `make` proxy against this checkout.
 
 List available tasks with `mise tasks`. Common entry points include
-`mise run build`, `mise run validate`, `mise run test`, and
-`mise run skills:update`. Mise's npm
+`mise run build`, `mise run validate`, `mise run test`, `mise run lint:typescript`,
+`mise run format:check`, and `mise run skills:update`. The TypeScript lint task
+uses Oxlint and its TypeScript 7 type checker. Mise's npm
 dependency provider runs `npm ci` automatically before `mise run` or `mise x`
 when the manifests change or `node_modules/` is missing.
 

@@ -28,10 +28,12 @@ export type CodexFastModeState = {
 export type CodexFastModeChanged = CodexFastModeState;
 
 export function supportsCodexFastMode(model: CodexFastModeModel | undefined): boolean {
-  return model?.provider === "openai-codex"
-    && model.api === "openai-codex-responses"
-    && typeof model.id === "string"
-    && CODEX_FAST_MODE_MODEL_IDS.has(model.id);
+  return (
+    model?.provider === "openai-codex" &&
+    model.api === "openai-codex-responses" &&
+    typeof model.id === "string" &&
+    CODEX_FAST_MODE_MODEL_IDS.has(model.id)
+  );
 }
 
 export function isCodexFastModeActive(
@@ -42,10 +44,12 @@ export function isCodexFastModeActive(
 }
 
 export function isCodexFastModeChanged(value: unknown): value is CodexFastModeChanged {
-  return typeof value === "object"
-    && value !== null
-    && !Array.isArray(value)
-    && typeof (value as Record<string, unknown>).enabled === "boolean";
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof (value as Record<string, unknown>).enabled === "boolean"
+  );
 }
 
 export function getCodexFastModeStatePath(): string {
@@ -113,8 +117,8 @@ export default function codexFastModeExtension(
     description: "Toggle OpenAI Codex Fast mode",
     getArgumentCompletions(prefix) {
       const normalized = prefix.trim().toLowerCase();
-      const matches = ["on", "off", "status"].filter(option => option.startsWith(normalized));
-      return matches.length > 0 ? matches.map(value => ({ value, label: value })) : null;
+      const matches = ["on", "off", "status"].filter((option) => option.startsWith(normalized));
+      return matches.length > 0 ? matches.map((value) => ({ value, label: value })) : null;
     },
     handler: async (args, ctx) => {
       const action = args.trim().toLowerCase() || "status";

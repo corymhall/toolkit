@@ -26,6 +26,14 @@ run = "npm ci"
 description = "Run the extension test suite"
 run = "npm test"
 
+[tasks."format:check"]
+description = "Check extension TypeScript formatting"
+run = "npm run format:check"
+
+[tasks."lint:typescript"]
+description = "Lint and type-check extension TypeScript"
+run = "npm run lint"
+
 [tasks."lint:shell"]
 description = "Lint repository and skill shell scripts"
 run = "shellcheck scripts/*.sh extensions/*/*.sh skills/*/*/scripts/*.sh"
@@ -68,7 +76,7 @@ scripts/test-pi-package.sh
 
 [tasks.validate]
 description = "Run all repository validation"
-depends = ["lint:shell", "lint:skills", "check:repository", "check:skill-invocation", "check:hooks", "test", "test:integration"]
+depends = ["format:check", "lint:typescript", "lint:shell", "lint:skills", "check:repository", "check:skill-invocation", "check:hooks", "test", "test:integration"]
 
 [tasks.build]
 description = "Prepare the local checkout and run all repository validation"

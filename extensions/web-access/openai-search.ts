@@ -4,7 +4,13 @@ import type { SearchOptions, SearchResponse, SearchResult } from "./types.ts";
 const CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses";
 const SEARCH_TIMEOUT_MS = 60_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
-const CODEX_MODELS = ["gpt-5.4", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.2", "gpt-5.2-codex"];
+const CODEX_MODELS = [
+  "gpt-5.4",
+  "gpt-5.3-codex",
+  "gpt-5.3-codex-spark",
+  "gpt-5.2",
+  "gpt-5.2-codex",
+];
 
 interface CodexAuth {
   apiKey: string;
@@ -12,7 +18,9 @@ interface CodexAuth {
   headers: Record<string, string>;
 }
 
-function materializeHeaders(headers: Record<string, string | null> | undefined): Record<string, string> {
+function materializeHeaders(
+  headers: Record<string, string | null> | undefined,
+): Record<string, string> {
   if (!headers) return {};
   return Object.fromEntries(
     Object.entries(headers).filter((entry): entry is [string, string] => entry[1] !== null),
@@ -28,7 +36,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
       .replace(/_/g, "/")
       .padEnd(Math.ceil(parts[1].length / 4) * 4, "=");
     const parsed = JSON.parse(Buffer.from(payload, "base64").toString("utf8"));
-    return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : null;
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
   } catch {
     return null;
   }
@@ -49,13 +57,19 @@ async function resolveCodexAuth(ctx: ExtensionContext): Promise<CodexAuth> {
     try {
       const resolved = await ctx.modelRegistry.getApiKeyAndHeaders(model);
       if (resolved.ok && resolved.apiKey) {
-        return { apiKey: resolved.apiKey, model: modelId, headers: materializeHeaders(resolved.headers) };
+        return {
+          apiKey: resolved.apiKey,
+          model: modelId,
+          headers: materializeHeaders(resolved.headers),
+        };
       }
     } catch {
       // Try the next currently supported Codex model.
     }
   }
-  throw new Error("OpenAI web search requires a Pi OpenAI Codex subscription login. Run /login and select OpenAI Codex.");
+  throw new Error(
+    "OpenAI web search requires a Pi OpenAI Codex subscription login. Run /login and select OpenAI Codex.",
+  );
 }
 
 function normalizeDomain(raw: string): string | null {
@@ -71,7 +85,9 @@ function normalizeDomain(raw: string): string | null {
   return /^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/i.test(input) ? input : null;
 }
 
-function domainFilters(values: string[] | undefined): { allowed_domains?: string[]; blocked_domains?: string[] } | undefined {
+function domainFilters(
+  values: string[] | undefined,
+): { allowed_domains?: string[]; blocked_domains?: string[] } | undefined {
   if (!values?.length) return undefined;
   const allowed: string[] = [];
   const blocked: string[] = [];
@@ -94,14 +110,23 @@ function instructions(options: SearchOptions): string {
     "Include clickable source citations in the response text when possible.",
   ];
   if (options.recencyFilter) {
-    const labels = { day: "past 24 hours", week: "past week", month: "past month", year: "past year" } as const;
+    const labels = {
+      day: "past 24 hours",
+      week: "past week",
+      month: "past month",
+      year: "past year",
+    } as const;
     lines.push(`Prefer sources from the ${labels[options.recencyFilter]}.`);
   }
-  if (options.numResults) lines.push(`Prefer around ${Math.min(Math.floor(options.numResults), 20)} distinct sources.`);
+  if (options.numResults)
+    lines.push(`Prefer around ${Math.min(Math.floor(options.numResults), 20)} distinct sources.`);
   return lines.join(" ");
 }
 
-async function readResponseText(response: Response, maxBytes = MAX_RESPONSE_BYTES): Promise<string> {
+async function readResponseText(
+  response: Response,
+  maxBytes = MAX_RESPONSE_BYTES,
+): Promise<string> {
   if (!response.body) return "";
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -130,7 +155,7 @@ export async function parseOpenAIResponse(response: Response): Promise<Record<st
   const trimmed = text.trim();
   if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
     const parsed = JSON.parse(trimmed);
-    return Array.isArray(parsed) ? { output: parsed } : parsed as Record<string, unknown>;
+    return Array.isArray(parsed) ? { output: parsed } : (parsed as Record<string, unknown>);
   }
 
   const outputItems: unknown[] = [];
@@ -142,7 +167,11 @@ export async function parseOpenAIResponse(response: Response): Promise<Record<st
     try {
       const event = JSON.parse(data) as Record<string, unknown>;
       if (event.type === "response.output_item.done" && event.item) outputItems.push(event.item);
-      if ((event.type === "response.done" || event.type === "response.completed") && event.response && typeof event.response === "object") {
+      if (
+        (event.type === "response.done" || event.type === "response.completed") &&
+        event.response &&
+        typeof event.response === "object"
+      ) {
         completed = event.response as Record<string, unknown>;
       }
     } catch {
@@ -150,7 +179,9 @@ export async function parseOpenAIResponse(response: Response): Promise<Record<st
     }
   }
   if (completed) {
-    return Array.isArray(completed.output) && completed.output.length ? completed : { ...completed, output: outputItems };
+    return Array.isArray(completed.output) && completed.output.length
+      ? completed
+      : { ...completed, output: outputItems };
   }
   if (outputItems.length) return { output: outputItems };
   throw new Error("OpenAI returned no parseable response output");
@@ -178,7 +209,11 @@ function extractResponse(output: unknown[], limit: number | undefined): SearchRe
     const url = cleanUrl(urlValue);
     if (!url || seen.has(url)) return;
     seen.add(url);
-    results.push({ title: typeof titleValue === "string" && titleValue.trim() ? titleValue : url, url, snippet });
+    results.push({
+      title: typeof titleValue === "string" && titleValue.trim() ? titleValue : url,
+      url,
+      snippet,
+    });
   };
 
   for (const item of output) {
@@ -199,7 +234,10 @@ function extractResponse(output: unknown[], limit: number | undefined): SearchRe
       }
     }
     if (record.type === "web_search_call") {
-      const action = record.action && typeof record.action === "object" ? record.action as Record<string, unknown> : {};
+      const action =
+        record.action && typeof record.action === "object"
+          ? (record.action as Record<string, unknown>)
+          : {};
       for (const group of [action.sources, record.sources, record.results]) {
         if (!Array.isArray(group)) continue;
         for (const source of group) {
@@ -246,7 +284,12 @@ export async function searchWithCodex(
   };
   const timeout = AbortSignal.timeout(SEARCH_TIMEOUT_MS);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
-  const response = await fetchImpl(CODEX_RESPONSES_URL, { method: "POST", headers, body: JSON.stringify(body), signal });
+  const response = await fetchImpl(CODEX_RESPONSES_URL, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    signal,
+  });
   if (!response.ok) {
     const error = (await readResponseText(response, 64 * 1024)).replace(/\s+/g, " ").slice(0, 300);
     throw new Error(`OpenAI Codex web search failed (${response.status}): ${error}`);
@@ -254,6 +297,7 @@ export async function searchWithCodex(
   const parsed = await parseOpenAIResponse(response);
   const output = Array.isArray(parsed.output) ? parsed.output : [];
   const result = extractResponse(output, options.numResults);
-  if (!result.answer && !result.results.length) throw new Error("OpenAI Codex web search returned no answer or sources");
+  if (!result.answer && !result.results.length)
+    throw new Error("OpenAI Codex web search returned no answer or sources");
   return result;
 }

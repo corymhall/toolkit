@@ -22,11 +22,22 @@ export function parseGitHubUrl(raw: string): GitHubUrl | null {
   } catch {
     return null;
   }
-  if (url.protocol !== "https:" || !["github.com", "www.github.com"].includes(url.hostname.toLowerCase())) return null;
+  if (
+    url.protocol !== "https:" ||
+    !["github.com", "www.github.com"].includes(url.hostname.toLowerCase())
+  )
+    return null;
   if (url.username || url.password || url.port) return null;
-  const parts = url.pathname.split("/").filter(Boolean).map(part => {
-    try { return decodeURIComponent(part); } catch { return part; }
-  });
+  const parts = url.pathname
+    .split("/")
+    .filter(Boolean)
+    .map((part) => {
+      try {
+        return decodeURIComponent(part);
+      } catch {
+        return part;
+      }
+    });
   if (parts.length < 2) return null;
   const owner = parts[0];
   const repo = parts[1].replace(/\.git$/, "");
@@ -45,24 +56,29 @@ function endpointPath(path: string): string {
 
 function decodeFile(record: Record<string, unknown>): string {
   const size = typeof record.size === "number" ? record.size : 0;
-  if (size > MAX_FILE_BYTES) throw new Error(`GitHub file is too large (${size} bytes; limit ${MAX_FILE_BYTES})`);
-  if (record.type !== "file") throw new Error(`GitHub path is not a regular file (type: ${String(record.type)})`);
+  if (size > MAX_FILE_BYTES)
+    throw new Error(`GitHub file is too large (${size} bytes; limit ${MAX_FILE_BYTES})`);
+  if (record.type !== "file")
+    throw new Error(`GitHub path is not a regular file (type: ${String(record.type)})`);
   if (record.encoding !== "base64" || typeof record.content !== "string") {
     throw new Error("GitHub did not return inline file content; the file may exceed the API limit");
   }
   const decoded = Buffer.from(record.content.replace(/\n/g, ""), "base64");
   if (decoded.byteLength > MAX_FILE_BYTES) {
-    throw new Error(`GitHub file is too large (${decoded.byteLength} bytes; limit ${MAX_FILE_BYTES})`);
+    throw new Error(
+      `GitHub file is too large (${decoded.byteLength} bytes; limit ${MAX_FILE_BYTES})`,
+    );
   }
   return decoded.toString("utf8");
 }
 
 function listing(value: unknown): { content: string; truncated: boolean } {
   if (!Array.isArray(value)) throw new Error("GitHub path is not a directory");
-  const entries = value.slice(0, MAX_LIST_ENTRIES).map(item => {
-    const record = item && typeof item === "object" ? item as Record<string, unknown> : {};
+  const entries = value.slice(0, MAX_LIST_ENTRIES).map((item) => {
+    const record = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
     const suffix = record.type === "dir" ? "/" : "";
-    const size = typeof record.size === "number" && record.type === "file" ? ` (${record.size} bytes)` : "";
+    const size =
+      typeof record.size === "number" && record.type === "file" ? ` (${record.size} bytes)` : "";
     return `${String(record.path ?? record.name ?? "unknown")}${suffix}${size}`;
   });
   const truncated = value.length > MAX_LIST_ENTRIES;
@@ -70,9 +86,19 @@ function listing(value: unknown): { content: string; truncated: boolean } {
   return { content: entries.join("\n"), truncated };
 }
 
-async function fetchReadme(pi: ExtensionAPI, owner: string, repo: string, ref: string, signal?: AbortSignal): Promise<string | null> {
+async function fetchReadme(
+  pi: ExtensionAPI,
+  owner: string,
+  repo: string,
+  ref: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
   try {
-    const value = await fetchGitHubApiJson(pi, `repos/${owner}/${repo}/readme?ref=${encodeURIComponent(ref)}`, { signal });
+    const value = await fetchGitHubApiJson(
+      pi,
+      `repos/${owner}/${repo}/readme?ref=${encodeURIComponent(ref)}`,
+      { signal },
+    );
     if (!value || typeof value !== "object") return null;
     return decodeFile(value as Record<string, unknown>);
   } catch (error) {
@@ -82,20 +108,31 @@ async function fetchReadme(pi: ExtensionAPI, owner: string, repo: string, ref: s
   }
 }
 
-export async function fetchGitHubContent(raw: string, pi: ExtensionAPI, signal?: AbortSignal): Promise<FetchedContent | null> {
+export async function fetchGitHubContent(
+  raw: string,
+  pi: ExtensionAPI,
+  signal?: AbortSignal,
+): Promise<FetchedContent | null> {
   const parsed = parseGitHubUrl(raw);
   if (!parsed) return null;
   const { owner, repo } = parsed;
   const metadata = await fetchGitHubApiJson(pi, `repos/${owner}/${repo}`, { signal });
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) throw new Error("GitHub repository response was invalid");
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata))
+    throw new Error("GitHub repository response was invalid");
   const record = metadata as Record<string, unknown>;
 
   if (parsed.kind === "blob") {
     if (!parsed.path) throw new Error("GitHub blob URL does not contain a file path");
     const endpoint = `repos/${owner}/${repo}/contents/${endpointPath(parsed.path)}?ref=${encodeURIComponent(parsed.ref!)}`;
     const value = await fetchGitHubApiJson(pi, endpoint, { signal });
-    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("GitHub file response was invalid");
-    return { url: raw, title: `${owner}/${repo}: ${parsed.path}`, content: decodeFile(value as Record<string, unknown>), truncated: false };
+    if (!value || typeof value !== "object" || Array.isArray(value))
+      throw new Error("GitHub file response was invalid");
+    return {
+      url: raw,
+      title: `${owner}/${repo}: ${parsed.path}`,
+      content: decodeFile(value as Record<string, unknown>),
+      truncated: false,
+    };
   }
 
   if (parsed.kind === "tree") {
@@ -103,12 +140,21 @@ export async function fetchGitHubContent(raw: string, pi: ExtensionAPI, signal?:
     const endpoint = `repos/${owner}/${repo}/contents${suffix}?ref=${encodeURIComponent(parsed.ref!)}`;
     const value = await fetchGitHubApiJson(pi, endpoint, { signal });
     const directory = listing(value);
-    return { url: raw, title: `${owner}/${repo}: ${parsed.path || "/"}`, content: directory.content, truncated: directory.truncated };
+    return {
+      url: raw,
+      title: `${owner}/${repo}: ${parsed.path || "/"}`,
+      content: directory.content,
+      truncated: directory.truncated,
+    };
   }
 
   const defaultBranch = typeof record.default_branch === "string" ? record.default_branch : "HEAD";
   const [root, readme] = await Promise.all([
-    fetchGitHubApiJson(pi, `repos/${owner}/${repo}/contents?ref=${encodeURIComponent(defaultBranch)}`, { signal }),
+    fetchGitHubApiJson(
+      pi,
+      `repos/${owner}/${repo}/contents?ref=${encodeURIComponent(defaultBranch)}`,
+      { signal },
+    ),
     fetchReadme(pi, owner, repo, defaultBranch, signal),
   ]);
   const rootListing = listing(root);

@@ -31,7 +31,9 @@ export interface GitHubSearchDetails {
 }
 
 function record(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function string(value: unknown): string | undefined {
@@ -45,7 +47,9 @@ function qualifier(name: string, value: string): string {
 function validate(options: GitHubSearchOptions): void {
   if (!options.query.trim()) throw new Error("GitHub search query must not be empty");
   if (SCOPE_QUALIFIER.test(options.query)) {
-    throw new Error("Put repo:, org:, and user: scope in the repos or owners fields instead of the GitHub search query");
+    throw new Error(
+      "Put repo:, org:, and user: scope in the repos or owners fields instead of the GitHub search query",
+    );
   }
   for (const repo of options.repos ?? []) {
     if (!REPOSITORY.test(repo)) throw new Error(`Invalid GitHub repository scope: ${repo}`);
@@ -56,7 +60,8 @@ function validate(options: GitHubSearchOptions): void {
   if (options.kind === "code" && (options.state || options.labels?.length)) {
     throw new Error("GitHub code search does not support state or labels filters");
   }
-  if (options.kind !== "code" && options.path) throw new Error("The GitHub path filter is only valid for code search");
+  if (options.kind !== "code" && options.path)
+    throw new Error("The GitHub path filter is only valid for code search");
 }
 
 export function buildGitHubSearchQuery(options: GitHubSearchOptions): string {
@@ -83,7 +88,7 @@ function repositoryName(item: Record<string, unknown>): string | undefined {
 
 function labels(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap(item => {
+  return value.flatMap((item) => {
     const name = string(record(item)?.name);
     return name ? [name] : [];
   });
@@ -106,10 +111,12 @@ function normalizeIssue(item: Record<string, unknown>): Record<string, unknown> 
 
 function codeFragments(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap(item => {
-    const fragment = string(record(item)?.fragment)?.replace(/\r/g, "").trim();
-    return fragment ? [fragment.slice(0, MAX_FRAGMENT_LENGTH)] : [];
-  }).slice(0, MAX_CODE_FRAGMENTS);
+  return value
+    .flatMap((item) => {
+      const fragment = string(record(item)?.fragment)?.replace(/\r/g, "").trim();
+      return fragment ? [fragment.slice(0, MAX_FRAGMENT_LENGTH)] : [];
+    })
+    .slice(0, MAX_CODE_FRAGMENTS);
 }
 
 function normalizeCode(item: Record<string, unknown>): Record<string, unknown> {
@@ -131,20 +138,27 @@ export async function searchGitHub(
   const limit = Math.min(Math.max(Math.floor(options.limit ?? 30), 1), 100);
   const resource = options.kind === "code" ? "code" : "issues";
   const endpoint = `search/${resource}?q=${encodeURIComponent(query)}&per_page=${limit}`;
-  const value = record(await fetchGitHubApiJson(pi, endpoint, {
-    accept: "application/vnd.github.text-match+json",
-    operation: "search",
-    signal,
-  }));
-  if (!value || !Array.isArray(value.items)) throw new Error("GitHub search API response was invalid");
+  const value = record(
+    await fetchGitHubApiJson(pi, endpoint, {
+      accept: "application/vnd.github.text-match+json",
+      operation: "search",
+      signal,
+    }),
+  );
+  if (!value || !Array.isArray(value.items))
+    throw new Error("GitHub search API response was invalid");
 
-  const results = value.items.flatMap(item => {
+  const results = value.items.flatMap((item) => {
     const entry = record(item);
     return entry ? [options.kind === "code" ? normalizeCode(entry) : normalizeIssue(entry)] : [];
   });
   const totalCount = typeof value.total_count === "number" ? value.total_count : results.length;
   const incompleteResults = value.incomplete_results === true;
-  const content = JSON.stringify({ totalCount, returnedCount: results.length, incompleteResults, results }, null, 2);
+  const content = JSON.stringify(
+    { totalCount, returnedCount: results.length, incompleteResults, results },
+    null,
+    2,
+  );
   const url = `https://github.com/search?q=${encodeURIComponent(query)}`;
   return {
     fetched: {

@@ -5,6 +5,9 @@
   "type": "module",
   "description": "Shared Agent Skills and Pi extensions for AI-assisted software engineering workflows.",
   "scripts": {
+    "format": "oxfmt extensions",
+    "format:check": "oxfmt --check extensions",
+    "lint": "oxlint extensions",
     "test": "npm run test:codex-fast-mode && npm run test:session-default-model && npm run test:delegate && npm run test:herdr-command && npm run test:herdr-nvim-links && npm run test:skill-autocomplete && npm run test:system-prompt && npm run test:status-footer && npm run test:web-access && npm run test:web-access:bun",
     "test:codex-fast-mode": "node --experimental-strip-types --test extensions/codex-fast-mode/test/*.test.ts",
     "test:session-default-model": "node --experimental-strip-types --test extensions/session-default-model/test/*.test.ts",
@@ -15,7 +18,8 @@
     "test:system-prompt": "node --experimental-strip-types --test extensions/system-prompt/test/*.test.ts",
     "test:status-footer": "node --experimental-strip-types --test extensions/status-footer/test/*.test.ts",
     "test:web-access": "node --experimental-strip-types --test extensions/web-access/test/*.test.ts",
-    "test:web-access:bun": "bun test extensions/web-access/test/*.test.ts"
+    "test:web-access:bun": "bun test extensions/web-access/test/*.test.ts",
+    "typecheck": "oxlint --type-aware --type-check extensions"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
@@ -49,5 +53,11 @@
       "skills",
       ".agents/skills/*"
     ]
+  },
+  "devDependencies": {
+    "@types/turndown": "5.0.6",
+    "oxfmt": "0.64.0",
+    "oxlint": "1.79.0",
+    "oxlint-tsgolint": "7.0.2001"
   }
 }

@@ -2,7 +2,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { Type } from "typebox";
-import { getAgentDir, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import {
+  getAgentDir,
+  type ExtensionAPI,
+  type ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import {
   buildConversationContext,
   buildDelegatePrompt,
@@ -26,10 +30,24 @@ import {
 const DELEGATE_PARAMETERS = Type.Object({
   repository: Type.String({ description: "Absolute path to the local destination Git repository" }),
   branch: Type.Optional(Type.String({ description: "Concise branch name for the new worktree" })),
-  base: Type.Optional(Type.String({ description: "Optional base branch; omit to use Worktrunk's default" })),
-  sessionName: Type.Optional(Type.String({ description: "Short semantic name for the delegated Pi session; Herdr labels the worktree with its branch" })),
-  context: Type.String({ description: "Concise background from the current conversation for the delegated session to investigate independently" }),
-  useExistingCheckout: Type.Optional(Type.Boolean({ description: "Use the destination checkout directly instead of creating a Worktrunk worktree" })),
+  base: Type.Optional(
+    Type.String({ description: "Optional base branch; omit to use Worktrunk's default" }),
+  ),
+  sessionName: Type.Optional(
+    Type.String({
+      description:
+        "Short semantic name for the delegated Pi session; Herdr labels the worktree with its branch",
+    }),
+  ),
+  context: Type.String({
+    description:
+      "Concise background from the current conversation for the delegated session to investigate independently",
+  }),
+  useExistingCheckout: Type.Optional(
+    Type.Boolean({
+      description: "Use the destination checkout directly instead of creating a Worktrunk worktree",
+    }),
+  ),
 });
 
 function execFailure(command: string, stderr: string): Error {
@@ -49,7 +67,12 @@ async function checkExecutable(pi: ExtensionAPI, command: string): Promise<boole
 async function writeContextFile(label: string, context: string): Promise<string> {
   const directory = join(getAgentDir(), "delegations");
   await mkdir(directory, { recursive: true, mode: 0o700 });
-  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "delegation";
+  const slug =
+    label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 48) || "delegation";
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const path = join(directory, `${timestamp}-${slug}-${randomUUID().slice(0, 8)}.md`);
   await writeFile(path, `${context.trim()}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
@@ -83,14 +106,17 @@ export default function delegateExtension(
     pi.registerTool({
       name: DELEGATE_TOOL_NAME,
       label: "Delegate Session",
-      description: "Open a confirmed checkout as a Herdr worktree and launch a normal Pi session there. Available only after the user invokes /delegate.",
-      promptSnippet: "Transfer lightweight conversation context to a user-requested delegated session.",
+      description:
+        "Open a confirmed checkout as a Herdr worktree and launch a normal Pi session there. Available only after the user invokes /delegate.",
+      promptSnippet:
+        "Transfer lightweight conversation context to a user-requested delegated session.",
       promptGuidelines: [
         "Call delegate_session only to complete the delegation explicitly armed by the user's /delegate command; ask the user only when the destination or checkout choice remains materially uncertain.",
       ],
       parameters: DELEGATE_PARAMETERS,
       async execute(_toolCallId, rawProposal, signal, onUpdate, ctx) {
-        if (!armed || !armedMode) throw new Error("Delegation is not armed; the user must invoke /delegate first");
+        if (!armed || !armedMode)
+          throw new Error("Delegation is not armed; the user must invoke /delegate first");
         const mode = armedMode;
 
         const proposal: DelegationProposal = {
@@ -114,23 +140,35 @@ export default function delegateExtension(
             content: [{ type: "text", text: "Validating destination repository..." }],
             details: {},
           });
-          const repoResult = await pi.exec("git", ["-C", proposal.repository, "rev-parse", "--show-toplevel"], {
-            signal,
-            timeout: 10_000,
-          });
+          const repoResult = await pi.exec(
+            "git",
+            ["-C", proposal.repository, "rev-parse", "--show-toplevel"],
+            {
+              signal,
+              timeout: 10_000,
+            },
+          );
           if (repoResult.code !== 0) throw execFailure("git rev-parse", repoResult.stderr);
           const repository = repoResult.stdout.trim();
           if (!repository) throw new Error("Git did not return a repository root");
 
           if (!proposal.useExistingCheckout) {
-            const branchResult = await pi.exec("git", ["check-ref-format", "--branch", proposal.branch!], {
-              signal,
-              timeout: 5_000,
-            });
+            const branchResult = await pi.exec(
+              "git",
+              ["check-ref-format", "--branch", proposal.branch!],
+              {
+                signal,
+                timeout: 5_000,
+              },
+            );
             if (branchResult.code !== 0) throw new Error(`Invalid branch name: ${proposal.branch}`);
           }
 
-          const sessionName = normalizeSessionName(proposal.sessionName, proposal.branch, repository);
+          const sessionName = normalizeSessionName(
+            proposal.sessionName,
+            proposal.branch,
+            repository,
+          );
           const delegatedPrompt = buildDelegatedSessionPrompt(proposal.context, mode);
           const editedContext = await ctx.ui.editor("Edit delegation context", delegatedPrompt);
           if (editedContext === undefined || !editedContext.trim()) {
@@ -168,7 +206,12 @@ export default function delegateExtension(
           let worktreeLabel: string;
           if (!proposal.useExistingCheckout) {
             onUpdate?.({
-              content: [{ type: "text", text: "Creating Worktrunk worktree and running its start hooks..." }],
+              content: [
+                {
+                  type: "text",
+                  text: "Creating Worktrunk worktree and running its start hooks...",
+                },
+              ],
               details: {},
             });
             const worktreeResult = await pi.exec(
@@ -176,15 +219,21 @@ export default function delegateExtension(
               buildWorktrunkArgs(repository, proposal.branch!, proposal.base),
               { signal, timeout: 300_000 },
             );
-            if (worktreeResult.code !== 0) throw execFailure("wt switch --create", worktreeResult.stderr);
+            if (worktreeResult.code !== 0)
+              throw execFailure("wt switch --create", worktreeResult.stderr);
             destination = parseWorktreeResult(worktreeResult.stdout).path;
             worktreeLabel = proposal.branch!;
           } else {
-            const branchResult = await pi.exec("git", ["-C", repository, "branch", "--show-current"], {
-              signal,
-              timeout: 5_000,
-            });
-            if (branchResult.code !== 0) throw execFailure("git branch --show-current", branchResult.stderr);
+            const branchResult = await pi.exec(
+              "git",
+              ["-C", repository, "branch", "--show-current"],
+              {
+                signal,
+                timeout: 5_000,
+              },
+            );
+            if (branchResult.code !== 0)
+              throw execFailure("git branch --show-current", branchResult.stderr);
             worktreeLabel = branchResult.stdout.trim() || sessionName;
           }
 
@@ -205,24 +254,37 @@ export default function delegateExtension(
           const panesResult = await pi.exec("herdr", ["pane", "list"], { signal, timeout: 10_000 });
           if (panesResult.code !== 0) throw execFailure("herdr pane list", panesResult.stderr);
           if (!paneStillBelongsToWorkspace(panesResult.stdout, workspace)) {
-            throw new Error(`The new Herdr pane is no longer present. Context preserved at ${contextFile}`);
+            throw new Error(
+              `The new Herdr pane is no longer present. Context preserved at ${contextFile}`,
+            );
           }
 
           const launchCommand = buildPiLaunchCommand(contextFile, sessionName, piCommand);
-          const runResult = await pi.exec("herdr", ["pane", "run", workspace.paneId, launchCommand], {
-            signal,
-            timeout: 10_000,
-          });
+          const runResult = await pi.exec(
+            "herdr",
+            ["pane", "run", workspace.paneId, launchCommand],
+            {
+              signal,
+              timeout: 10_000,
+            },
+          );
           if (runResult.code !== 0) {
-            throw new Error(`Could not start Pi in Herdr workspace ${workspace.workspaceId}. Context preserved at ${contextFile}: ${runResult.stderr.trim()}`);
+            throw new Error(
+              `Could not start Pi in Herdr workspace ${workspace.workspaceId}. Context preserved at ${contextFile}: ${runResult.stderr.trim()}`,
+            );
           }
 
-          ctx.ui.notify(`Delegated session “${sessionName}” starting in Herdr worktree “${worktreeLabel}”`, "info");
+          ctx.ui.notify(
+            `Delegated session “${sessionName}” starting in Herdr worktree “${worktreeLabel}”`,
+            "info",
+          );
           return {
-            content: [{
-              type: "text",
-              text: `Delegated session “${sessionName}” started in the non-focused Herdr worktree “${worktreeLabel}”. The context is preserved at ${contextFile}.`,
-            }],
+            content: [
+              {
+                type: "text",
+                text: `Delegated session “${sessionName}” started in the non-focused Herdr worktree “${worktreeLabel}”. The context is preserved at ${contextFile}.`,
+              },
+            ],
             details: {
               workspaceId: workspace.workspaceId,
               paneId: workspace.paneId,
@@ -241,7 +303,8 @@ export default function delegateExtension(
   };
 
   pi.registerCommand("delegate", {
-    description: "Delegate independent research or continue a conversation in another repo or worktree; use /delegate cancel to disarm",
+    description:
+      "Delegate independent research or continue a conversation in another repo or worktree; use /delegate cancel to disarm",
     handler: async (args, ctx) => {
       const value = args.trim();
       if (value === "cancel") {
@@ -268,18 +331,24 @@ export default function delegateExtension(
       if (armed) disarm(ctx);
 
       const request = parseDelegateRequest(value);
-      const mode = request.mode ?? await ctx.ui.select(
-        "What kind of delegation is this?",
-        ["Independent research", "Continue a conversation"],
-      ).then(choice => choice === "Independent research"
-        ? "research" as const
-        : choice === "Continue a conversation"
-          ? "conversation" as const
-          : undefined);
+      const mode =
+        request.mode ??
+        (await ctx.ui
+          .select("What kind of delegation is this?", [
+            "Independent research",
+            "Continue a conversation",
+          ])
+          .then((choice) =>
+            choice === "Independent research"
+              ? ("research" as const)
+              : choice === "Continue a conversation"
+                ? ("conversation" as const)
+                : undefined,
+          ));
       if (!mode) return;
 
       for (const command of ["herdr", "wt"]) {
-        if (!await checkExecutable(pi, command)) {
+        if (!(await checkExecutable(pi, command))) {
           ctx.ui.notify(`delegate requires ${command} on PATH`, "error");
           return;
         }
@@ -291,12 +360,12 @@ export default function delegateExtension(
       armed = true;
       armedMode = mode;
       ctx.ui.setStatus("delegate", `${mode} delegation armed`);
-      const priorAssistantResponse = mode === "conversation"
-        ? latestAssistantText(ctx.sessionManager.getBranch())
-        : undefined;
-      armedConversationContext = mode === "conversation"
-        ? buildConversationContext(request.goal, priorAssistantResponse)
-        : undefined;
+      const priorAssistantResponse =
+        mode === "conversation" ? latestAssistantText(ctx.sessionManager.getBranch()) : undefined;
+      armedConversationContext =
+        mode === "conversation"
+          ? buildConversationContext(request.goal, priorAssistantResponse)
+          : undefined;
       pi.sendUserMessage(buildDelegatePrompt(mode, request.goal, ctx.cwd, priorAssistantResponse));
     },
   });

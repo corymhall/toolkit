@@ -17,15 +17,25 @@ export async function fetchGitHubApiJson(
   options: GitHubApiOptions = {},
 ): Promise<unknown> {
   const operation = options.operation ?? "fetching";
-  const result = await pi.exec("gh", [
-    "api",
-    "--hostname", "github.com",
-    endpoint,
-    "-H", `Accept: ${options.accept ?? DEFAULT_ACCEPT}`,
-    "-H", "X-GitHub-Api-Version: 2022-11-28",
-  ], { signal: options.signal, timeout: GH_TIMEOUT_MS });
+  const result = await pi.exec(
+    "gh",
+    [
+      "api",
+      "--hostname",
+      "github.com",
+      endpoint,
+      "-H",
+      `Accept: ${options.accept ?? DEFAULT_ACCEPT}`,
+      "-H",
+      "X-GitHub-Api-Version: 2022-11-28",
+    ],
+    { signal: options.signal, timeout: GH_TIMEOUT_MS },
+  );
   if (result.code !== 0) {
-    const message = (result.stderr || result.stdout || "gh api failed").replace(/\s+/g, " ").trim().slice(0, 500);
+    const message = (result.stderr || result.stdout || "gh api failed")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 500);
     if (/\bENOENT\b|\bgh:\s*command not found\b|\bcommand not found:\s*gh\b/i.test(message)) {
       throw new Error(`GitHub ${operation} requires the gh CLI`);
     }

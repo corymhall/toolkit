@@ -26,26 +26,38 @@ import {
 
 test("builds argument-safe Worktrunk and Pi launches", () => {
   assert.equal(shellQuote("branch with ' quote"), `'branch with '"'"' quote'`);
-  assert.deepEqual(
-    buildWorktrunkArgs("/tmp/repo with spaces", "fix/auth", "release"),
-    ["-C", "/tmp/repo with spaces", "switch", "--create", "fix/auth", "--base", "release", "--no-cd", "--format", "json"],
-  );
-  assert.deepEqual(
-    buildHerdrWorktreeOpenArgs("/tmp/repo", "/tmp/worktrees/fix-auth", "fix/auth"),
-    [
-      "worktree", "open",
-      "--cwd", "/tmp/repo",
-      "--path", "/tmp/worktrees/fix-auth",
-      "--label", "fix/auth",
-      "--no-focus",
-      "--json",
-    ],
-  );
+  assert.deepEqual(buildWorktrunkArgs("/tmp/repo with spaces", "fix/auth", "release"), [
+    "-C",
+    "/tmp/repo with spaces",
+    "switch",
+    "--create",
+    "fix/auth",
+    "--base",
+    "release",
+    "--no-cd",
+    "--format",
+    "json",
+  ]);
+  assert.deepEqual(buildHerdrWorktreeOpenArgs("/tmp/repo", "/tmp/worktrees/fix-auth", "fix/auth"), [
+    "worktree",
+    "open",
+    "--cwd",
+    "/tmp/repo",
+    "--path",
+    "/tmp/worktrees/fix-auth",
+    "--label",
+    "fix/auth",
+    "--no-focus",
+    "--json",
+  ]);
   assert.equal(
     buildPiLaunchCommand("/tmp/context's.md", "fix auth", ["/opt/pi bin/pi"]),
     `'/opt/pi bin/pi' --name 'fix auth' '@/tmp/context'"'"'s.md'`,
   );
-  assert.deepEqual(detectPiCommand("/usr/bin/node", "/opt/pi/dist/cli.js"), ["/usr/bin/node", "/opt/pi/dist/cli.js"]);
+  assert.deepEqual(detectPiCommand("/usr/bin/node", "/opt/pi/dist/cli.js"), [
+    "/usr/bin/node",
+    "/opt/pi/dist/cli.js",
+  ]);
   assert.deepEqual(detectPiCommand("/opt/mise/pi", undefined), ["/opt/mise/pi"]);
 });
 
@@ -89,53 +101,101 @@ test("frames delegated prompts for their selected mode", () => {
 });
 
 test("parses explicit modes and finds the latest assistant response", () => {
-  assert.deepEqual(parseDelegateRequest("research inspect this"), { mode: "research", goal: "inspect this" });
+  assert.deepEqual(parseDelegateRequest("research inspect this"), {
+    mode: "research",
+    goal: "inspect this",
+  });
   assert.deepEqual(parseDelegateRequest("conversation"), { mode: "conversation", goal: "" });
   assert.deepEqual(parseDelegateRequest("inspect this"), { goal: "inspect this" });
-  assert.equal(latestAssistantText([
-    { type: "message", message: { role: "assistant", content: [{ type: "text", text: "First" }] } },
-    { type: "message", message: { role: "user", content: [{ type: "text", text: "Question" }] } },
-    { type: "message", message: { role: "assistant", content: [{ type: "thinking", thinking: "hidden" }, { type: "text", text: "Latest" }] } },
-  ]), "Latest");
+  assert.equal(
+    latestAssistantText([
+      {
+        type: "message",
+        message: { role: "assistant", content: [{ type: "text", text: "First" }] },
+      },
+      { type: "message", message: { role: "user", content: [{ type: "text", text: "Question" }] } },
+      {
+        type: "message",
+        message: {
+          role: "assistant",
+          content: [
+            { type: "thinking", thinking: "hidden" },
+            { type: "text", text: "Latest" },
+          ],
+        },
+      },
+    ]),
+    "Latest",
+  );
 });
 
 test("normalizes Pi session names", () => {
-  assert.equal(normalizeSessionName("  fix\n signer   refresh ", "ignored", "/tmp/repo"), "fix signer refresh");
+  assert.equal(
+    normalizeSessionName("  fix\n signer   refresh ", "ignored", "/tmp/repo"),
+    "fix signer refresh",
+  );
   assert.equal(normalizeSessionName(undefined, "fix/auth", "/tmp/repo"), "fix/auth");
   assert.equal(normalizeSessionName(undefined, undefined, "/tmp/widgets"), "widgets");
 });
 
 test("validates delegation proposals", () => {
-  assert.throws(() => validateProposal({ repository: "relative", context: "task", branch: "fix" }), /absolute/);
-  assert.throws(() => validateProposal({ repository: "/tmp/repo", context: "", branch: "fix" }), /context/);
+  assert.throws(
+    () => validateProposal({ repository: "relative", context: "task", branch: "fix" }),
+    /absolute/,
+  );
+  assert.throws(
+    () => validateProposal({ repository: "/tmp/repo", context: "", branch: "fix" }),
+    /context/,
+  );
   assert.throws(() => validateProposal({ repository: "/tmp/repo", context: "task" }), /branch/);
-  assert.doesNotThrow(() => validateProposal({ repository: "/tmp/repo", context: "task", useExistingCheckout: true }));
+  assert.doesNotThrow(() =>
+    validateProposal({ repository: "/tmp/repo", context: "task", useExistingCheckout: true }),
+  );
 });
 
 test("parses Worktrunk output", () => {
-  assert.deepEqual(parseWorktreeResult(JSON.stringify({
-    action: "created",
-    branch: "fix/auth",
-    path: "/tmp/repo/.worktrees/fix-auth",
-  })), { path: "/tmp/repo/.worktrees/fix-auth", branch: "fix/auth" });
+  assert.deepEqual(
+    parseWorktreeResult(
+      JSON.stringify({
+        action: "created",
+        branch: "fix/auth",
+        path: "/tmp/repo/.worktrees/fix-auth",
+      }),
+    ),
+    { path: "/tmp/repo/.worktrees/fix-auth", branch: "fix/auth" },
+  );
   assert.throws(() => parseWorktreeResult("not json"), /invalid JSON/);
   assert.throws(() => parseWorktreeResult(JSON.stringify({ path: "relative" })), /absolute/);
 });
 
 test("parses and revalidates Herdr worktree workspace identifiers", () => {
-  const opened = parseOpenedWorktree(JSON.stringify({
-    result: {
-      workspace: { workspace_id: "w2" },
-      root_pane: { pane_id: "w2:p1" },
-    },
-  }));
+  const opened = parseOpenedWorktree(
+    JSON.stringify({
+      result: {
+        workspace: { workspace_id: "w2" },
+        root_pane: { pane_id: "w2:p1" },
+      },
+    }),
+  );
   assert.deepEqual(opened, { workspaceId: "w2", paneId: "w2:p1" });
-  assert.equal(paneStillBelongsToWorkspace(JSON.stringify({
-    result: { panes: [{ pane_id: "w2:p1", workspace_id: "w2" }] },
-  }), opened), true);
-  assert.equal(paneStillBelongsToWorkspace(JSON.stringify({
-    result: { panes: [{ pane_id: "w2:p1", workspace_id: "w3" }] },
-  }), opened), false);
+  assert.equal(
+    paneStillBelongsToWorkspace(
+      JSON.stringify({
+        result: { panes: [{ pane_id: "w2:p1", workspace_id: "w2" }] },
+      }),
+      opened,
+    ),
+    true,
+  );
+  assert.equal(
+    paneStillBelongsToWorkspace(
+      JSON.stringify({
+        result: { panes: [{ pane_id: "w2:p1", workspace_id: "w3" }] },
+      }),
+      opened,
+    ),
+    false,
+  );
 });
 
 test("does not register an agent tool until /delegate is invoked", async () => {
@@ -147,7 +207,9 @@ test("does not register an agent tool until /delegate is invoked", async () => {
     registerCommand(name: string, command: { handler: (args: string, ctx: any) => Promise<void> }) {
       commands.set(name, command);
     },
-    registerTool(tool: { name: string }) { tools.push(tool); },
+    registerTool(tool: { name: string }) {
+      tools.push(tool);
+    },
     on() {},
     getActiveTools: () => ["read", "bash"],
     setActiveTools: (names: string[]) => activeTools.push(names),
@@ -156,7 +218,7 @@ test("does not register an agent tool until /delegate is invoked", async () => {
   } as unknown as ExtensionAPI;
 
   delegateExtension(pi);
-  assert.deepEqual(tools, []);
+  assert.equal(tools.length, 0);
 
   const previousHerdrEnv = process.env.HERDR_ENV;
   process.env.HERDR_ENV = "1";
@@ -172,7 +234,10 @@ test("does not register an agent tool until /delegate is invoked", async () => {
     else process.env.HERDR_ENV = previousHerdrEnv;
   }
 
-  assert.deepEqual(tools.map(tool => tool.name), [DELEGATE_TOOL_NAME]);
+  assert.deepEqual(
+    tools.map((tool) => tool.name),
+    [DELEGATE_TOOL_NAME],
+  );
   assert.deepEqual(activeTools.at(-1), ["read", "bash", DELEGATE_TOOL_NAME]);
   assert.match(sentMessages[0], /continue in the provider repo/);
 });
@@ -194,7 +259,9 @@ test("opens new and existing checkouts as non-focused Herdr worktrees", async ()
     registerCommand(name: string, command: { handler: (args: string, ctx: any) => Promise<void> }) {
       commands.set(name, command);
     },
-    registerTool(tool: { name: string; execute: (...args: any[]) => Promise<any> }) { tools.push(tool); },
+    registerTool(tool: { name: string; execute: (...args: any[]) => Promise<any> }) {
+      tools.push(tool);
+    },
     on() {},
     getActiveTools: () => ["read", "bash"],
     setActiveTools: (names: string[]) => activeTools.push(names),
@@ -227,10 +294,12 @@ test("opens new and existing checkouts as non-focused Herdr worktrees", async ()
         herdrWorktreeCalls.push(args);
         return {
           code: 0,
-          stdout: JSON.stringify({ result: {
-            workspace: { workspace_id: "w2" },
-            root_pane: { pane_id: "w2:p1" },
-          } }),
+          stdout: JSON.stringify({
+            result: {
+              workspace: { workspace_id: "w2" },
+              root_pane: { pane_id: "w2:p1" },
+            },
+          }),
           stderr: "",
           killed: false,
         };
@@ -265,27 +334,39 @@ test("opens new and existing checkouts as non-focused Herdr worktrees", async ()
       waitForIdle: async () => {},
       ui,
     });
-    const tool = tools.find(candidate => candidate.name === DELEGATE_TOOL_NAME);
+    const tool = tools.find((candidate) => candidate.name === DELEGATE_TOOL_NAME);
     assert.ok(tool);
-    const result = await tool.execute("call", {
-      repository: "/tmp/target",
-      branch: "fix/delegation",
-      sessionName: "delegated fix",
-      context: "Draft context",
-    }, undefined, undefined, { ui });
+    const result = await tool.execute(
+      "call",
+      {
+        repository: "/tmp/target",
+        branch: "fix/delegation",
+        sessionName: "delegated fix",
+        context: "Draft context",
+      },
+      undefined,
+      undefined,
+      { ui },
+    );
 
     assert.equal(result.terminate, true);
-    assert.deepEqual(worktrunkCalls, [[
-      "-C", "/tmp/target", "switch", "--create", "fix/delegation", "--no-cd", "--format", "json",
-    ]]);
-    assert.deepEqual(herdrWorktreeCalls, [[
-      "worktree", "open",
-      "--cwd", "/tmp/target",
-      "--path", "/tmp/target/.worktrees/fix-delegation",
-      "--label", "fix/delegation",
-      "--no-focus",
-      "--json",
-    ]]);
+    assert.deepEqual(worktrunkCalls, [
+      ["-C", "/tmp/target", "switch", "--create", "fix/delegation", "--no-cd", "--format", "json"],
+    ]);
+    assert.deepEqual(herdrWorktreeCalls, [
+      [
+        "worktree",
+        "open",
+        "--cwd",
+        "/tmp/target",
+        "--path",
+        "/tmp/target/.worktrees/fix-delegation",
+        "--label",
+        "fix/delegation",
+        "--no-focus",
+        "--json",
+      ],
+    ]);
     assert.equal(paneRuns.length, 1);
     assert.match(paneRuns[0], /^'pi' --name 'delegated fix' '@.*delegations.*\.md'$/);
     assert.deepEqual(activeTools.at(-1), ["read", "bash"]);
@@ -298,26 +379,41 @@ test("opens new and existing checkouts as non-focused Herdr worktrees", async ()
       mode: "tui",
       cwd: "/tmp/source",
       waitForIdle: async () => {},
-      sessionManager: { getBranch: () => [
-        { type: "message", message: { role: "assistant", content: [{ type: "text", text: "Prior answer" }] } },
-      ] },
+      sessionManager: {
+        getBranch: () => [
+          {
+            type: "message",
+            message: { role: "assistant", content: [{ type: "text", text: "Prior answer" }] },
+          },
+        ],
+      },
       ui,
     });
-    const existingResult = await tool.execute("call-existing", {
-      repository: "/tmp/target",
-      sessionName: "existing checkout task",
-      context: "Draft existing context",
-      useExistingCheckout: true,
-    }, undefined, undefined, { ui });
+    const existingResult = await tool.execute(
+      "call-existing",
+      {
+        repository: "/tmp/target",
+        sessionName: "existing checkout task",
+        context: "Draft existing context",
+        useExistingCheckout: true,
+      },
+      undefined,
+      undefined,
+      { ui },
+    );
 
     assert.equal(existingResult.terminate, true);
     assert.equal(existingResult.details.branch, "main");
     assert.equal(worktrunkCalls.length, 1);
     assert.deepEqual(herdrWorktreeCalls[1], [
-      "worktree", "open",
-      "--cwd", "/tmp/target",
-      "--path", "/tmp/target",
-      "--label", "main",
+      "worktree",
+      "open",
+      "--cwd",
+      "/tmp/target",
+      "--path",
+      "/tmp/target",
+      "--label",
+      "main",
       "--no-focus",
       "--json",
     ]);
