@@ -51,7 +51,7 @@
     ],
     "skills": [
       "skills",
-      ".agents/skills/*"
+      ".agents/skills"
     ]
   },
   "devDependencies": {

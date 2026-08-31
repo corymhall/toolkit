@@ -1,9 +1,5 @@
 version: 1
 skills:
-  ai-contribution-readiness-audit:
-    model_invocable: false
-  ai-harness-bootstrap:
-    model_invocable: false
   bridge-parity-investigation:
     model_invocable: true
   browser-tools:
@@ -24,8 +20,8 @@ skills:
     model_invocable: true
   explain-pr:
     model_invocable: false
-  git-spice-stack-prs:
-    model_invocable: true
+  worktrunk-stack-prs:
+    model_invocable: false
   github-search-cli:
     model_invocable: true
   go-development:
@@ -40,8 +36,6 @@ skills:
     model_invocable: true
   memory-guard:
     model_invocable: true
-  multi-model-evaluate:
-    model_invocable: false
   neovim-plugin-development:
     model_invocable: true
   notion-docs:
@@ -74,19 +68,8 @@ skills:
     model_invocable: true
   bro:
     model_invocable: true
-  grill-me:
+  nvim-mcp:
     model_invocable: false
-  humanizer:
-    model_invocable: false
-    openai:
-      interface:
-        display_name: "Humanizer"
-        short_description: "Make AI-written text sound like the writer"
-        default_prompt: "Use $humanizer to rewrite this text in my voice without changing its facts."
-  grill-with-docs:
-    model_invocable: false
-  domain-modeling:
-    model_invocable: true
   show-me:
     openai:
       interface:
@@ -94,10 +77,5 @@ skills:
         short_description: Help the user understand the current topic visually with concise diagrams, code-shape sketches, and focused HTML artifacts.
         default_prompt: This is too much content $show-me
     model_invocable: false
-  gh-stack:
-    openai:
-      interface:
-        display_name: GH Stack
-        short_description: Manage GitHub stacked PRs
-        default_prompt: Use $gh-stack to manage stacked PRs
-    model_invocable: false
+  aws-documentation-mcp:
+    model_invocable: true
