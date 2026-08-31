@@ -6,6 +6,7 @@ import {
   loadCodexFastModeState,
 } from "../codex-fast-mode/index.ts";
 import {
+  describeCodexRateLimitError,
   fetchCodexRateLimits,
   getWeeklyRemaining,
   getWeeklyRemainingFromHeaders,
@@ -34,7 +35,7 @@ export default function statusFooterExtension(
     const abort = new AbortController();
     refreshAbort = abort;
     refreshInFlight = fetchRateLimits({ signal: abort.signal })
-      .then(response => {
+      .then((response) => {
         if (!active || sawProviderRateLimit) return;
         weeklyRemaining = getWeeklyRemaining(response);
         requestRender?.();
@@ -61,21 +62,25 @@ export default function statusFooterExtension(
         },
         render(width: number): string[] {
           const usage = ctx.getContextUsage();
-          return renderStatusFooter({
-            model: ctx.model?.id,
-            thinking: ctx.model?.reasoning ? pi.getThinkingLevel() : undefined,
-            fastMode: isCodexFastModeActive(ctx.model, fastModeEnabled),
-            branch: footerData.getGitBranch(),
-            weeklyRemaining,
-            contextRemaining: remainingPercent(usage?.percent),
-          }, width, theme);
+          return renderStatusFooter(
+            {
+              model: ctx.model?.id,
+              thinking: ctx.model?.reasoning ? pi.getThinkingLevel() : undefined,
+              fastMode: isCodexFastModeActive(ctx.model, fastModeEnabled),
+              branch: footerData.getGitBranch(),
+              weeklyRemaining,
+              contextRemaining: remainingPercent(usage?.percent),
+            },
+            width,
+            theme,
+          );
         },
       };
     });
     if (refresh) void refreshWeeklyLimit().catch(() => requestRender?.());
   };
 
-  const unsubscribeFastMode = pi.events.on(CODEX_FAST_MODE_CHANGED_EVENT, value => {
+  const unsubscribeFastMode = pi.events.on(CODEX_FAST_MODE_CHANGED_EVENT, (value) => {
     if (!isCodexFastModeChanged(value)) return;
     fastModeEnabled = value.enabled;
     requestRender?.();
@@ -85,7 +90,7 @@ export default function statusFooterExtension(
   pi.on("model_select", () => requestRender?.());
   pi.on("thinking_level_select", () => requestRender?.());
 
-  pi.on("after_provider_response", event => {
+  pi.on("after_provider_response", (event) => {
     const remaining = getWeeklyRemainingFromHeaders(event.headers);
     if (remaining === undefined) return;
     sawProviderRateLimit = true;
@@ -119,8 +124,10 @@ export default function statusFooterExtension(
           ctx.ui.notify(`Weekly Codex limit: ${Math.round(weeklyRemaining)}% left`, "info");
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        ctx.ui.notify(`Could not refresh Codex rate limits: ${message}`, "warning");
+        ctx.ui.notify(
+          `Could not refresh Codex rate limits: ${describeCodexRateLimitError(error)}`,
+          "warning",
+        );
       }
     },
   });

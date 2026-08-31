@@ -28,30 +28,52 @@ function clampPercent(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
 
+/** Add actionable context while preserving the error returned by Codex. */
+export function describeCodexRateLimitError(error: unknown): string {
+  const detail = error instanceof Error ? error.message : String(error);
+  if (/error sending request for url/iu.test(detail)) {
+    return `Codex could not reach ChatGPT. Check sandbox network access, DNS, TLS certificates, and proxy settings. No HTTP credential response was received. Codex reported: ${detail}`;
+  }
+  if (/\b(?:401|403)\b|unauthorized|authentication|not logged in|login required/iu.test(detail)) {
+    return `Codex authentication failed. Check the Codex login available in this environment. Codex reported: ${detail}`;
+  }
+  if (/permission denied|operation not permitted|read-only file system/iu.test(detail)) {
+    return `Codex could not access its local state. Check sandbox read and write access to CODEX_HOME. Codex reported: ${detail}`;
+  }
+  return detail;
+}
+
 /** Select the seven-day window from Codex's backward-compatible default bucket. */
 export function getWeeklyRemaining(response: CodexRateLimitsResponse): number | undefined {
   const snapshot = response.rateLimits;
   if (!snapshot) return undefined;
 
   const windows = [snapshot.primary, snapshot.secondary].filter(
-    (window): window is RateLimitWindow => window != null && finiteNumber(window.usedPercent) !== undefined,
+    (window): window is RateLimitWindow =>
+      window != null && finiteNumber(window.usedPercent) !== undefined,
   );
   if (windows.length === 0) return undefined;
 
-  const weekly = windows.find(window => {
+  const weekly = windows.find((window) => {
     const duration = finiteNumber(window.windowDurationMins);
     return duration !== undefined && duration >= WEEK_MINUTES - 60;
   });
-  const selected = weekly
-    ?? [...windows].sort((left, right) =>
-      (finiteNumber(right.windowDurationMins) ?? -1) - (finiteNumber(left.windowDurationMins) ?? -1))[0];
+  const selected =
+    weekly ??
+    [...windows].sort(
+      (left, right) =>
+        (finiteNumber(right.windowDurationMins) ?? -1) -
+        (finiteNumber(left.windowDurationMins) ?? -1),
+    )[0];
   const usedPercent = finiteNumber(selected?.usedPercent);
   return usedPercent === undefined ? undefined : clampPercent(100 - usedPercent);
 }
 
 /** Read Codex rolling-window headers from Pi's actual OpenAI subscription response. */
 export function getWeeklyRemainingFromHeaders(headers: Record<string, string>): number | undefined {
-  const normalized = new Map(Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]));
+  const normalized = new Map(
+    Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]),
+  );
   const window = (name: "primary" | "secondary"): RateLimitWindow | null => {
     const usedPercent = Number(normalized.get(`x-codex-${name}-used-percent`));
     if (!Number.isFinite(usedPercent)) return null;
@@ -61,19 +83,26 @@ export function getWeeklyRemainingFromHeaders(headers: Record<string, string>): 
       windowDurationMins: Number.isFinite(duration) ? duration : undefined,
     };
   };
-  return getWeeklyRemaining({ rateLimits: { primary: window("primary"), secondary: window("secondary") } });
+  return getWeeklyRemaining({
+    rateLimits: { primary: window("primary"), secondary: window("secondary") },
+  });
 }
 
 /** Read the current ChatGPT Codex subscription limits through the local Codex app server. */
-export function fetchCodexRateLimits(options: {
-  signal?: AbortSignal;
-  timeoutMs?: number;
-  spawnCodex?: SpawnCodex;
-} = {}): Promise<CodexRateLimitsResponse> {
+export function fetchCodexRateLimits(
+  options: {
+    signal?: AbortSignal;
+    timeoutMs?: number;
+    spawnCodex?: SpawnCodex;
+  } = {},
+): Promise<CodexRateLimitsResponse> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const spawnCodex = options.spawnCodex ?? (() => spawn("codex", ["app-server", "--stdio"], {
-    stdio: ["pipe", "pipe", "pipe"],
-  }));
+  const spawnCodex =
+    options.spawnCodex ??
+    (() =>
+      spawn("codex", ["app-server", "--stdio"], {
+        stdio: ["pipe", "pipe", "pipe"],
+      }));
 
   return new Promise((resolve, reject) => {
     let child: ChildProcessWithoutNullStreams;
@@ -109,18 +138,22 @@ export function fetchCodexRateLimits(options: {
     }
     options.signal?.addEventListener("abort", abort, { once: true });
 
-    child.stderr.on("data", chunk => {
+    child.stderr.on("data", (chunk) => {
       stderr = (stderr + String(chunk)).slice(-8_000);
     });
-    child.stdin.on("error", error => finish(error));
-    child.on("error", error => finish(error));
-    child.on("exit", code => {
+    child.stdin.on("error", (error) => finish(error));
+    child.on("error", (error) => finish(error));
+    child.on("exit", (code) => {
       if (!settled) {
         const detail = stderr.trim();
-        finish(new Error(`Codex app server exited before returning rate limits (code ${code ?? "unknown"})${detail ? `: ${detail}` : ""}`));
+        finish(
+          new Error(
+            `Codex app server exited before returning rate limits (code ${code ?? "unknown"})${detail ? `: ${detail}` : ""}`,
+          ),
+        );
       }
     });
-    lines.on("line", line => {
+    lines.on("line", (line) => {
       let message: { id?: number; result?: unknown; error?: { message?: string } };
       try {
         message = JSON.parse(line) as typeof message;
@@ -147,16 +180,18 @@ export function fetchCodexRateLimits(options: {
       }
     });
 
-    child.stdin.write(`${JSON.stringify({
-      method: "initialize",
-      id: 0,
-      params: {
-        clientInfo: {
-          name: "corymhall_pi_status_footer",
-          title: "Pi status footer",
-          version: "0.1.0",
+    child.stdin.write(
+      `${JSON.stringify({
+        method: "initialize",
+        id: 0,
+        params: {
+          clientInfo: {
+            name: "corymhall_pi_status_footer",
+            title: "Pi status footer",
+            version: "0.1.0",
+          },
         },
-      },
-    })}\n`);
+      })}\n`,
+    );
   });
 }

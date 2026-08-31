@@ -50,24 +50,34 @@ function quotaItem(
   compact = false,
 ): FooterItem {
   const percent = remaining === undefined ? "?" : `${Math.round(clampPercent(remaining))}%`;
-  const text = compact ? `${label}${percent}` : `${label} ${percent}${remaining === undefined ? "" : " left"}`;
+  const text = compact
+    ? `${label}${percent}`
+    : `${label} ${percent}${remaining === undefined ? "" : " left"}`;
   return {
     text,
-    render: theme => theme.fg(color(remaining), text),
+    render: (theme) => theme.fg(color(remaining), text),
   };
 }
 
 function optionalItem(text: string | undefined, color: "accent" | "muted"): FooterItem | undefined {
   if (!text) return undefined;
-  return { text, render: theme => theme.fg(color, text) };
+  return { text, render: (theme) => theme.fg(color, text) };
 }
 
 function lineWidth(items: FooterItem[], separator: string): number {
-  return items.reduce((width, item, index) => width + visibleWidth(item.text) + (index === 0 ? 0 : visibleWidth(separator)), 0);
+  return items.reduce(
+    (width, item, index) =>
+      width + visibleWidth(item.text) + (index === 0 ? 0 : visibleWidth(separator)),
+    0,
+  );
 }
 
 /** Render a Codex-inspired one-line footer, preserving quota and context on narrow terminals. */
-export function renderStatusFooter(data: StatusFooterData, width: number, theme: FooterTheme): string[] {
+export function renderStatusFooter(
+  data: StatusFooterData,
+  width: number,
+  theme: FooterTheme,
+): string[] {
   if (width <= 0) return [];
 
   const modelText = data.model
@@ -79,10 +89,12 @@ export function renderStatusFooter(data: StatusFooterData, width: number, theme:
   const context = quotaItem("context", data.contextRemaining, contextColor);
   const separator = " · ";
 
-  let items = [model, branch, weekly, context].filter((item): item is FooterItem => item !== undefined);
+  let items = [model, branch, weekly, context].filter(
+    (item): item is FooterItem => item !== undefined,
+  );
   for (const removable of [branch, model]) {
     if (lineWidth(items, separator) <= width) break;
-    if (removable) items = items.filter(item => item !== removable);
+    if (removable) items = items.filter((item) => item !== removable);
   }
   if (lineWidth(items, separator) > width) {
     items = [
@@ -91,6 +103,6 @@ export function renderStatusFooter(data: StatusFooterData, width: number, theme:
     ];
   }
 
-  const rendered = items.map(item => item.render(theme)).join(theme.fg("dim", separator));
+  const rendered = items.map((item) => item.render(theme)).join(theme.fg("dim", separator));
   return [truncateToWidth(rendered, width, theme.fg("dim", "…"))];
 }
