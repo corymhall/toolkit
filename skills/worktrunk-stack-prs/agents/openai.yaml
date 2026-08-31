@@ -1,0 +1,6 @@
+interface:
+  display_name: "Worktrunk Stacked PRs"
+  short_description: "Manage stacked GitHub pull requests with worktrunk worktrees"
+  default_prompt: "$worktrunk-stacked-prs help me with this PR stack"
+policy:
+  allow_implicit_invocation: false

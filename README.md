@@ -262,7 +262,7 @@ checkout.
 | Review | `prepare-for-review`, `request-review`, `review-pr`, `explain-pr`, `claude-review` |
 | AI harness | `ai-contribution-readiness-audit`, `ai-harness-bootstrap`, `skill-authoring`, `harness-evaluation` |
 | Development | `go-development`, `neovim-plugin-development` |
-| General workflows | `collaborate`, `capture-decision-context`, `multi-model-evaluate`, `git-spice-stack-prs` |
+| General workflows | `collaborate`, `capture-decision-context`, `multi-model-evaluate`, `worktrunk-stack-prs` |
 | GitHub | `create-pr`, `github-search-cli` |
 | Documentation | `high-signal-docs`, `notion-docs` |
 | Operations | `memory-guard` |

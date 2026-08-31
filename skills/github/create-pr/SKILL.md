@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Create, draft, or update a GitHub pull request using a direct, technically specific, reviewer-oriented tone. Use when asked to open or create a PR, create a draft PR, draft or revise a PR title or body, or update an existing PR description. For stacked PRs, use git-spice-stack-prs for stack mechanics and this skill for each PR's title and description.
+description: Create, draft, or update a GitHub pull request using a direct, technically specific, reviewer-oriented tone. Use when asked to open or create a PR, create a draft PR, draft or revise a PR title or body, or update an existing PR description. For worktree-based stacked PRs, use worktrunk-stack-prs for stack mechanics and this skill for each PR's title and description.
 ---
 
 # Create PR
@@ -85,9 +85,9 @@ when needed, but do not rewrite published history or force-push unless separatel
 authorized. Use a body file rather than embedding multiline Markdown in shell
 arguments.
 
-For stacked changes, let `git-spice-stack-prs` own branch relationships,
-restacking, and submission. Treat a commit-derived `--fill` body as temporary
-and replace it with a deliberate description using this guidance.
+For worktree-based stacked changes, let `worktrunk-stack-prs` own branch
+relationships, restacking, and submission. Replace automatically generated PR
+text with a deliberate description using this guidance.
 
 After creating or updating the PR, verify its title, body, base, head, draft
 state, and URL. Report the URL and any metadata, validation, or reviewer decision
