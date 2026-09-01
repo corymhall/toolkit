@@ -8,16 +8,13 @@
     "format": "oxfmt extensions",
     "format:check": "oxfmt --check extensions",
     "lint": "oxlint extensions",
-    "test": "npm run test:codex-fast-mode && npm run test:compact-tool-renderer && npm run test:session-default-model && npm run test:delegate && npm run test:herdr-command && npm run test:herdr-nvim-links && npm run test:skill-autocomplete && npm run test:system-prompt && npm run test:status-footer && npm run test:web-access && npm run test:web-access:bun",
+    "test": "npm run test:codex-fast-mode && npm run test:pi-ui && npm run test:session-default-model && npm run test:delegate && npm run test:herdr-command && npm run test:system-prompt && npm run test:web-access && npm run test:web-access:bun",
     "test:codex-fast-mode": "node --experimental-strip-types --test extensions/codex-fast-mode/test/*.test.ts",
-    "test:compact-tool-renderer": "node --experimental-strip-types --test extensions/compact-tool-renderer/test/*.test.ts",
+    "test:pi-ui": "node --experimental-strip-types --test extensions/pi-ui/test/*.test.ts extensions/pi-ui/*/test/*.test.ts",
     "test:session-default-model": "node --experimental-strip-types --test extensions/session-default-model/test/*.test.ts",
     "test:delegate": "node --experimental-strip-types --test extensions/delegate/test/*.test.ts",
     "test:herdr-command": "node --experimental-strip-types --test extensions/herdr-command/test/*.test.ts",
-    "test:herdr-nvim-links": "node --experimental-strip-types --test extensions/herdr-nvim-links/test/*.test.ts",
-    "test:skill-autocomplete": "node --experimental-strip-types --test extensions/skill-autocomplete/test/*.test.ts",
     "test:system-prompt": "node --experimental-strip-types --test extensions/system-prompt/test/*.test.ts",
-    "test:status-footer": "node --experimental-strip-types --test extensions/status-footer/test/*.test.ts",
     "test:web-access": "node --experimental-strip-types --test extensions/web-access/test/*.test.ts",
     "test:web-access:bun": "bun test extensions/web-access/test/*.test.ts",
     "typecheck": "oxlint --type-aware --type-check extensions"
@@ -42,14 +39,11 @@
     "extensions": [
       "extensions/web-access/index.ts",
       "extensions/codex-fast-mode/index.ts",
-      "extensions/compact-tool-renderer/index.ts",
+      "extensions/pi-ui/index.ts",
       "extensions/session-default-model/index.ts",
-      "extensions/skill-autocomplete/index.ts",
       "extensions/system-prompt/index.ts",
-      "extensions/status-footer/index.ts",
       "extensions/delegate/index.ts",
-      "extensions/herdr-command/index.ts",
-      "extensions/herdr-nvim-links/index.ts"
+      "extensions/herdr-command/index.ts"
     ],
     "skills": [
       "skills",

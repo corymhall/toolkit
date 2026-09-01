@@ -1,6 +1,6 @@
 # Herdr Neovim Links
 
-This Pi extension makes local `file://` links in normal Pi chat messages and
+This Pi UI module makes local `file://` links in normal Pi chat messages and
 Pi's built-in `read`, `edit`, and `write` tool titles open in Herdr Neovim. The
 visible chat text stays unchanged; the display-only renderer changes each link
 target to `herdr-nvim://`. On macOS, the accompanying URL handler opens the file
@@ -15,14 +15,14 @@ right-hand Neovim is available.
 - Pi and Neovim running as panes in the same Herdr tab
 - Xcode command-line tools or Xcode for `swiftc` and `codesign`
 
-The extension is inert outside Pi's interactive TUI and outside Herdr.
+The module is inert outside Pi's interactive TUI and outside Herdr.
 
 ## Install the native and Neovim integrations
 
 From a local toolkit checkout:
 
 ```bash
-extensions/herdr-nvim-links/install.sh
+extensions/pi-ui/herdr-nvim-links/install.sh
 ```
 
 The explicit installer:
@@ -36,13 +36,13 @@ The explicit installer:
 It refuses to replace a Neovim package that is not a symlink or an app with a
 different bundle identifier. It does not edit Neovim configuration files.
 Restart Neovim after installation so the runtime can start and advertise its
-RPC server. Reload or restart Pi after activating the extension.
+RPC server. Reload or restart Pi after activating Pi UI.
 
 To manage the Neovim integration through a plugin manager instead, install only
 the native app:
 
 ```bash
-extensions/herdr-nvim-links/install.sh --native-only
+extensions/pi-ui/herdr-nvim-links/install.sh --native-only
 ```
 
 For lazy.nvim, add an eager local plugin so the RPC address is available before
@@ -51,7 +51,7 @@ a file link is clicked:
 ```lua
 {
   name = 'herdr-nvim',
-  dir = '~/personal/toolkit/extensions/herdr-nvim-links/nvim',
+  dir = '~/personal/toolkit/extensions/pi-ui/herdr-nvim-links/nvim',
   lazy = false,
 }
 ```
@@ -89,15 +89,15 @@ Herdr pane.
 
 ## Current boundary
 
-The extension uses Pi's display-only Markdown transformer for normal user,
+The module uses Pi's display-only Markdown transformer for normal user,
 assistant, and thinking messages. It handles explicit Markdown links, angle
 bracket autolinks, reference destinations, and bare absolute local `file://`
 URLs. It does not change URLs in code or raw HTML.
 
 Pi has no global link-click or renderer middleware API. For native tools, the
-extension overrides local built-in `read`, `edit`, and `write` definitions and
+module overrides local built-in `read`, `edit`, and `write` definitions and
 wraps their existing title renderers. It skips a native tool already owned by
-another extension. The toolkit compact renderer instead provides a display-only
+another extension. The toolkit Tool Cards module instead provides a display-only
 render-time event, which also works when Pi rebuilds history during `/reload`.
 Links from other custom message and tool renderers are unchanged.
 

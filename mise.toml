@@ -36,7 +36,7 @@ run = "npm run lint"
 
 [tasks."lint:shell"]
 description = "Lint repository and skill shell scripts"
-run = "shellcheck scripts/*.sh extensions/*/*.sh skills/*/*/scripts/*.sh"
+run = "find scripts extensions skills -type f -name '*.sh' -print0 | xargs -0 shellcheck"
 
 [tasks."lint:skills"]
 description = "Validate skills against the Agent Skills specification"

@@ -4,7 +4,7 @@ import {
   isCodexFastModeActive,
   isCodexFastModeChanged,
   loadCodexFastModeState,
-} from "../codex-fast-mode/index.ts";
+} from "../../codex-fast-mode/index.ts";
 import {
   describeCodexRateLimitError,
   fetchCodexRateLimits,

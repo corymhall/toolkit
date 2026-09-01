@@ -1,4 +1,4 @@
-# Status Footer extension
+# Status Footer
 
 A compact, Codex-inspired Pi footer that prioritizes two signals:
 
@@ -25,7 +25,7 @@ provider-response hook includes Codex rolling-window headers. After an OpenAI
 Codex response, those headers are authoritative because they came from Pi's
 active account.
 
-For an initial value before the first response, the extension asks the locally
+For an initial value before the first response, the module asks the locally
 installed Codex CLI for `account/rateLimits/read` through `codex app-server`,
 then selects its seven-day window. `/status-refresh` reinstalls the custom
 footer and repeats that fallback request, so it can also recover UI state after
@@ -41,12 +41,12 @@ This means:
   app-server protocol, the footer displays `weekly ?` until Pi receives
   compatible Codex rate-limit headers. Pi continues normally.
 
-The extension never reads or logs Codex credential files. The local Codex
+The module never reads or logs Codex credential files. The local Codex
 process handles fallback authentication.
 
 ## Context semantics
 
-Pi reports context as percent used. The extension renders the complement,
+Pi reports context as percent used. The module renders the complement,
 rounded to a whole percentage, so it matches Codex's “context left” framing.
 Immediately after compaction, Pi may temporarily report context as unknown; the
 footer displays `context ?` until usage is available again.

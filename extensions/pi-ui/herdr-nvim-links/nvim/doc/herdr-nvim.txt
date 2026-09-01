@@ -17,7 +17,7 @@ right of Pi.
 
 The runtime can be installed as a native package by:
 >
-    extensions/herdr-nvim-links/install.sh
+    extensions/pi-ui/herdr-nvim-links/install.sh
 <
 or declared as an eager local plugin in a package manager. No setup call,
 command, or key mapping is required.

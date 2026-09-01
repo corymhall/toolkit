@@ -6,10 +6,10 @@ import { join } from "node:path";
 import test from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
-  CompactToolRow,
+  CompactToolCard,
   EmptyToolResult,
   type CompactTheme,
-} from "../../compact-tool-renderer/rendering.ts";
+} from "../../pi-ui/tool-cards/rendering.ts";
 import herdrCommandExtension from "../index.ts";
 import {
   buildPaneCommand,
@@ -175,7 +175,7 @@ async function restoreSession(
   );
 }
 
-test("renders compact start and status rows with expandable output", () => {
+test("renders compact start and status cards with expandable output", () => {
   withHerdrEnv(() => {
     const loaded = loadExtension(async () => ({ code: 0, stdout: "", stderr: "", killed: false }));
     const start = tool(loaded, HERDR_START_COMMAND_TOOL_NAME);
@@ -190,9 +190,10 @@ test("renders compact start and status rows with expandable output", () => {
       isPartial: false,
       lastComponent: undefined,
       state: startState,
+      toolCallId: "start-call",
     };
     const startRow = start.renderCall!(startContext.args, plainTheme, startContext);
-    const collapsed = start.renderResult!(
+    const startResult = start.renderResult!(
       {
         content: [{ type: "text", text: "Started" }],
         details: { state: "submitted", paneId: "wE:p2D" },
@@ -203,9 +204,12 @@ test("renders compact start and status rows with expandable output", () => {
     );
 
     assert.equal(start.renderShell, "self");
-    assert.ok(startRow instanceof CompactToolRow);
-    assert.ok(collapsed instanceof EmptyToolResult);
-    assert.deepEqual(startRow.render(100), ["● $ mise run validate · wE:p2D · detached ▸"]);
+    assert.ok(startRow instanceof CompactToolCard);
+    assert.ok(startResult instanceof EmptyToolResult);
+    const startLines = startRow.render(100);
+    assert.equal(startLines.length, 3);
+    assert.match(startLines[1] ?? "", /➔ Herdr Start ● \| Command: \$ mise run validate/u);
+    assert.doesNotMatch(startLines[1] ?? "", /wE:p2D|detached|words/u);
 
     const failedState = {};
     const failedContext = { ...startContext, isError: true, state: failedState };
@@ -216,39 +220,103 @@ test("renders compact start and status rows with expandable output", () => {
       plainTheme,
       failedContext,
     );
-    assert.deepEqual(failedRow.render(100), ["✗ $ mise run validate · failed ▸"]);
+    const failedOutput = failedRow.render(100).join("\n");
+    assert.match(failedOutput, /➔ Herdr Start ✗/u);
+    assert.match(failedOutput, /Command: \$ mise run validate/u);
+    assert.match(failedOutput, /failed/u);
+    assert.match(failedOutput, /Herdr request failed/u);
 
     const status = tool(loaded, HERDR_COMMAND_STATUS_TOOL_NAME);
     const statusState = {};
     const statusContext = {
       ...startContext,
       args: { waitMs: 2_000 },
-      expanded: true,
+      expanded: false,
       state: statusState,
+      toolCallId: "status-call",
     };
     const statusRow = status.renderCall!(statusContext.args, plainTheme, statusContext);
-    const expanded = status.renderResult!(
+    status.renderResult!(
       {
-        content: [{ type: "text", text: "Command failed\ncompiler error" }],
+        content: [{ type: "text", text: "Command is still running.\n\npartial output" }],
         details: {
-          state: "completed",
-          paneId: "wE:p2D",
-          exitCode: 2,
-          durationMs: 14_000,
+          state: "running",
+          command: "mise run validate",
+          durationMs: 5_000,
         },
       },
-      { expanded: true, isPartial: false },
+      { expanded: false, isPartial: false },
+      plainTheme,
+      statusContext,
+    );
+    const runningLines = statusRow.render(120);
+    assert.equal(runningLines.length, 3);
+    assert.match(runningLines[1] ?? "", /Command: \$ mise run validate/u);
+    assert.match(runningLines[1] ?? "", /wait 2.0s · running · 5.0s/u);
+
+    const completedResult = {
+      content: [
+        {
+          type: "text",
+          text: "Command failed.\nForeground: zsh\n\none\ntwo\nthree\nfour\nfive\nsix\ncompiler error\n\n[Recent output truncated to 120 lines / 4KB.]\n\n[The run's start marker is outside recent terminal scrollback; output may begin mid-stream.]",
+        },
+      ],
+      details: {
+        state: "completed",
+        command: "mise run validate",
+        exitCode: 2,
+        durationMs: 14_000,
+      },
+    };
+    const collapsed = status.renderResult!(
+      completedResult,
+      { expanded: false, isPartial: false },
       plainTheme,
       statusContext,
     );
 
-    assert.deepEqual(statusRow.render(120), [
-      "✗ Herdr status · wait 2.0s · wE:p2D · exit 2 · 14s ▾",
-    ]);
-    assert.deepEqual(
-      expanded.render(120).map((line: string) => line.trimEnd()),
-      ["Command failed", "compiler error"],
+    assert.ok(collapsed instanceof EmptyToolResult);
+    const statusOutput = statusRow.render(120).join("\n");
+    assert.match(statusOutput, /➔ Herdr Status ✗/u);
+    assert.match(statusOutput, /Command: \$ mise run validate/u);
+    assert.match(statusOutput, /exit 2 · 14s/u);
+    assert.doesNotMatch(statusOutput, /wait 2.0s/u);
+    assert.doesNotMatch(statusOutput, /\bone\b|\btwo\b/u);
+    assert.match(statusOutput, /three/u);
+    assert.match(statusOutput, /compiler error/u);
+    assert.match(statusOutput, /\.\.\. 2 more lines/u);
+    assert.doesNotMatch(statusOutput, /Recent output truncated|start marker/u);
+
+    statusContext.expanded = true;
+    const expanded = status.renderResult!(
+      completedResult,
+      { expanded: true, isPartial: false },
+      plainTheme,
+      statusContext,
     );
+    assert.ok(expanded instanceof EmptyToolResult);
+    assert.match(statusRow.render(120).join("\n"), /\bone\b/u);
+
+    statusContext.expanded = false;
+    status.renderResult!(
+      {
+        content: [{ type: "text", text: "Command completed.\n\nfirst line\nlast line" }],
+        details: {
+          state: "completed",
+          command: "mise run validate",
+          exitCode: 0,
+          durationMs: 15_000,
+        },
+      },
+      { expanded: false, isPartial: false },
+      plainTheme,
+      statusContext,
+    );
+    const successfulOutput = statusRow.render(120).join("\n");
+    assert.match(successfulOutput, /➔ Herdr Status ✓/u);
+    assert.match(successfulOutput, /exit 0 · 15s/u);
+    assert.match(successfulOutput, /first line/u);
+    assert.match(successfulOutput, /last line/u);
   });
 });
 

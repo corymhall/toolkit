@@ -91,11 +91,9 @@ pi install git:github.com/corymhall/toolkit
 
 The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
-`extensions/codex-fast-mode`, `extensions/compact-tool-renderer`,
-`extensions/session-default-model`, `extensions/skill-autocomplete`,
-`extensions/system-prompt`,
-`extensions/status-footer`, `extensions/delegate`, `extensions/herdr-command`,
-and `extensions/herdr-nvim-links` extensions.
+`extensions/codex-fast-mode`, `extensions/pi-ui`,
+`extensions/session-default-model`, `extensions/system-prompt`,
+`extensions/delegate`, and `extensions/herdr-command` extensions.
 `codex-skills/spec-to-goal` is omitted because Pi does not provide Codex CLI's
 `/goal` workflow. The package does not add hidden background-process or generic
 subagent tools.
@@ -118,8 +116,8 @@ dependencies automatically.
   Readability. Extraction failures are returned without external-service
   fallbacks.
 - Successful remote results are saved to private temporary Markdown files. The
-  model receives bounded content, while the TUI shows a compact title/source
-  summary with a clickable full-output path.
+  model receives bounded content, while the TUI uses compact cards for calls
+  and an expanded title/source summary with a clickable full-output path.
 
 The extension does not bundle an extension-owned skill or use Jina, Gemini,
 Parallel, Brave, Exa, Tavily, or Perplexity. See
@@ -133,14 +131,28 @@ unchanged, defaults to off, and ignores unsupported models. See
 [extensions/codex-fast-mode/README.md](extensions/codex-fast-mode/README.md) for
 the current capability allowlist and validation behavior.
 
-### Compact Tool Renderer extension
+### Pi UI extension
 
-`extensions/compact-tool-renderer` shows each local built-in tool call as one
-compact status row. It keeps output hidden until Pi's global tool expansion is
-enabled with `Ctrl+O`, then uses Pi's native expanded renderer. It changes only
-interactive presentation and delegates all execution to Pi. See
-[extensions/compact-tool-renderer/README.md](extensions/compact-tool-renderer/README.md)
-for supported tools and the current global-expansion limitation.
+`extensions/pi-ui` provides one entry point for the toolkit's interactive UI:
+
+- Tool Cards renders built-in and custom tool calls as bordered cards with Bash
+  output previews, compact informational calls, and execution metadata.
+- Skill Autocomplete adds inline `$skill-name` completion and converts explicit
+  user-only skill mentions to Pi's required leading command.
+- Status Footer prioritizes remaining Codex weekly quota and Pi context, then
+  adds model, thinking level, Fast mode, and Git branch when space permits.
+- Herdr Neovim Links redirects local file links to a right-hand Neovim pane when
+  Pi runs in Herdr and its native integration is installed.
+
+`Ctrl+O` uses Pi's global tool expansion state and native expanded result
+renderers. Install the optional Herdr native and Neovim integration with:
+
+```bash
+extensions/pi-ui/herdr-nvim-links/install.sh
+```
+
+See [extensions/pi-ui/README.md](extensions/pi-ui/README.md) for links to each
+feature's behavior, requirements, and limitations.
 
 ### Session Default Model extension
 
@@ -152,15 +164,6 @@ state. Use `/session-default show` to inspect the saved default and
 [extensions/session-default-model/README.md](extensions/session-default-model/README.md)
 for storage and failure behavior.
 
-### Skill Autocomplete extension
-
-Type `$` at a token boundary to fuzzy-pick an available Pi skill anywhere in a
-prompt. Model-invocable skills remain ordinary exact-name mentions. Skills with
-`disable-model-invocation: true` are labeled as explicit and moved to Pi's
-required leading `/skill:name` form when submitted. See
-[extensions/skill-autocomplete/README.md](extensions/skill-autocomplete/README.md)
-for behavior and limitations.
-
 ### System Prompt extension
 
 `/system-prompt` opens the last effective Pi system-prompt string in a local
@@ -170,17 +173,6 @@ another session copy. Provider payload rewrites and host-level instructions are
 outside Pi's prompt API. See
 [extensions/system-prompt/README.md](extensions/system-prompt/README.md) for the
 exact boundary and sensitivity warning.
-
-### Status Footer extension
-
-`extensions/status-footer` replaces Pi's default footer with a compact line that
-prioritizes remaining Codex weekly quota and remaining Pi context. It adds model,
-thinking level, active Codex Fast mode, and Git branch when space permits. Weekly
-quota comes from Pi's OpenAI response headers, with the locally authenticated Codex CLI providing the
-startup fallback; use `/status-refresh` to reinstall the custom footer and
-refresh that fallback manually. See
-[extensions/status-footer/README.md](extensions/status-footer/README.md) for
-requirements and account-matching caveats.
 
 ### Delegate extension
 
@@ -203,28 +195,11 @@ command in one reusable, non-focused pane owned by the calling Pi terminal and
 returns immediately so the agent can continue independent work. New Pi sessions
 in that terminal adopt the same command pane. `herdr_command_status` later
 reports completion, exit status, foreground processes, and recent pane output,
-with an optional bounded wait. Explicit working directories prevent the
-persistent pane shell from drifting between commands. See
+with an optional bounded wait. Both tools use the Pi UI Tool Cards module and
+expand terminal output inside the card. Explicit working directories prevent
+the persistent pane shell from drifting between commands. See
 [extensions/herdr-command/README.md](extensions/herdr-command/README.md) for the
 command protocol and requirements.
-
-### Herdr Neovim Links extension
-
-When Pi runs in a Herdr pane, built-in `read`, `edit`, and `write` file-title
-links can open in a Neovim pane immediately to the right. The macOS helper uses
-Ghostty's OSC 8 support, Herdr pane discovery, and Neovim RPC; it creates and
-focuses a right-hand Neovim pane when needed and never injects editor
-keystrokes. The packaged extension is inert until the native URL handler and
-Neovim runtime are explicitly installed from a local checkout:
-
-```bash
-extensions/herdr-nvim-links/install.sh
-```
-
-See
-[extensions/herdr-nvim-links/README.md](extensions/herdr-nvim-links/README.md)
-for requirements, security boundaries, installation, and current renderer
-limitations.
 
 Package installation loads the `memory-guard` guidance but cannot create the
 `~/.local/bin/make` proxy. Run `scripts/install-local-skills.sh` from a local

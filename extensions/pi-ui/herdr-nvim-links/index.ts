@@ -5,10 +5,7 @@ import {
   createReadToolDefinition,
   createWriteToolDefinition,
 } from "@earendil-works/pi-coding-agent";
-import {
-  COMPACT_TOOL_CALL_RENDER_EVENT,
-  type CompactToolCallRenderEvent,
-} from "../compact-tool-renderer/events.ts";
+import { TOOL_CARD_CALL_RENDER_EVENT, type ToolCardCallRenderEvent } from "../tool-cards/events.ts";
 import {
   HerdrNvimLinkComponent,
   isUsableHerdrContext,
@@ -116,15 +113,12 @@ export default function herdrNvimLinksExtension(pi: ExtensionAPI, dependencies: 
     };
   };
 
-  const unsubscribeCompactRenderer = pi.events.on(
-    COMPACT_TOOL_CALL_RENDER_EVENT,
-    (value: unknown) => {
-      if (!value || typeof value !== "object" || !("component" in value)) return;
-      const event = value as CompactToolCallRenderEvent;
-      if (!["read", "edit", "write"].includes(event.toolName)) return;
-      event.component = wrapComponent(event.component, event.args, event.renderContext);
-    },
-  );
+  const unsubscribeToolCards = pi.events.on(TOOL_CARD_CALL_RENDER_EVENT, (value: unknown) => {
+    if (!value || typeof value !== "object" || !("component" in value)) return;
+    const event = value as ToolCardCallRenderEvent;
+    if (!["read", "edit", "write"].includes(event.toolName)) return;
+    event.component = wrapComponent(event.component, event.args, event.renderContext);
+  });
 
   pi.on("session_start", (_event, ctx) => {
     if (ctx.mode !== "tui") return;
@@ -140,5 +134,5 @@ export default function herdrNvimLinksExtension(pi: ExtensionAPI, dependencies: 
     }
   });
 
-  pi.on("session_shutdown", () => unsubscribeCompactRenderer());
+  pi.on("session_shutdown", () => unsubscribeToolCards());
 }

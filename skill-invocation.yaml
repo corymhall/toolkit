@@ -16,6 +16,8 @@ skills:
     model_invocable: false
   collaborate:
     model_invocable: false
+  commit:
+    model_invocable: true
   create-pr:
     model_invocable: true
   explain-pr:

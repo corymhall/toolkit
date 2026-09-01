@@ -23,10 +23,14 @@ After starting a command, avoid frequent status polling. Continue independent
 work, then call `herdr_command_status` before relying on generated artifacts or
 reporting that the command succeeded.
 
-In Pi's interactive TUI, both tools use the toolkit's compact tool rows. The
-collapsed row shows the command state, pane, duration, and exit code without
-showing terminal output. Press Pi's global tool expansion key, `Ctrl+O` by
-default, to show the complete tool result.
+In Pi's interactive TUI, both tools use the toolkit's Cendre-aware cards.
+`Herdr Start` shows the command with the same shell syntax colors as Bash and
+omits internal pane IDs. While a command is incomplete, `Herdr Status` stays
+compact and shows the original command, requested wait, state, and running
+duration. On successful or failed completion, it becomes a Bash-style full card
+with the original command and the last five output lines. Press Pi's global tool
+expansion key, `Ctrl+O` by default, to show the complete tool result inside the
+card.
 
 ## Behavior
 

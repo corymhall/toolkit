@@ -192,7 +192,7 @@ test("rejects multiple distinct user-only skills but permits repeated references
   );
 });
 
-test("the extension installs TUI autocomplete and restores rejected input", async () => {
+test("the module installs TUI autocomplete and restores rejected input", async () => {
   const handlers = new Map<string, (event: any, ctx: any) => any>();
   const commands = [skillCommand("commit"), skillCommand("private-review")];
   const pi = {

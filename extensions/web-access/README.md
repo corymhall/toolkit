@@ -9,9 +9,12 @@ A deliberately narrow Pi extension with three tools:
 It does not contain skills and does not use third-party search or extraction fallbacks. In particular, it does not use Jina Reader, Gemini, Parallel, Brave, Exa, Tavily, or Perplexity.
 
 Successful results are written to private Markdown files in the OS temp directory.
-The model receives the normal bounded result, while Pi's TUI renders only the
-untrusted-content warning, title or query, source, and a clickable full-output
-path. Temp-file retention follows the operating system's cleanup policy.
+The model receives the normal bounded result. In Pi's TUI, collapsed calls use
+the toolkit's compact Cendre-aware cards with `Query:` or `URL:` details and
+execution metadata. GitHub searches also show `Repo:` or `Repos:` when the call
+has repository scope. Expanding the cards shows only the untrusted-content
+warning, title or query, source, and a clickable full-output path. Temp-file
+retention follows the operating system's cleanup policy.
 
 `fetch_content` opts into Pi's sequential tool execution. A turn containing it
 runs sibling tool calls serially, trading parallel fetch throughput for

@@ -1,4 +1,4 @@
-# Skill Autocomplete extension
+# Skill Autocomplete
 
 Adds Codex-style `$` completion for Pi skills without changing normal
 model-invocable skill behavior.
@@ -19,7 +19,7 @@ For a skill whose frontmatter contains:
 disable-model-invocation: true
 ```
 
-the extension labels the picker entry as `explicit invocation` and rewrites the
+the module labels the picker entry as `explicit invocation` and rewrites the
 submitted prompt into Pi's required leading command. For example:
 
 ```text
@@ -32,12 +32,12 @@ is submitted as:
 /skill:commit Please use $commit for these changes.
 ```
 
-Pi then performs its native skill expansion. The extension reads invocation mode
+Pi then performs its native skill expansion. The module reads invocation mode
 from the same skill file returned by `pi.getCommands()` and uses Pi's exported
 frontmatter parser.
 
 Pi can natively expand only one leading `/skill:` command. If a prompt mentions
-multiple distinct user-only skills, the extension rejects the submission,
+multiple distinct user-only skills, the module rejects the submission,
 restores it to the editor, and shows a warning. Multiple model-invocable skills,
 or repeated mentions of the same user-only skill, remain supported.
 

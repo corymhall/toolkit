@@ -218,7 +218,7 @@ test("overrides only local built-in file tools in TUI mode", () => {
   });
 });
 
-test("decorates compact file rows when history is rendered", () => {
+test("decorates file tool cards when history is rendered", () => {
   withHerdrEnvironment(() => {
     let compactListener: ((value: unknown) => void) | undefined;
     const pi = {

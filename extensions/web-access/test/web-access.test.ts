@@ -4,6 +4,7 @@ import http from "node:http";
 import test from "node:test";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import webAccessExtension, { formatSearchSources } from "../index.ts";
+import { EmptyToolResult, type CompactTheme } from "../../pi-ui/tool-cards/rendering.ts";
 import { fetchGitHubContent, parseGitHubUrl } from "../github.ts";
 import { buildGitHubSearchQuery, searchGitHub } from "../github-search.ts";
 import { fetchHttpContent } from "../http.ts";
@@ -14,6 +15,10 @@ import {
   requestPinnedUrl,
   validateRemoteUrl,
 } from "../ssrf.ts";
+
+const plainTheme: CompactTheme = {
+  fg: (_color, text) => text,
+};
 
 test("drops provider header deletion markers before Codex web search", async () => {
   const ctx = {
@@ -378,12 +383,14 @@ test("searches GitHub through gh api and normalizes issue results", async () => 
   assert.doesNotMatch(result.fetched.content, /body/);
 });
 
-test("registers compact renderers for the intended tools and describes fetch_content boundaries", () => {
+test("registers tool-card renderers for the intended tools and describes fetch_content boundaries", () => {
   const tools: Array<{
     name: string;
     description: string;
     executionMode?: "parallel" | "sequential";
+    renderCall?: (...args: any[]) => any;
     renderResult?: (...args: any[]) => any;
+    renderShell?: string;
   }> = [];
   webAccessExtension({
     registerTool: (tool: (typeof tools)[number]) => tools.push(tool),
@@ -393,9 +400,50 @@ test("registers compact renderers for the intended tools and describes fetch_con
     ["web_search", "github_search", "fetch_content"],
   );
   assert.equal(
-    tools.every((tool) => typeof tool.renderResult === "function"),
+    tools.every(
+      (tool) =>
+        tool.renderShell === "self" &&
+        typeof tool.renderCall === "function" &&
+        typeof tool.renderResult === "function",
+    ),
     true,
   );
+  const githubSearch = tools.find((tool) => tool.name === "github_search");
+  const renderContext = {
+    args: { query: "timeout", repos: ["acme/widgets"] },
+    argsComplete: true,
+    executionStarted: true,
+    expanded: false,
+    isError: false,
+    isPartial: false,
+    state: {},
+    toolCallId: "github-render",
+  };
+  const githubCard = githubSearch?.renderCall?.(
+    renderContext.args,
+    { fg: (_color: string, text: string) => text },
+    renderContext,
+  );
+  githubSearch?.renderResult?.(
+    {
+      content: [{ type: "text", text: "results" }],
+      details: {
+        title: "GitHub issues search: timeout",
+        source: "https://github.com/search",
+        fullOutputPath: "/tmp/results.md",
+        truncated: false,
+        resultCount: 2,
+        totalCount: 7,
+      },
+    },
+    { expanded: false, isPartial: false },
+    plainTheme,
+    renderContext,
+  );
+  const githubOutput = githubCard.render(120).join("\n");
+  assert.match(githubOutput, /Query: timeout · Repo: acme\/widgets/u);
+  assert.match(githubOutput, /2 of 7 results/u);
+
   const fetchContent = tools.find((tool) => tool.name === "fetch_content");
   assert.equal(fetchContent?.executionMode, "sequential");
   assert.match(
@@ -460,6 +508,7 @@ test("saves fetched content and renders only its remote-content summary", async 
   const tools: Array<{
     name: string;
     execute: (...args: any[]) => Promise<any>;
+    renderCall?: (...args: any[]) => any;
     renderResult?: (...args: any[]) => any;
   }> = [];
   const responses = [
@@ -470,6 +519,7 @@ test("saves fetched content and renders only its remote-content summary", async 
     registerTool: (tool: {
       name: string;
       execute: (...args: any[]) => Promise<any>;
+      renderCall?: (...args: any[]) => any;
       renderResult?: (...args: any[]) => any;
     }) => tools.push(tool),
     exec: async () => ({
@@ -496,17 +546,46 @@ test("saves fetched content and renders only its remote-content summary", async 
   assert.equal(await readFile(fullOutputPath, "utf8"), result.content[0].text);
   assert.equal((await stat(fullOutputPath)).mode & 0o777, 0o600);
 
+  assert.ok(tool.renderCall);
   assert.ok(tool.renderResult);
-  const rendered = tool
-    .renderResult(
-      result,
-      { expanded: false, isPartial: false },
-      { fg: (_color: string, text: string) => text },
-      { isError: false },
-    )
-    .render(240)
-    .join("\n");
-  assert.match(rendered, /^\[Untrusted remote content follows\./);
+  const state = {};
+  const context = {
+    args: { url: "https://github.com/acme/widgets/blob/main/README.md" },
+    argsComplete: true,
+    executionStarted: true,
+    expanded: false,
+    isError: false,
+    isPartial: false,
+    lastComponent: undefined,
+    state,
+    toolCallId: "call",
+  };
+  const card = tool.renderCall(context.args, plainTheme, context);
+  const collapsedResult = tool.renderResult(
+    result,
+    { expanded: false, isPartial: false },
+    plainTheme,
+    context,
+  );
+  const collapsed = card.render(240);
+  assert.ok(collapsedResult instanceof EmptyToolResult);
+  assert.equal(collapsed.length, 3);
+  assert.match(collapsed[1] ?? "", /➔ Fetch Content ✓ \| URL: https:\/\/github\.com/);
+  assert.doesNotMatch(collapsed.join("\n"), /Untrusted remote content/);
+
+  context.expanded = true;
+  const renderedResult = tool.renderResult(
+    result,
+    { expanded: true, isPartial: false },
+    plainTheme,
+    context,
+  );
+  const rendered = card.render(240).join("\n");
+
+  assert.ok(renderedResult instanceof EmptyToolResult);
+  assert.match(rendered, /➔ Fetch Content ✓/);
+  assert.match(rendered, /URL: https:\/\/github\.com\/acme\/widgets\/blob\/main\/README\.md/);
+  assert.match(rendered, /\[Untrusted remote content follows\./);
   assert.match(rendered, /# acme\/widgets: README\.md/);
   assert.match(rendered, /Source: https:\/\/github\.com\/acme\/widgets\/blob\/main\/README\.md/);
   assert.match(rendered, new RegExp(fullOutputPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));

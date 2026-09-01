@@ -62,14 +62,11 @@ extensions = manifest.get("pi", {}).get("extensions")
 expected_extensions = [
     "extensions/web-access/index.ts",
     "extensions/codex-fast-mode/index.ts",
-    "extensions/compact-tool-renderer/index.ts",
+    "extensions/pi-ui/index.ts",
     "extensions/session-default-model/index.ts",
-    "extensions/skill-autocomplete/index.ts",
     "extensions/system-prompt/index.ts",
-    "extensions/status-footer/index.ts",
     "extensions/delegate/index.ts",
     "extensions/herdr-command/index.ts",
-    "extensions/herdr-nvim-links/index.ts",
 ]
 if extensions != expected_extensions:
     raise SystemExit(f"unexpected Pi extensions manifest: {extensions!r}")

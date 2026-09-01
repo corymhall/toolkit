@@ -23,15 +23,19 @@ before(async () => {
   herdrLog = join(directory, "herdr.log");
   nvimLog = join(directory, "nvim.log");
 
-  execFileSync("swiftc", ["extensions/herdr-nvim-links/macos/HerdrNvimOpen.swift", "-o", helper]);
   execFileSync("swiftc", [
-    "extensions/herdr-nvim-links/macos/URLHandler.swift",
+    "extensions/pi-ui/herdr-nvim-links/macos/HerdrNvimOpen.swift",
+    "-o",
+    helper,
+  ]);
+  execFileSync("swiftc", [
+    "extensions/pi-ui/herdr-nvim-links/macos/URLHandler.swift",
     "-framework",
     "AppKit",
     "-o",
     join(directory, "url-handler"),
   ]);
-  execFileSync("plutil", ["-lint", "extensions/herdr-nvim-links/macos/Info.plist"]);
+  execFileSync("plutil", ["-lint", "extensions/pi-ui/herdr-nvim-links/macos/Info.plist"]);
 
   await writeFile(
     fakeHerdr,
@@ -177,7 +181,7 @@ test("Neovim runtime advertises one RPC server and is idempotent", async () => {
       "-u",
       "NONE",
       "--cmd",
-      `set runtimepath+=${process.cwd()}/extensions/herdr-nvim-links/nvim`,
+      `set runtimepath+=${process.cwd()}/extensions/pi-ui/herdr-nvim-links/nvim`,
       "+runtime plugin/herdr_nvim.lua",
       "+runtime plugin/herdr_nvim.lua",
       "+sleep 500m",
