@@ -11,7 +11,16 @@ import {
   formatSize,
   truncateTail,
 } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import {
+  CompactToolRow,
+  EmptyToolResult,
+  renderCompactDescription,
+  type CompactRenderState,
+  type CompactRowVisual,
+  type CompactTheme,
+} from "../compact-tool-renderer/rendering.ts";
 import {
   buildPaneCommand,
   buildRunMarkers,
@@ -128,6 +137,119 @@ function recentOutput(
       .trimEnd(),
     startUnavailable: true,
   };
+}
+
+function formatDuration(durationMs: number | undefined): string | undefined {
+  if (durationMs === undefined) return undefined;
+  if (durationMs < 1_000) return `${durationMs}ms`;
+  return `${(durationMs / 1_000).toFixed(durationMs < 10_000 ? 1 : 0)}s`;
+}
+
+function herdrResultSummary(
+  details: CommandDetails | undefined,
+  isError = false,
+): string | undefined {
+  if (!details) return isError ? "failed" : undefined;
+  const parts: string[] = [];
+  if (details.paneId) parts.push(details.paneId);
+  switch (details.state) {
+    case "submitted":
+      parts.push("detached");
+      break;
+    case "running":
+      parts.push(formatDuration(details.durationMs) ?? "running");
+      break;
+    case "completed":
+      parts.push(`exit ${details.exitCode ?? "?"}`);
+      if (details.durationMs !== undefined) {
+        const duration = formatDuration(details.durationMs);
+        if (duration) parts.push(duration);
+      }
+      break;
+    case "busy":
+    case "lost":
+    case "none":
+      parts.push(details.state);
+      break;
+  }
+  return parts.join(" · ");
+}
+
+function herdrResultVisual(
+  details: CommandDetails | undefined,
+  expanded: boolean,
+  isError = false,
+): CompactRowVisual {
+  if (!details) {
+    return isError
+      ? { symbol: "✗", color: "error", expanded }
+      : { symbol: "✓", color: "success", expanded };
+  }
+  if (details.state === "completed") {
+    return details.exitCode === 0
+      ? { symbol: "✓", color: "success", expanded }
+      : { symbol: "✗", color: "error", expanded };
+  }
+  if (details.state === "submitted" || details.state === "running") {
+    return { symbol: "●", color: "warning", expanded };
+  }
+  if (details.state === "busy" || details.state === "lost") {
+    return { symbol: "!", color: "warning", expanded };
+  }
+  return { symbol: "·", color: "muted", expanded };
+}
+
+function pendingVisual(context: {
+  argsComplete: boolean;
+  executionStarted: boolean;
+  expanded: boolean;
+  isError: boolean;
+  isPartial: boolean;
+}): CompactRowVisual {
+  if (!context.argsComplete || !context.executionStarted) {
+    return { symbol: "·", color: "muted", expanded: context.expanded };
+  }
+  if (context.isPartial) {
+    return { symbol: "●", color: "warning", expanded: context.expanded };
+  }
+  return context.isError
+    ? { symbol: "✗", color: "error", expanded: context.expanded }
+    : { symbol: "✓", color: "success", expanded: context.expanded };
+}
+
+function updateHerdrRow(
+  state: CompactRenderState,
+  description: string,
+  visual: CompactRowVisual,
+  summary: string | undefined,
+  theme: CompactTheme,
+): CompactToolRow {
+  const row = state.row ?? new CompactToolRow();
+  state.row = row;
+  const rendered = renderCompactDescription(description, visual, summary, theme);
+  return row.update(rendered.text, rendered.suffix);
+}
+
+function renderExpandedResult(
+  result: AgentToolResult<CommandDetails>,
+  theme: CompactTheme,
+): Text | EmptyToolResult {
+  const output = result.content
+    .filter(
+      (item): item is { type: "text"; text: string } =>
+        item.type === "text" && typeof item.text === "string",
+    )
+    .map((item) => item.text)
+    .join("\n");
+  if (!output) return new EmptyToolResult();
+  return new Text(
+    output
+      .split("\n")
+      .map((line) => theme.fg("toolOutput", line))
+      .join("\n"),
+    0,
+    0,
+  );
 }
 
 function processSummary(
@@ -647,6 +769,27 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
       "After herdr_start_command returns, continue useful independent work instead of polling. Use herdr_command_status when its result becomes relevant, with short waits while the command is new or uncertain and longer waits only after stable progress is observed.",
     ],
     parameters: START_PARAMETERS,
+    renderShell: "self",
+    renderCall(args, theme, context) {
+      const state = context.state as CompactRenderState;
+      const command = args.command || "…";
+      return updateHerdrRow(state, `$ ${command}`, pendingVisual(context), state.summary, theme);
+    },
+    renderResult(result, { expanded }, theme, context) {
+      const state = context.state as CompactRenderState;
+      const details = result.details as CommandDetails | undefined;
+      state.summary = herdrResultSummary(details, context.isError);
+      updateHerdrRow(
+        state,
+        `$ ${context.args.command || "…"}`,
+        herdrResultVisual(details, expanded, context.isError),
+        state.summary,
+        theme,
+      );
+      return expanded
+        ? renderExpandedResult(result as AgentToolResult<CommandDetails>, theme)
+        : new EmptyToolResult();
+    },
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       let release!: () => void;
       const previous = launchQueue;
@@ -675,6 +818,34 @@ export default function herdrCommandExtension(pi: ExtensionAPI, dependencies: De
       "Never restart or terminate a command solely because herdr_command_status shows no new output; confirm completion with herdr_command_status before relying on artifacts or reporting success.",
     ],
     parameters: STATUS_PARAMETERS,
+    renderShell: "self",
+    renderCall(args, theme, context) {
+      const state = context.state as CompactRenderState;
+      const wait = args.waitMs ? ` · wait ${formatDuration(args.waitMs)}` : "";
+      return updateHerdrRow(
+        state,
+        `Herdr status${wait}`,
+        pendingVisual(context),
+        state.summary,
+        theme,
+      );
+    },
+    renderResult(result, { expanded }, theme, context) {
+      const state = context.state as CompactRenderState;
+      const details = result.details as CommandDetails | undefined;
+      const wait = context.args.waitMs ? ` · wait ${formatDuration(context.args.waitMs)}` : "";
+      state.summary = herdrResultSummary(details, context.isError);
+      updateHerdrRow(
+        state,
+        `Herdr status${wait}`,
+        herdrResultVisual(details, expanded, context.isError),
+        state.summary,
+        theme,
+      );
+      return expanded
+        ? renderExpandedResult(result as AgentToolResult<CommandDetails>, theme)
+        : new EmptyToolResult();
+    },
     async execute(_toolCallId, params, signal) {
       await launchQueue;
       return commandStatus(params, signal);

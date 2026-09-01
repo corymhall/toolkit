@@ -91,8 +91,9 @@ pi install git:github.com/corymhall/toolkit
 
 The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
-`extensions/codex-fast-mode`, `extensions/session-default-model`,
-`extensions/skill-autocomplete`, `extensions/system-prompt`,
+`extensions/codex-fast-mode`, `extensions/compact-tool-renderer`,
+`extensions/session-default-model`, `extensions/skill-autocomplete`,
+`extensions/system-prompt`,
 `extensions/status-footer`, `extensions/delegate`, `extensions/herdr-command`,
 and `extensions/herdr-nvim-links` extensions.
 `codex-skills/spec-to-goal` is omitted because Pi does not provide Codex CLI's
@@ -131,6 +132,15 @@ models that advertise Fast mode. The extension leaves reasoning and verbosity
 unchanged, defaults to off, and ignores unsupported models. See
 [extensions/codex-fast-mode/README.md](extensions/codex-fast-mode/README.md) for
 the current capability allowlist and validation behavior.
+
+### Compact Tool Renderer extension
+
+`extensions/compact-tool-renderer` shows each local built-in tool call as one
+compact status row. It keeps output hidden until Pi's global tool expansion is
+enabled with `Ctrl+O`, then uses Pi's native expanded renderer. It changes only
+interactive presentation and delegates all execution to Pi. See
+[extensions/compact-tool-renderer/README.md](extensions/compact-tool-renderer/README.md)
+for supported tools and the current global-expansion limitation.
 
 ### Session Default Model extension
 

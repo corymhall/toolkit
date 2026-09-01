@@ -8,8 +8,9 @@
     "format": "oxfmt extensions",
     "format:check": "oxfmt --check extensions",
     "lint": "oxlint extensions",
-    "test": "npm run test:codex-fast-mode && npm run test:session-default-model && npm run test:delegate && npm run test:herdr-command && npm run test:herdr-nvim-links && npm run test:skill-autocomplete && npm run test:system-prompt && npm run test:status-footer && npm run test:web-access && npm run test:web-access:bun",
+    "test": "npm run test:codex-fast-mode && npm run test:compact-tool-renderer && npm run test:session-default-model && npm run test:delegate && npm run test:herdr-command && npm run test:herdr-nvim-links && npm run test:skill-autocomplete && npm run test:system-prompt && npm run test:status-footer && npm run test:web-access && npm run test:web-access:bun",
     "test:codex-fast-mode": "node --experimental-strip-types --test extensions/codex-fast-mode/test/*.test.ts",
+    "test:compact-tool-renderer": "node --experimental-strip-types --test extensions/compact-tool-renderer/test/*.test.ts",
     "test:session-default-model": "node --experimental-strip-types --test extensions/session-default-model/test/*.test.ts",
     "test:delegate": "node --experimental-strip-types --test extensions/delegate/test/*.test.ts",
     "test:herdr-command": "node --experimental-strip-types --test extensions/herdr-command/test/*.test.ts",
@@ -41,6 +42,7 @@
     "extensions": [
       "extensions/web-access/index.ts",
       "extensions/codex-fast-mode/index.ts",
+      "extensions/compact-tool-renderer/index.ts",
       "extensions/session-default-model/index.ts",
       "extensions/skill-autocomplete/index.ts",
       "extensions/system-prompt/index.ts",

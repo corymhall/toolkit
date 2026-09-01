@@ -62,6 +62,7 @@ extensions = manifest.get("pi", {}).get("extensions")
 expected_extensions = [
     "extensions/web-access/index.ts",
     "extensions/codex-fast-mode/index.ts",
+    "extensions/compact-tool-renderer/index.ts",
     "extensions/session-default-model/index.ts",
     "extensions/skill-autocomplete/index.ts",
     "extensions/system-prompt/index.ts",

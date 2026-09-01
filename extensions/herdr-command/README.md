@@ -23,6 +23,11 @@ After starting a command, avoid frequent status polling. Continue independent
 work, then call `herdr_command_status` before relying on generated artifacts or
 reporting that the command succeeded.
 
+In Pi's interactive TUI, both tools use the toolkit's compact tool rows. The
+collapsed row shows the command state, pane, duration, and exit code without
+showing terminal output. Press Pi's global tool expansion key, `Ctrl+O` by
+default, to show the complete tool result.
+
 ## Behavior
 
 - The first start for a calling Pi terminal creates one non-focused horizontal

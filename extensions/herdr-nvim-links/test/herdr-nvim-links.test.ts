@@ -170,6 +170,7 @@ test("overrides only local built-in file tools in TUI mode", () => {
       on(name: string, handler: (...args: any[]) => void) {
         handlers.set(name, handler);
       },
+      events: { on: () => () => {}, emit() {} },
       getAllTools() {
         return [
           { name: "read", sourceInfo: { source: "builtin" } },
@@ -217,6 +218,40 @@ test("overrides only local built-in file tools in TUI mode", () => {
   });
 });
 
+test("decorates compact file rows when history is rendered", () => {
+  withHerdrEnvironment(() => {
+    let compactListener: ((value: unknown) => void) | undefined;
+    const pi = {
+      on() {},
+      events: {
+        on(_name: string, handler: (value: unknown) => void) {
+          compactListener = handler;
+          return () => {};
+        },
+        emit() {},
+      },
+      registerMarkdownTransformer() {},
+    } as unknown as ExtensionAPI;
+    herdrNvimLinksExtension(pi);
+
+    const component: Component = {
+      render: () => ["\x1b]8;;file:///repo/main.ts\x07Read main.ts\x1b]8;;\x07"],
+      invalidate() {},
+    };
+    const event = {
+      toolName: "read",
+      args: { path: "main.ts", offset: 4 },
+      component,
+      renderContext: { cwd: "/repo", lastComponent: undefined },
+    };
+    compactListener!(event);
+
+    const decorated = event.component;
+    assert.match(decorated.render(80)[0], /herdr-nvim:\/\/open\?/u);
+    assert.match(decorated.render(80)[0], /line=4/u);
+  });
+});
+
 test("does not override tools outside Herdr or outside TUI mode", () => {
   const previous = process.env.HERDR_ENV;
   delete process.env.HERDR_ENV;
@@ -240,6 +275,7 @@ test("does not override tools outside Herdr or outside TUI mode", () => {
       on(name: string, handler: (...args: any[]) => void) {
         handlers.set(name, handler);
       },
+      events: { on: () => () => {}, emit() {} },
       getAllTools: () => [{ name: "read", sourceInfo: { source: "builtin" } }],
       registerTool() {
         registrations++;

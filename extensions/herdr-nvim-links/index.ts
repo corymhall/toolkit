@@ -6,6 +6,10 @@ import {
   createWriteToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import {
+  COMPACT_TOOL_CALL_RENDER_EVENT,
+  type CompactToolCallRenderEvent,
+} from "../compact-tool-renderer/events.ts";
+import {
   HerdrNvimLinkComponent,
   isUsableHerdrContext,
   rewriteFileUrlsInMarkdown,
@@ -14,6 +18,7 @@ import {
 
 interface ToolDefinitionLike {
   name: string;
+  execute: (...args: any[]) => any;
   renderCall?: (...args: any[]) => any;
   [key: string]: any;
 }
@@ -67,7 +72,59 @@ export default function herdrNvimLinksExtension(pi: ExtensionAPI, dependencies: 
     rewriteFileUrlsInMarkdown(markdown, markdownContext),
   );
 
+  const wrapComponent = (
+    component: Component,
+    args: unknown,
+    renderContext: RenderContextLike,
+  ): HerdrNvimLinkComponent => {
+    const previous =
+      renderContext.lastComponent instanceof HerdrNvimLinkComponent
+        ? renderContext.lastComponent
+        : undefined;
+    const linkContext: HerdrLinkContext = {
+      sourcePane: environment.sourcePane,
+      workspace: environment.workspace,
+      tab: environment.tab,
+      cwd: renderContext.cwd || environment.cwd,
+      ...(environment.socket ? { socket: environment.socket } : {}),
+      ...(requestedLine(args) !== undefined ? { line: requestedLine(args) } : {}),
+    };
+    return previous
+      ? previous.update(component, linkContext)
+      : new HerdrNvimLinkComponent(component, linkContext);
+  };
+
   const createDefinitions = dependencies.createDefinitions ?? defaultDefinitions;
+  const decorateDefinition = (definition: ToolDefinitionLike): ToolDefinitionLike => {
+    if (!definition.renderCall || !["read", "edit", "write"].includes(definition.name)) {
+      return definition;
+    }
+    const originalRenderCall = definition.renderCall;
+    return {
+      ...definition,
+      renderCall(args: unknown, theme: unknown, renderContext: RenderContextLike) {
+        const previous =
+          renderContext.lastComponent instanceof HerdrNvimLinkComponent
+            ? renderContext.lastComponent
+            : undefined;
+        const component = originalRenderCall(args, theme, {
+          ...renderContext,
+          lastComponent: previous?.innerComponent,
+        });
+        return wrapComponent(component, args, renderContext);
+      },
+    };
+  };
+
+  const unsubscribeCompactRenderer = pi.events.on(
+    COMPACT_TOOL_CALL_RENDER_EVENT,
+    (value: unknown) => {
+      if (!value || typeof value !== "object" || !("component" in value)) return;
+      const event = value as CompactToolCallRenderEvent;
+      if (!["read", "edit", "write"].includes(event.toolName)) return;
+      event.component = wrapComponent(event.component, event.args, event.renderContext);
+    },
+  );
 
   pi.on("session_start", (_event, ctx) => {
     if (ctx.mode !== "tui") return;
@@ -79,32 +136,9 @@ export default function herdrNvimLinksExtension(pi: ExtensionAPI, dependencies: 
 
     for (const definition of createDefinitions(ctx.cwd)) {
       if (!localBuiltins.has(definition.name) || !definition.renderCall) continue;
-      const originalRenderCall = definition.renderCall;
-
-      pi.registerTool({
-        ...definition,
-        renderCall(args: unknown, theme: unknown, renderContext: RenderContextLike) {
-          const previous =
-            renderContext.lastComponent instanceof HerdrNvimLinkComponent
-              ? renderContext.lastComponent
-              : undefined;
-          const component = originalRenderCall(args, theme, {
-            ...renderContext,
-            lastComponent: previous?.innerComponent,
-          });
-          const linkContext: HerdrLinkContext = {
-            sourcePane: environment.sourcePane,
-            workspace: environment.workspace,
-            tab: environment.tab,
-            cwd: renderContext.cwd || ctx.cwd,
-            ...(environment.socket ? { socket: environment.socket } : {}),
-            ...(requestedLine(args) !== undefined ? { line: requestedLine(args) } : {}),
-          };
-          return previous
-            ? previous.update(component, linkContext)
-            : new HerdrNvimLinkComponent(component, linkContext);
-        },
-      } as any);
+      pi.registerTool(decorateDefinition(definition) as any);
     }
   });
+
+  pi.on("session_shutdown", () => unsubscribeCompactRenderer());
 }

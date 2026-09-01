@@ -5,6 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import {
+  CompactToolRow,
+  EmptyToolResult,
+  type CompactTheme,
+} from "../../compact-tool-renderer/rendering.ts";
 import herdrCommandExtension from "../index.ts";
 import {
   buildPaneCommand,
@@ -26,6 +31,9 @@ import {
 } from "../herdr-command.ts";
 
 const FIXED_RUN_ID = "12345678-1234-1234-1234-123456789abc";
+const plainTheme: CompactTheme = {
+  fg: (_color, text) => text,
+};
 
 function withHerdrEnv<T>(fn: () => T): T {
   const previous = {
@@ -115,6 +123,9 @@ function loadExtension(
     description?: string;
     promptGuidelines?: string[];
     parameters?: { properties?: { waitMs?: { maximum?: number } } };
+    renderCall?: (...args: any[]) => any;
+    renderResult?: (...args: any[]) => any;
+    renderShell?: string;
     execute: (...args: any[]) => Promise<any>;
   }> = [];
   const handlers = new Map<string, (...args: any[]) => any>();
@@ -125,6 +136,9 @@ function loadExtension(
       description?: string;
       promptGuidelines?: string[];
       parameters?: { properties?: { waitMs?: { maximum?: number } } };
+      renderCall?: (...args: any[]) => any;
+      renderResult?: (...args: any[]) => any;
+      renderShell?: string;
       execute: (...args: any[]) => Promise<any>;
     }) {
       tools.push(tool);
@@ -160,6 +174,83 @@ async function restoreSession(
     },
   );
 }
+
+test("renders compact start and status rows with expandable output", () => {
+  withHerdrEnv(() => {
+    const loaded = loadExtension(async () => ({ code: 0, stdout: "", stderr: "", killed: false }));
+    const start = tool(loaded, HERDR_START_COMMAND_TOOL_NAME);
+    const startState = {};
+    const startContext = {
+      args: { command: "mise run validate" },
+      argsComplete: true,
+      cwd: "/repo",
+      executionStarted: true,
+      expanded: false,
+      isError: false,
+      isPartial: false,
+      lastComponent: undefined,
+      state: startState,
+    };
+    const startRow = start.renderCall!(startContext.args, plainTheme, startContext);
+    const collapsed = start.renderResult!(
+      {
+        content: [{ type: "text", text: "Started" }],
+        details: { state: "submitted", paneId: "wE:p2D" },
+      },
+      { expanded: false, isPartial: false },
+      plainTheme,
+      startContext,
+    );
+
+    assert.equal(start.renderShell, "self");
+    assert.ok(startRow instanceof CompactToolRow);
+    assert.ok(collapsed instanceof EmptyToolResult);
+    assert.deepEqual(startRow.render(100), ["● $ mise run validate · wE:p2D · detached ▸"]);
+
+    const failedState = {};
+    const failedContext = { ...startContext, isError: true, state: failedState };
+    const failedRow = start.renderCall!(failedContext.args, plainTheme, failedContext);
+    start.renderResult!(
+      { content: [{ type: "text", text: "Herdr request failed" }] },
+      { expanded: false, isPartial: false },
+      plainTheme,
+      failedContext,
+    );
+    assert.deepEqual(failedRow.render(100), ["✗ $ mise run validate · failed ▸"]);
+
+    const status = tool(loaded, HERDR_COMMAND_STATUS_TOOL_NAME);
+    const statusState = {};
+    const statusContext = {
+      ...startContext,
+      args: { waitMs: 2_000 },
+      expanded: true,
+      state: statusState,
+    };
+    const statusRow = status.renderCall!(statusContext.args, plainTheme, statusContext);
+    const expanded = status.renderResult!(
+      {
+        content: [{ type: "text", text: "Command failed\ncompiler error" }],
+        details: {
+          state: "completed",
+          paneId: "wE:p2D",
+          exitCode: 2,
+          durationMs: 14_000,
+        },
+      },
+      { expanded: true, isPartial: false },
+      plainTheme,
+      statusContext,
+    );
+
+    assert.deepEqual(statusRow.render(120), [
+      "✗ Herdr status · wait 2.0s · wE:p2D · exit 2 · 14s ▾",
+    ]);
+    assert.deepEqual(
+      expanded.render(120).map((line: string) => line.trimEnd()),
+      ["Command failed", "compiler error"],
+    );
+  });
+});
 
 test("builds runtime-only completion markers and extracts nonzero exits", () => {
   const markers = buildRunMarkers(FIXED_RUN_ID);

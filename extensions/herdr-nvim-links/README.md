@@ -94,11 +94,12 @@ assistant, and thinking messages. It handles explicit Markdown links, angle
 bracket autolinks, reference destinations, and bare absolute local `file://`
 URLs. It does not change URLs in code or raw HTML.
 
-Pi has no global link-click or renderer middleware API. The extension therefore
-also overrides the local built-in `read`, `edit`, and `write` definitions so it
-can wrap their existing title renderers. It skips a tool already owned by
-another extension rather than replacing custom execution behavior. Links from
-custom message renderers and other custom tool renderers are unchanged.
+Pi has no global link-click or renderer middleware API. For native tools, the
+extension overrides local built-in `read`, `edit`, and `write` definitions and
+wraps their existing title renderers. It skips a native tool already owned by
+another extension. The toolkit compact renderer instead provides a display-only
+render-time event, which also works when Pi rebuilds history during `/reload`.
+Links from other custom message and tool renderers are unchanged.
 
 ## Troubleshooting
 
