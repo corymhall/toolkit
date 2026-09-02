@@ -1,5 +1,6 @@
 import path from "node:path";
 import os from "node:os";
+import { getLanguageFromPath, highlightCode } from "@earendil-works/pi-coding-agent";
 import type { Component } from "@earendil-works/pi-tui";
 import { hyperlink, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
@@ -65,8 +66,137 @@ export class EmptyToolResult implements Component {
   invalidate(): void {}
 }
 
-const SHELL_OPERATOR = /^(?:&&|\|\||>>|>&|\|&|[|&;()<>])$/u;
+const SHELL_OPERATOR = /^(?:&&|\|\||<<-|<<|>>|>&|\|&|[|&;()<>])$/u;
 const SHELL_VARIABLE = /\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/u;
+
+interface Heredoc {
+  delimiter: string;
+  stripTabs: boolean;
+}
+
+const LANGUAGE_ALIASES: Readonly<Record<string, string>> = {
+  javascript: "javascript",
+  node: "javascript",
+  powershell: "powershell",
+  pwsh: "powershell",
+  python: "python",
+  ruby: "ruby",
+  rust: "rust",
+  typescript: "typescript",
+};
+
+function nextToken(tokens: string[], start: number): string | undefined {
+  return tokens.slice(start).find((token) => !/^\s+$/u.test(token));
+}
+
+/** Accept simple shell words; complex expressions keep the previous shell-only rendering. */
+function simpleShellWord(token: string | undefined, allowVariables = false): string | undefined {
+  if (!token || SHELL_OPERATOR.test(token)) return undefined;
+  const quoted = token.match(/^(['"])(.*)\1$/u);
+  const word = quoted?.[2] ?? token;
+  if (
+    !word ||
+    /['"`]/u.test(word) ||
+    (!quoted && /\s/u.test(word)) ||
+    (!allowVariables && /\$/u.test(word))
+  ) {
+    return undefined;
+  }
+  return word.replace(/\\(.)/gu, "$1");
+}
+
+function heredocsOnShellLine(line: string): Heredoc[] {
+  const tokens = tokenizeShellLine(line);
+  if (!tokens) return [];
+  return tokens.flatMap((token, index) => {
+    if (token !== "<<" && token !== "<<-") return [];
+    const delimiter = simpleShellWord(nextToken(tokens, index + 1));
+    return delimiter && /^[A-Za-z_][A-Za-z0-9_-]*$/u.test(delimiter)
+      ? [{ delimiter, stripTabs: token === "<<-" }]
+      : [];
+  });
+}
+
+function redirectedPaths(line: string): string[] {
+  const tokens = tokenizeShellLine(line) ?? [];
+  return tokens.flatMap((token, index) => {
+    if (token !== ">" && token !== ">>") return [];
+    const outputPath = simpleShellWord(nextToken(tokens, index + 1), true);
+    return outputPath ? [outputPath] : [];
+  });
+}
+
+/** Select heredoc syntax from shell context without unreliable body auto-detection. */
+export function inferHeredocLanguage(shellLine: string, delimiter: string): string | undefined {
+  if (/\bgit\s+(?:commit|tag)\b/u.test(shellLine)) return undefined;
+  if (
+    /\b(?:gh\s+(?:pr|issue)\s+create|glab\s+(?:mr|issue)\s+create)\b/u.test(shellLine) &&
+    /--(?:body|description)(?:-file)?\b/u.test(shellLine)
+  ) {
+    return "markdown";
+  }
+
+  for (const outputPath of redirectedPaths(shellLine).reverse()) {
+    const language = getLanguageFromPath(outputPath);
+    if (language) return language;
+  }
+
+  const interpreter = shellLine.match(
+    /(?:^|[;&|()])\s*(?:(?:command|env|exec|sudo)\s+)?(python(?:\d+(?:\.\d+)*)?|bash|fish|lua|node|perl|php|powershell|pwsh|ruby|sh|zsh)(?=\s|$)/u,
+  )?.[1];
+  const hint = interpreter?.startsWith("python")
+    ? "python"
+    : (interpreter ?? delimiter.replace(/[^A-Za-z0-9]+/gu, "").toLowerCase());
+  return getLanguageFromPath(`body.${hint}`) ?? LANGUAGE_ALIASES[hint];
+}
+
+type CodeHighlighter = (code: string, language?: string) => string[];
+
+/** Highlight shell lines and each complete heredoc body in its inferred language. */
+export function highlightShellCommandLines(
+  command: string,
+  theme: CompactTheme,
+  codeHighlighter: CodeHighlighter = highlightCode,
+): string[] {
+  const sourceLines = command.replaceAll("\r", "").split("\n");
+  if (sourceLines.length > 1 && !sourceLines.some((line) => heredocsOnShellLine(line).length > 0)) {
+    return codeHighlighter(sourceLines.join("\n"), "bash");
+  }
+
+  const rendered: string[] = [];
+  for (let index = 0; index < sourceLines.length; index++) {
+    const shellLine = sourceLines[index] ?? "";
+    rendered.push(highlightShellCommand(shellLine, theme));
+    const heredocs = heredocsOnShellLine(shellLine);
+
+    for (const heredoc of heredocs) {
+      const body: string[] = [];
+      let terminator: string | undefined;
+      while (++index < sourceLines.length) {
+        const line = sourceLines[index] ?? "";
+        const compared = heredoc.stripTabs ? line.replace(/^\t+/u, "") : line;
+        if (compared === heredoc.delimiter) {
+          terminator = line;
+          break;
+        }
+        body.push(line);
+      }
+
+      const language = inferHeredocLanguage(shellLine, heredoc.delimiter);
+      if (body.length > 0) {
+        rendered.push(
+          ...(language
+            ? codeHighlighter(body.join("\n"), language)
+            : body.map((line) => theme.fg("text", line))),
+        );
+      }
+      if (terminator === undefined) break;
+      rendered.push(theme.fg("syntaxOperator", terminator));
+    }
+  }
+
+  return rendered;
+}
 
 function tokenizeShellLine(line: string): string[] | undefined {
   const tokens: string[] = [];
@@ -97,10 +227,14 @@ function tokenizeShellLine(line: string): string[] | undefined {
       return tokens;
     }
     const pair = `${char}${next}`;
-    if (SHELL_OPERATOR.test(pair) || SHELL_OPERATOR.test(char)) {
+    const triple = `${pair}${line[index + 2] ?? ""}`;
+    if (SHELL_OPERATOR.test(triple) || SHELL_OPERATOR.test(pair) || SHELL_OPERATOR.test(char)) {
       if (current) tokens.push(current);
       current = "";
-      if (SHELL_OPERATOR.test(pair)) {
+      if (SHELL_OPERATOR.test(triple)) {
+        tokens.push(triple);
+        index += 2;
+      } else if (SHELL_OPERATOR.test(pair)) {
         tokens.push(pair);
         index++;
       } else tokens.push(char);
@@ -292,11 +426,14 @@ export class CompactToolCard implements Component {
     const insetDivider = frameLine(theme.fg("borderMuted", "─".repeat(innerWidth)));
     const lines = [topBorder, frameLine(title), insetDivider];
 
-    const descriptions = this.description.replaceAll("\r", "").split("\n");
+    const descriptions =
+      this.toolName === "bash"
+        ? highlightShellCommandLines(this.description, theme)
+        : this.description.replaceAll("\r", "").split("\n");
     for (const [index, description] of descriptions.entries()) {
       const callLine =
         this.toolName === "bash"
-          ? `${theme.fg("bashMode", index === 0 ? "$ " : "> ")}${highlightShellCommand(description, theme)}`
+          ? `${theme.fg("bashMode", index === 0 ? "$ " : "> ")}${description}`
           : renderCardDescription(description, theme, this.descriptionUrl);
       for (const wrapped of wrapTextWithAnsi(callLine, innerWidth)) lines.push(frameLine(wrapped));
     }

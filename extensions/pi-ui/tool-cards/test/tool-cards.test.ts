@@ -9,6 +9,8 @@ import {
   EmptyToolResult,
   hasExpandableResult,
   highlightShellCommand,
+  highlightShellCommandLines,
+  inferHeredocLanguage,
   previewToolResult,
   summarizeToolResult,
   type CompactTheme,
@@ -106,6 +108,80 @@ test("colors shell commands by token role", () => {
   assert.match(rendered, /<syntaxOperator>&&<\/syntaxOperator>/u);
   assert.match(rendered, /<syntaxVariable>"\$HOME\/file"<\/syntaxVariable>/u);
   assert.match(rendered, /<syntaxComment># note<\/syntaxComment>/u);
+});
+
+test("infers heredoc languages from destinations, consumers, and content arguments", () => {
+  assert.equal(inferHeredocLanguage("cat > script.py <<'EOF'", "EOF"), "python");
+  assert.equal(inferHeredocLanguage(`cat <<'EOF' > "$run_dir/script.py"`, "EOF"), "python");
+  assert.equal(inferHeredocLanguage("python3 - <<'EOF'", "EOF"), "python");
+  assert.equal(inferHeredocLanguage("cat <<'MARKDOWN'", "MARKDOWN"), "markdown");
+  assert.equal(inferHeredocLanguage("gh pr create --body-file - <<'EOF'", "EOF"), "markdown");
+  assert.equal(inferHeredocLanguage("git commit -F - <<'EOF'", "EOF"), undefined);
+  assert.equal(inferHeredocLanguage("cat <<'EOF'", "EOF"), undefined);
+});
+
+test("highlights complete heredoc bodies in their inferred language", () => {
+  const themed: CompactTheme = {
+    fg: (color, text) => `<${color}>${text}</${color}>`,
+  };
+  const highlighted: Array<[string, string | undefined]> = [];
+  const rendered = highlightShellCommandLines(
+    "cat > script.py <<'EOF'\nprint(\"hello\")\n# still Python\nEOF\necho done",
+    themed,
+    (code, language) => {
+      highlighted.push([code, language]);
+      return code.split("\n").map((line) => `<${language}>${line}</${language}>`);
+    },
+  );
+
+  assert.deepEqual(highlighted, [[`print("hello")\n# still Python`, "python"]]);
+  assert.match(rendered[0] ?? "", /<syntaxFunction>cat<\/syntaxFunction>/u);
+  assert.equal(rendered[1], `<python>print("hello")</python>`);
+  assert.equal(rendered[2], "<python># still Python</python>");
+  assert.equal(rendered[3], "<syntaxOperator>EOF</syntaxOperator>");
+  assert.match(rendered[4] ?? "", /<syntaxFunction>echo<\/syntaxFunction>/u);
+});
+
+test("highlights multi-line shell commands as complete Bash scripts", () => {
+  const script = "set -eu\nfor file in *.json; do\n  printf '%s\\n' \"$file\"\ndone";
+  const highlighted: Array<[string, string | undefined]> = [];
+  const rendered = highlightShellCommandLines(script, plainTheme, (code, language) => {
+    highlighted.push([code, language]);
+    return code.split("\n").map((line) => `<${language}>${line}</${language}>`);
+  });
+
+  assert.deepEqual(highlighted, [[script, "bash"]]);
+  assert.equal(rendered[1], "<bash>for file in *.json; do</bash>");
+  assert.equal(rendered[3], "<bash>done</bash>");
+});
+
+test("does not parse quoted heredoc-like text", () => {
+  const script = "printf '%s' '<<EOF'\necho text";
+  const highlighted: Array<[string, string | undefined]> = [];
+  const rendered = highlightShellCommandLines(script, plainTheme, (code, language) => {
+    highlighted.push([code, language]);
+    return code.split("\n");
+  });
+
+  assert.deepEqual(highlighted, [[script, "bash"]]);
+  assert.deepEqual(rendered, ["printf '%s' '<<EOF'", "echo text"]);
+});
+
+test("renders commit-message heredocs as plain text", () => {
+  const themed: CompactTheme = {
+    fg: (color, text) => `<${color}>${text}</${color}>`,
+  };
+  const rendered = highlightShellCommandLines(
+    "git commit -F - <<'EOF'\nfeat: improve cards\n\nExplain **why**.\nEOF",
+    themed,
+    () => {
+      throw new Error("plain text must not use the code highlighter");
+    },
+  );
+
+  assert.equal(rendered[1], "<text>feat: improve cards</text>");
+  assert.equal(rendered[2], "<text></text>");
+  assert.equal(rendered[3], "<text>Explain **why**.</text>");
 });
 
 test("shows bounded output previews for Bash calls and failed file tools", () => {

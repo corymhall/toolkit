@@ -16,10 +16,20 @@ bordered, compact cards:
 └─────────────────────────────────────────────────────────┘
 ```
 
-Bash cards show the last five output lines while collapsed. Collapsed `read`,
-`write`, `grep`, `find`, and `ls` calls use a three-line compact card with the
-call detail and execution metadata on one row. `grep` is labeled `Search`, `ls`
-is labeled `List`, and call details use concise `Path:` or `Query:` fields.
+Bash cards show the last five output lines while collapsed. Multi-line commands
+without heredocs are highlighted as complete Bash scripts, so shell block
+keywords and syntax keep their context across lines. Heredoc bodies use
+language-aware syntax colors when the destination path, stdin consumer, or
+delimiter identifies a language. For example, `script.py`, `python <<'EOF'`,
+and `<<'PYTHON'` select Python. Markdown body arguments and `.md` destinations
+select Markdown. Generic `EOF` bodies and Git commit messages stay plain text;
+the renderer does not guess from body content. Complex shell-word delimiters
+keep the previous shell-only rendering.
+
+Collapsed `read`, `write`, `grep`, `find`, and `ls` calls use a three-line
+compact card with the call detail and execution metadata on one row. `grep` is
+labeled `Search`, `ls` is labeled `List`, and call details use concise `Path:`
+or `Query:` fields.
 Expanded calls return to the full card so Pi's native result renderer has room.
 The toolkit's Web Access and Herdr command extensions reuse the same public card
 component for their custom tools.
