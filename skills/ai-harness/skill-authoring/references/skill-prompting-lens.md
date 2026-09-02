@@ -153,6 +153,10 @@ missing references, impossible commands, or regressions against one known case.
 They cannot prove that the skill improves outcomes across the diverse work it
 will encounter.
 
+Judge investigation quality by whether the agent tested plausible explanations,
+used relevant evidence, updated its conclusion, and avoided unsupported action.
+Do not treat a hypothesis that was tested and rejected as rework or a failure.
+
 Trust should come mostly from field use:
 
 - repeated successful use on real tasks

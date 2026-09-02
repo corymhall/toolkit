@@ -54,9 +54,10 @@ only after shortlisting.
 
 Prioritize sessions with human correction, backing out or restarting work,
 repeated attempts, unexpected skill activation, tool failures, recovery
-messages, or substantial implementation/review work. Also sample at least one
-apparently successful skilled session when practical so the review is not based
-only on failures.
+messages, or substantial implementation/review work. These signals select
+sessions for inspection; they do not show that the work or skill failed. Also
+sample at least one apparently successful skilled session when practical so the
+review is not based only on suspected problems.
 
 The helpers locate evidence; their keywords and summaries are not evaluation
 results.
@@ -69,8 +70,10 @@ For each material session, capture:
 - the repository and task boundary;
 - skills injected, read, or conspicuously absent, including when they became
   active;
-- important proposals and implementation decisions before human correction;
-- user corrections, rejected work, restarts, and accepted tradeoffs;
+- important proposals, hypotheses, and implementation decisions, including the
+  evidence that confirmed or rejected each material hypothesis;
+- user corrections, rejected implementation work, restarts, and accepted
+  tradeoffs;
 - review findings and whether they exposed defects or expanded scope;
 - relevant tool/interface failures and repository constraints;
 - the resulting implementation or artifact when needed to judge the decision.
@@ -82,6 +85,12 @@ skill listings as attribution evidence, not as the user's actual request.
 Do not infer that a skill was followed merely because it was loaded. Do not
 blame a skill that was unavailable or activated only after the harmful decision.
 
+Separate normal investigation updates from process or outcome corrections. A
+plausible hypothesis that the agent checks and rejects is not rework, harm, or a
+skill failure. It becomes material when the agent presents it as established,
+acts on it without enough evidence, repeats it without gaining evidence, or does
+not update its conclusion after contrary evidence.
+
 ## Evaluate Each Skill
 
 Use the named criteria from the central catalog, plus these common dimensions:
@@ -91,8 +100,10 @@ Use the named criteria from the central catalog, plus these common dimensions:
    impossible to apply.
 3. **Decision effect** — what scope, fallback, architecture, test, review, or
    collaboration decision changed because of the skill.
-4. **Human correction** — whether the skill prevented, caused, or failed to
-   prevent the correction.
+4. **Human correction** — first determine whether the user corrected a material
+   process or outcome problem, supplied new context, or confirmed a normal
+   investigation update. For a real problem, assess whether the skill prevented,
+   caused, or failed to prevent it.
 5. **Cost** — context, questions, artifacts, review lanes, implementation state
    space, test burden, and review difficulty added.
 6. **Counterfactual** — the strongest evidence for what likely would have
@@ -122,7 +133,8 @@ Skills can be individually reasonable and harmful in sequence. Check whether:
   other;
 - review converted residual risk into required implementation work;
 - a language skill made an unnecessary product design more polished;
-- a late collaborative or author pass corrected an earlier workflow failure;
+- a late collaborative or author pass changed an earlier decision, and whether
+  that change corrected a real problem or reflected normal investigation;
 - the same instruction is duplicated across layers without changing behavior.
 
 Evaluate repo-specific skills as the contributor baseline and personal skills as

@@ -246,6 +246,8 @@ layer-correct skill and harness decisions.
 **Harm signals:**
 
 - keyword summaries were treated as findings;
+- a plausible hypothesis that was tested and rejected was reported as workflow
+  failure or avoidable rework;
 - one ordinary failure generated permanent workflow;
 - final outcome was used as proof that a skill helped or harmed;
 - judgment-heavy evaluation immediately edited the evaluated skills;
