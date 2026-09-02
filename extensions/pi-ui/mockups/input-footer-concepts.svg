@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820">
+  <rect width="1500" height="820" fill="#12110f"/>
+  <style>
+    .title { font: 600 20px -apple-system, BlinkMacSystemFont, sans-serif; fill: #d8d2c9; }
+    .note { font: 14px -apple-system, BlinkMacSystemFont, sans-serif; fill: #77716b; }
+    .term { font: 16px Menlo, Monaco, 'Courier New', monospace; fill: #d8d2c9; }
+    .muted { fill: #77716b; }
+    .dim { fill: #56514d; }
+    .accent { fill: #78aeb3; }
+    .green { fill: #9eb47b; }
+    .yellow { fill: #d6ba73; }
+    .red { fill: #d47772; }
+    .border { stroke: #5e99a2; stroke-width: 1.25; fill: none; }
+    .rail { stroke: #3e3a36; stroke-width: 3; stroke-linecap: round; }
+    .fill { stroke: #89aeb0; stroke-width: 3; stroke-linecap: round; }
+  </style>
+
+  <text x="50" y="42" class="title">A · Balanced</text>
+  <text x="50" y="66" class="note">Recommended: context bar and quota on top; activity, path, and branch on the lower border.</text>
+  <rect x="30" y="82" width="1440" height="170" rx="8" fill="#1a1815" stroke="#27231f"/>
+  <path class="border" d="M50 116 H930 M1394 116 H1450 V220 M50 220 V116"/>
+  <line x1="932" y1="116" x2="1032" y2="116" class="rail"/>
+  <line x1="932" y1="116" x2="1013" y2="116" class="fill"/>
+  <text x="1042" y="121" class="term muted">ctx </text>
+  <text x="1082" y="121" class="term green">81%</text>
+  <text x="1120" y="121" class="term muted"> · weekly 92% · </text>
+  <text x="1275" y="121" class="term">gpt-5.5</text>
+  <text x="1362" y="121" class="term accent"> low</text>
+  <text x="64" y="170" class="term">│</text>
+  <rect x="78" y="151" width="9" height="22" fill="#d8d2c9" opacity="0.92"/>
+  <line x1="50" y1="220" x2="62" y2="220" class="border"/>
+  <text x="66" y="225" class="term accent">⠸</text>
+  <text x="88" y="225" class="term">Working</text>
+  <line x1="160" y1="220" x2="1054" y2="220" class="border"/>
+  <text x="1064" y="225" class="term muted">~/personal/toolkit</text>
+  <text x="1238" y="225" class="term"> (</text>
+  <text x="1260" y="225" class="term yellow">main</text>
+  <text x="1302" y="225" class="term green"> +681</text>
+  <text x="1352" y="225" class="term red"> -86</text>
+  <text x="1388" y="225" class="term">)</text>
+  <line x1="1401" y1="220" x2="1450" y2="220" class="border"/>
+
+  <text x="50" y="310" class="title">B · Progress rail</text>
+  <text x="50" y="334" class="note">The context fill becomes part of the top border. This is the strongest match for the first screenshot.</text>
+  <rect x="30" y="350" width="1440" height="170" rx="8" fill="#1a1815" stroke="#27231f"/>
+  <path class="border" d="M50 384 H1120 M1394 384 H1450 V488 M50 488 V384"/>
+  <line x1="50" y1="384" x2="918" y2="384" stroke="#79aeb2" stroke-width="2.5"/>
+  <text x="1128" y="389" class="term muted">weekly 92% · </text>
+  <text x="1248" y="389" class="term">gpt-5.5</text>
+  <text x="1335" y="389" class="term accent"> low</text>
+  <text x="1380" y="389" class="term muted"> · </text>
+  <text x="1403" y="389" class="term green">81%</text>
+  <text x="64" y="438" class="term accent">›</text>
+  <rect x="83" y="419" width="9" height="22" fill="#d8d2c9" opacity="0.92"/>
+  <line x1="50" y1="488" x2="62" y2="488" class="border"/>
+  <text x="66" y="493" class="term accent">⠦</text>
+  <text x="88" y="493" class="term">Thinking</text>
+  <line x1="164" y1="488" x2="1054" y2="488" class="border"/>
+  <text x="1064" y="493" class="term muted">~/personal/toolkit</text>
+  <text x="1238" y="493" class="term"> (</text>
+  <text x="1260" y="493" class="term yellow">main</text>
+  <text x="1302" y="493" class="term green"> +681</text>
+  <text x="1352" y="493" class="term red"> -86</text>
+  <text x="1388" y="493" class="term">)</text>
+  <line x1="1401" y1="488" x2="1450" y2="488" class="border"/>
+
+  <text x="50" y="578" class="title">C · Quiet</text>
+  <text x="50" y="602" class="note">Less data while typing. The progress bar and quota share the lower edge with compact repository details.</text>
+  <rect x="30" y="618" width="1440" height="170" rx="8" fill="#1a1815" stroke="#27231f"/>
+  <path class="border" d="M50 652 H1248 M1394 652 H1450 V756 M50 756 V652"/>
+  <text x="1258" y="657" class="term">gpt-5.5</text>
+  <text x="1345" y="657" class="term accent"> · low</text>
+  <text x="64" y="706" class="term accent">›</text>
+  <rect x="83" y="687" width="9" height="22" fill="#d8d2c9" opacity="0.92"/>
+  <line x1="50" y1="756" x2="62" y2="756" class="border"/>
+  <text x="66" y="761" class="term accent">⠴</text>
+  <text x="88" y="761" class="term">Working</text>
+  <line x1="160" y1="756" x2="530" y2="756" class="border"/>
+  <line x1="540" y1="756" x2="660" y2="756" class="rail"/>
+  <line x1="540" y1="756" x2="637" y2="756" class="fill"/>
+  <text x="671" y="761" class="term green">81%</text>
+  <text x="711" y="761" class="term muted"> ctx · W92%</text>
+  <line x1="817" y1="756" x2="1110" y2="756" class="border"/>
+  <text x="1120" y="761" class="term muted">~/personal/toolkit</text>
+  <text x="1294" y="761" class="term"> (</text>
+  <text x="1316" y="761" class="term yellow">main</text>
+  <text x="1358" y="761" class="term green"> +681</text>
+  <text x="1408" y="761" class="term red"> -86</text>
+  <text x="1444" y="761" class="term">)</text>
+</svg>

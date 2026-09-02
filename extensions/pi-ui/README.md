@@ -4,8 +4,8 @@ One packaged Pi extension that composes the toolkit's interactive UI features:
 
 - [Tool Cards](tool-cards/README.md) renders built-in and custom tool calls as
   compact, Cendre-aware cards.
-- [Status Footer](status-footer/README.md) shows Codex weekly quota, context,
-  model, thinking level, Fast mode, and Git branch.
+- [Status Composer](status-footer/README.md) puts working state, context progress,
+  Codex weekly quota, model details, path, and Git status in the input border.
 - [Skill Autocomplete](skill-autocomplete/README.md) adds inline `$skill-name`
   completion and explicit user-only skill invocation.
 - [Herdr Neovim Links](herdr-nvim-links/README.md) redirects local file links to

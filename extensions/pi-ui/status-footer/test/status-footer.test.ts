@@ -7,7 +7,13 @@ import {
   getWeeklyRemaining,
   getWeeklyRemainingFromHeaders,
 } from "../codex-rate-limits.ts";
-import { contextColor, remainingPercent, renderStatusFooter, type FooterTheme } from "../footer.ts";
+import {
+  parseGitNumstat,
+  renderComposerBox,
+  renderComposerChrome,
+  renderProgressBar,
+} from "../composer.ts";
+import { contextColor, remainingPercent, type FooterTheme } from "../footer.ts";
 import statusFooterExtension from "../index.ts";
 
 const plainTheme: FooterTheme = {
@@ -90,37 +96,62 @@ test("colors context remaining by the requested thresholds", () => {
   assert.equal(contextColor(undefined), "warning");
 });
 
-test("keeps weekly and context status when the footer is narrow", () => {
-  const [line] = renderStatusFooter(
-    {
-      model: "gpt-5.3-codex",
-      thinking: "high",
-      branch: "feature/status-footer",
-      weeklyRemaining: 98,
-      contextRemaining: 53,
+test("renders the context fill with a theme color separate from the border", () => {
+  const calls: Array<{ color: string; text: string }> = [];
+  const themed: FooterTheme = {
+    fg: (color, text) => {
+      calls.push({ color, text });
+      return text;
     },
-    40,
-    plainTheme,
-  );
+  };
 
-  assert.equal(line, "weekly 98% left · context 53% left");
-  assert.ok(visibleWidth(line) <= 40);
+  assert.equal(renderProgressBar(81, themed), "━━━━━━━━━━");
+  assert.deepEqual(calls, [
+    { color: "success", text: "━━" },
+    { color: "dim", text: "━━━━━━━━" },
+  ]);
 });
 
-test("compacts both priority signals on very narrow terminals", () => {
-  const [line] = renderStatusFooter(
+test("renders status inside the editor borders and stays within width", () => {
+  const lines = renderComposerChrome(
+    ["top", "input", "bottom"],
     {
-      model: "gpt-5.3-codex",
-      thinking: "high",
-      branch: "feature/status-footer",
-      weeklyRemaining: 98,
-      contextRemaining: 53,
+      model: "gpt-5.5",
+      thinking: "low",
+      branch: "main",
+      additions: 681,
+      deletions: 86,
+      weeklyRemaining: 92,
+      contextRemaining: 81,
+      cwd: "/workspace/toolkit",
+      working: { frame: "⠸", label: "Working" },
     },
-    20,
+    120,
     plainTheme,
+    (text) => text,
   );
 
-  assert.equal(line, "W98% · C53%");
+  assert.match(lines[0]!, /━━━━━━━━━━ ctx 81% left · weekly 92% · gpt-5\.5 low/u);
+  assert.match(lines[2]!, /⠸ Working/u);
+  assert.match(lines[2]!, /\/workspace\/toolkit \(main \+681 -86\)/u);
+  assert.ok(lines.every((line) => visibleWidth(line) <= 120));
+});
+
+test("adds vertical spacing, side walls, and rounded corners", () => {
+  const lines = renderComposerBox(
+    ["─".repeat(18), "input".padEnd(18), "─".repeat(18)],
+    18,
+    (text) => text,
+  );
+
+  assert.deepEqual(lines, [
+    `╭${"─".repeat(18)}╮`,
+    `│${" ".repeat(18)}│`,
+    `│${"input".padEnd(18)}│`,
+    `│${" ".repeat(18)}│`,
+    `╰${"─".repeat(18)}╯`,
+  ]);
+  assert.ok(lines.every((line) => visibleWidth(line) === 20));
 });
 
 test("status-refresh reinstalls the custom footer", async () => {
@@ -134,6 +165,7 @@ test("status-refresh reinstalls the custom footer", async () => {
       command = registered;
     },
     getThinkingLevel: () => "high",
+    exec: async () => ({ stdout: "", stderr: "", code: 0, killed: false }),
   } as unknown as ExtensionAPI;
   statusFooterExtension(pi, {
     loadFastModeState: () => ({ enabled: false }),
@@ -147,6 +179,8 @@ test("status-refresh reinstalls the custom footer", async () => {
     model: undefined,
     getContextUsage: () => undefined,
     ui: {
+      setWorkingVisible() {},
+      setEditorComponent() {},
       setFooter() {
         footerInstallations++;
       },
@@ -160,40 +194,14 @@ test("status-refresh reinstalls the custom footer", async () => {
   assert.deepEqual(notifications, ["Weekly Codex limit: 95% left"]);
 });
 
-test("includes model and branch when space permits", () => {
-  const [line] = renderStatusFooter(
-    {
-      model: "gpt-5.3-codex",
-      thinking: "high",
-      branch: "main",
-      weeklyRemaining: 98,
-      contextRemaining: 53,
-    },
-    100,
-    plainTheme,
-  );
-
-  assert.equal(line, "gpt-5.3-codex high · main · weekly 98% left · context 53% left");
+test("sums text changes and ignores binary numstat entries", () => {
+  assert.deepEqual(parseGitNumstat("10\t2\ta.ts\n4\t0\tb.ts\n-\t-\timage.png\n"), {
+    additions: 14,
+    deletions: 2,
+  });
 });
 
-test("shows Fast mode next to the model and thinking level", () => {
-  const [line] = renderStatusFooter(
-    {
-      model: "gpt-5.5",
-      thinking: "high",
-      fastMode: true,
-      branch: "main",
-      weeklyRemaining: 98,
-      contextRemaining: 53,
-    },
-    100,
-    plainTheme,
-  );
-
-  assert.equal(line, "gpt-5.5 high fast · main · weekly 98% left · context 53% left");
-});
-
-test("updates the footer when the Fast mode extension broadcasts a toggle", async () => {
+test("requests a composer render when the Fast mode extension broadcasts a toggle", async () => {
   const eventHandlers = new Map<string, (event: any, ctx: any) => any>();
   let fastModeHandler: ((value: unknown) => void) | undefined;
   let footerFactory:
@@ -213,6 +221,7 @@ test("updates the footer when the Fast mode extension broadcasts a toggle", asyn
     },
     registerCommand() {},
     getThinkingLevel: () => "high",
+    exec: async () => ({ stdout: "", stderr: "", code: 0, killed: false }),
   } as unknown as ExtensionAPI;
   statusFooterExtension(pi, {
     loadFastModeState: () => ({ enabled: false }),
@@ -228,6 +237,8 @@ test("updates the footer when the Fast mode extension broadcasts a toggle", asyn
     },
     getContextUsage: () => ({ percent: 47 }),
     ui: {
+      setWorkingVisible() {},
+      setEditorComponent() {},
       setFooter(factory: typeof footerFactory) {
         footerFactory = factory;
       },
@@ -244,9 +255,9 @@ test("updates the footer when the Fast mode extension broadcasts a toggle", asyn
     plainTheme,
     { onBranchChange: () => () => {}, getGitBranch: () => "main" },
   );
-  assert.equal(footer.render(100)[0], "gpt-5.5 high · main · weekly ? · context 53% left");
+  assert.deepEqual(footer.render(100), []);
 
+  const beforeToggle = rendersRequested;
   fastModeHandler!({ enabled: true });
-  assert.equal(footer.render(100)[0], "gpt-5.5 high fast · main · weekly ? · context 53% left");
-  assert.equal(rendersRequested, 1);
+  assert.equal(rendersRequested, beforeToggle + 1);
 });

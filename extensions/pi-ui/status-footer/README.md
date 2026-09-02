@@ -1,21 +1,34 @@
-# Status Footer
+# Status Composer
 
-A compact, Codex-inspired Pi footer that prioritizes two signals:
+An Amp-inspired Pi input box that moves live session status into the editor
+border and removes the separate footer and working row. Rounded side walls and
+one row of vertical padding frame the editor content.
 
-- `weekly N% left`: remaining ChatGPT Codex subscription capacity.
-- `context N% left`: remaining context in the current Pi session.
+The top border shows:
 
-When space permits, the footer also shows the active model, thinking level,
-Codex Fast mode, and Git branch. `fast` appears next to the model and thinking
-level only when the packaged Codex Fast Mode extension is enabled and active for
-the selected model. On narrow terminals it drops those optional fields before
-quota or context. Context remaining is green above 75%, yellow from 45% through 75%,
-and red below 45%.
+- A ten-cell context-used progress bar and context-remaining percentage. The bar
+  starts empty and fills as the session uses context.
+- Remaining ChatGPT Codex weekly capacity.
+- The active model, thinking level, and Codex Fast mode when active.
+
+The lower border shows the animated working indicator on the left. The right
+side shows the working directory, Git branch, and tracked line additions and
+deletions relative to `HEAD`. Git line counts refresh at startup and after each
+agent run.
+
+All colors come from the active Pi theme. The editor border keeps Pi's normal
+thinking-level color. The progress fill uses the context status color, while its
+empty cells use the theme's dim color. Context is green above 75%, yellow from
+45% through 75%, and red below 45%.
 
 Example:
 
 ```text
-gpt-5.5 high fast · main · weekly 98% left · context 53% left
+╭─────────────────────── ━━━━━━━━━━ ctx 81% left · weekly 92% · gpt-5.5 low ─╮
+│                                                                            │
+│                                                                            │
+│                                                                            │
+╰─ ⠸ Working ───────────────── ~/personal/toolkit (main +681 -86) ───────────╯
 ```
 
 ## Weekly-limit source

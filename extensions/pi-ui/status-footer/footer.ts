@@ -1,7 +1,10 @@
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 export type FooterTheme = {
-  fg(color: "accent" | "dim" | "error" | "muted" | "success" | "warning", text: string): string;
+  fg(
+    color: "accent" | "dim" | "error" | "muted" | "success" | "text" | "warning",
+    text: string,
+  ): string;
 };
 
 export type StatusFooterData = {

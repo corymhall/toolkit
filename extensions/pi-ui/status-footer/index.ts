@@ -1,4 +1,10 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import {
+  CustomEditor,
+  type ExtensionAPI,
+  type ExtensionContext,
+  type KeybindingsManager,
+} from "@earendil-works/pi-coding-agent";
+import type { Component, EditorTheme, TUI } from "@earendil-works/pi-tui";
 import {
   CODEX_FAST_MODE_CHANGED_EVENT,
   isCodexFastModeActive,
@@ -11,7 +17,16 @@ import {
   getWeeklyRemaining,
   getWeeklyRemainingFromHeaders,
 } from "./codex-rate-limits.ts";
-import { remainingPercent, renderStatusFooter } from "./footer.ts";
+import { parseGitNumstat, renderComposerBox, renderComposerChrome } from "./composer.ts";
+import { remainingPercent } from "./footer.ts";
+
+class EmptyFooter implements Component {
+  render(): string[] {
+    return [];
+  }
+
+  invalidate(): void {}
+}
 
 export default function statusFooterExtension(
   pi: ExtensionAPI,
@@ -29,6 +44,26 @@ export default function statusFooterExtension(
   let refreshAbort: AbortController | undefined;
   let refreshInFlight: Promise<void> | undefined;
   let requestRender: (() => void) | undefined;
+  let activeTui: TUI | undefined;
+  let isWorking = false;
+  let spinnerIndex = 0;
+  let spinnerTimer: ReturnType<typeof setInterval> | undefined;
+  let branch: string | null = null;
+  let additions: number | undefined;
+  let deletions: number | undefined;
+  let refreshGitStats: (() => Promise<void>) | undefined;
+  const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+  const requestUiRender = () => {
+    if (activeTui) activeTui.requestRender();
+    else requestRender?.();
+  };
+
+  const stopSpinner = () => {
+    if (!spinnerTimer) return;
+    clearInterval(spinnerTimer);
+    spinnerTimer = undefined;
+  };
 
   const refreshWeeklyLimit = (): Promise<void> => {
     if (refreshInFlight) return refreshInFlight;
@@ -47,37 +82,89 @@ export default function statusFooterExtension(
     return refreshInFlight;
   };
 
-  const installFooter = (ctx: ExtensionContext, refresh = true) => {
+  const installComposer = (ctx: ExtensionContext, refresh = true) => {
     if (ctx.mode !== "tui") return;
     active = true;
-    ctx.ui.setFooter((tui, theme, footerData) => {
-      requestRender = () => tui.requestRender();
-      const unsubscribeBranch = footerData.onBranchChange(requestRender);
+    ctx.ui.setWorkingVisible(false);
 
+    refreshGitStats = async () => {
+      const result = await pi
+        .exec("git", ["diff", "--numstat", "HEAD", "--"], { cwd: ctx.cwd })
+        .catch(() => undefined);
+      if (!active) return;
+      if (!result || result.code !== 0) {
+        additions = undefined;
+        deletions = undefined;
+      } else {
+        ({ additions, deletions } = parseGitNumstat(result.stdout));
+      }
+      requestUiRender();
+    };
+
+    ctx.ui.setFooter((tui, _theme, footerData) => {
+      requestRender = () => tui.requestRender();
+      branch = footerData.getGitBranch();
+      const unsubscribeBranch = footerData.onBranchChange(() => {
+        branch = footerData.getGitBranch();
+        requestUiRender();
+      });
+
+      const footer = new EmptyFooter();
       return {
-        invalidate() {},
+        render: () => footer.render(),
+        invalidate: () => footer.invalidate(),
         dispose() {
           unsubscribeBranch();
           requestRender = undefined;
         },
-        render(width: number): string[] {
-          const usage = ctx.getContextUsage();
-          return renderStatusFooter(
-            {
-              model: ctx.model?.id,
-              thinking: ctx.model?.reasoning ? pi.getThinkingLevel() : undefined,
-              fastMode: isCodexFastModeActive(ctx.model, fastModeEnabled),
-              branch: footerData.getGitBranch(),
-              weeklyRemaining,
-              contextRemaining: remainingPercent(usage?.percent),
-            },
-            width,
-            theme,
-          );
-        },
       };
     });
-    if (refresh) void refreshWeeklyLimit().catch(() => requestRender?.());
+
+    class StatusEditor extends CustomEditor {
+      constructor(tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager) {
+        super(tui, theme, keybindings, { paddingX: 0 });
+        activeTui = tui;
+      }
+
+      render(width: number): string[] {
+        if (width < 3) return super.render(width);
+
+        const usage = ctx.getContextUsage();
+        const innerWidth = width - 2;
+        const editorLines = super.render(innerWidth);
+        if (this.isShowingAutocomplete()) {
+          editorLines.push(this.borderColor("─").repeat(innerWidth));
+        }
+        const border = (text: string) => this.borderColor(text);
+        const chrome = renderComposerChrome(
+          editorLines,
+          {
+            model: ctx.model?.id,
+            thinking: ctx.model?.reasoning ? pi.getThinkingLevel() : undefined,
+            fastMode: isCodexFastModeActive(ctx.model, fastModeEnabled),
+            branch,
+            additions,
+            deletions,
+            weeklyRemaining,
+            contextRemaining: remainingPercent(usage?.percent),
+            cwd: ctx.cwd,
+            working: isWorking
+              ? { frame: spinnerFrames[spinnerIndex]!, label: "Working" }
+              : undefined,
+          },
+          innerWidth,
+          ctx.ui.theme,
+          border,
+        );
+        return renderComposerBox(chrome, innerWidth, border);
+      }
+    }
+
+    ctx.ui.setEditorComponent(
+      (tui, theme, keybindings) => new StatusEditor(tui, theme, keybindings),
+    );
+    void refreshGitStats();
+    if (refresh) void refreshWeeklyLimit().catch(() => requestUiRender());
   };
 
   const unsubscribeFastMode = pi.events.on(CODEX_FAST_MODE_CHANGED_EVENT, (value) => {
@@ -86,36 +173,55 @@ export default function statusFooterExtension(
     requestRender?.();
   });
 
-  pi.on("session_start", (_event, ctx) => installFooter(ctx));
-  pi.on("model_select", () => requestRender?.());
-  pi.on("thinking_level_select", () => requestRender?.());
+  pi.on("session_start", (_event, ctx) => installComposer(ctx));
+  pi.on("model_select", () => requestUiRender());
+  pi.on("thinking_level_select", () => requestUiRender());
+
+  pi.on("agent_start", () => {
+    isWorking = true;
+    stopSpinner();
+    spinnerTimer = setInterval(() => {
+      spinnerIndex = (spinnerIndex + 1) % spinnerFrames.length;
+      requestUiRender();
+    }, 80);
+    requestUiRender();
+  });
 
   pi.on("after_provider_response", (event) => {
     const remaining = getWeeklyRemainingFromHeaders(event.headers);
     if (remaining === undefined) return;
     sawProviderRateLimit = true;
     weeklyRemaining = remaining;
-    requestRender?.();
+    requestUiRender();
   });
 
   pi.on("agent_settled", (_event, ctx) => {
-    if (ctx.mode === "tui" && !sawProviderRateLimit) {
-      void refreshWeeklyLimit().catch(() => requestRender?.());
+    isWorking = false;
+    stopSpinner();
+    requestUiRender();
+    if (ctx.mode === "tui") {
+      void refreshGitStats?.();
+      if (!sawProviderRateLimit) {
+        void refreshWeeklyLimit().catch(() => requestUiRender());
+      }
     }
   });
 
   pi.on("session_shutdown", () => {
     active = false;
+    stopSpinner();
     refreshAbort?.abort();
     refreshAbort = undefined;
     requestRender = undefined;
+    activeTui = undefined;
+    refreshGitStats = undefined;
     unsubscribeFastMode();
   });
 
   pi.registerCommand("status-refresh", {
     description: "Refresh the Codex weekly-limit status",
     handler: async (_args, ctx) => {
-      installFooter(ctx, false);
+      installComposer(ctx, false);
       try {
         await refreshWeeklyLimit();
         if (weeklyRemaining === undefined) {
