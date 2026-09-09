@@ -4,13 +4,7 @@ import type { SearchOptions, SearchResponse, SearchResult } from "./types.ts";
 const CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses";
 const SEARCH_TIMEOUT_MS = 60_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
-const CODEX_MODELS = [
-  "gpt-5.4",
-  "gpt-5.3-codex",
-  "gpt-5.3-codex-spark",
-  "gpt-5.2",
-  "gpt-5.2-codex",
-];
+const CODEX_MODELS = ["gpt-6-astra"];
 
 interface CodexAuth {
   apiKey: string;

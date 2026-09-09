@@ -20,10 +20,12 @@ const plainTheme: CompactTheme = {
   fg: (_color, text) => text,
 };
 
-test("drops provider header deletion markers before Codex web search", async () => {
+test("uses gpt-6-astra and drops provider header deletion markers for Codex web search", async () => {
   const ctx = {
     modelRegistry: {
       find(provider: string, modelId: string) {
+        assert.equal(provider, "openai-codex");
+        assert.equal(modelId, "gpt-6-astra");
         return { provider, id: modelId };
       },
       async getApiKeyAndHeaders() {
@@ -37,6 +39,7 @@ test("drops provider header deletion markers before Codex web search", async () 
   } as unknown as ExtensionContext;
 
   const fetchImpl: typeof fetch = async (_input, init) => {
+    assert.equal(JSON.parse(init?.body as string).model, "gpt-6-astra");
     const headers = new Headers(init?.headers);
     assert.equal(headers.get("x-keep"), "value");
     assert.equal(headers.has("x-delete"), false);
