@@ -37,6 +37,11 @@ the OpenAI Codex model catalog entries that advertise the `priority` tier as
 - `gpt-5.6-luna`
 - `gpt-5.6-sol`
 - `gpt-5.6-terra`
+- `gpt-6-astra`
+
+Astra's entry was verified in the local OpenAI Codex catalog fetched on
+2026-09-09. It lists `priority` as `Fast` with the description
+"2x speed, increased usage".
 
 Unknown models and `gpt-5.4-mini` are left unchanged. `/codex-fast status`
 reports when the toggle is enabled but inactive for the selected model. The

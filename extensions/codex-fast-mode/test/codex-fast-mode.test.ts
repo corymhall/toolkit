@@ -48,7 +48,7 @@ function supportedModel(id = "gpt-5.5") {
 test("recognizes only Codex catalog models that advertise the Fast tier", () => {
   assert.deepEqual(
     [...CODEX_FAST_MODE_MODEL_IDS],
-    ["gpt-5.4", "gpt-5.5", "gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra"],
+    ["gpt-5.4", "gpt-5.5", "gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-6-astra"],
   );
   for (const id of CODEX_FAST_MODE_MODEL_IDS)
     assert.equal(supportsCodexFastMode(supportedModel(id)), true);
@@ -78,13 +78,12 @@ test("injects priority only when Fast mode and model support are both active", a
     const { handlers } = extensionHarness(statePath);
     const beforeRequest = handlers.get("before_provider_request")!;
 
-    assert.deepEqual(
-      await beforeRequest(
-        { payload: { model: "gpt-5.5", input: [] } },
-        { model: supportedModel() },
-      ),
-      { model: "gpt-5.5", input: [], service_tier: "priority" },
-    );
+    for (const id of CODEX_FAST_MODE_MODEL_IDS) {
+      assert.deepEqual(
+        await beforeRequest({ payload: { model: id, input: [] } }, { model: supportedModel(id) }),
+        { model: id, input: [], service_tier: "priority" },
+      );
+    }
     assert.equal(
       await beforeRequest(
         { payload: { model: "gpt-5.5", service_tier: "default" } },

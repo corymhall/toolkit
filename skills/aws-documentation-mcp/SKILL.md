@@ -1,45 +1,22 @@
 ---
 name: aws-documentation-mcp
-description: Search, read, and cite official AWS documentation through the AWS Labs Documentation MCP server with mcporter. Use when a task depends on AWS service behavior, API constraints, IAM permissions, feature support, configuration requirements, or current AWS guidance.
-compatibility: Requires Node.js with npx, uvx, and network access to AWS documentation.
+description: Search, read, and cite official AWS documentation through the AWS Labs Documentation connection in executor. Use when a task depends on AWS service behavior, API constraints, IAM permissions, feature support, configuration requirements, or current AWS guidance.
+compatibility: Requires the executor MCP server with an AWS Labs Documentation connection.
 ---
 
 # AWS Documentation MCP
 
-Use the skill-owned wrapper from this skill directory:
-
-```bash
-./scripts/aws-docs-mcp list --brief
-```
+Use the AWS documentation connection through executor. Discover actions with `executor_search_awslabs_aws_documentation_mcp`. Before calling `executor_execute`, read `executor_skills` with `name: "execute"`. Inspect live tool schemas and call the returned paths; do not assume connection addresses.
 
 ## Workflow
 
-1. Search for the AWS concept or exact service feature:
-
-   ```bash
-   ./scripts/aws-docs-mcp call \
-     'aws-docs.search_documentation(search_phrase: "ECS task execution role permissions", limit: 10)'
-   ```
-
-2. Read the most authoritative result before making a claim:
-
-   ```bash
-   ./scripts/aws-docs-mcp call \
-     'aws-docs.read_documentation(url: "https://docs.aws.amazon.com/...", max_length: 12000)'
-   ```
-
-3. For a focused page, read named sections or search a large table:
-
-   ```bash
-   ./scripts/aws-docs-mcp call \
-     'aws-docs.read_sections(url: "https://docs.aws.amazon.com/...", section_titles: ["Section name"])'
-
-   ./scripts/aws-docs-mcp call \
-     'aws-docs.search_table(url: "https://docs.aws.amazon.com/...", query: "term", max_rows: 20)'
-   ```
-
+1. Use `search_documentation` for the AWS concept or exact service feature. Use specific service names and technical terms.
+2. Use `read_documentation` to read the most authoritative result before making a claim. Continue with `start_index` when required content is truncated.
+3. Use `read_sections` for named sections and `search_table` for specific rows in large tables. A truncated table is not evidence that a row is absent.
 4. Cite the AWS documentation URLs used in the answer. Distinguish documented facts from conclusions or recommendations.
 
-Use `aws-docs.recommend` only when related AWS pages are useful. Prefer an AWS API reference for request shapes and constraints, and an AWS developer or user guide for workflows and recommended practice.
+Use `recommend` only when related AWS pages are useful. Prefer an AWS API reference for request shapes and constraints, and an AWS developer or user guide for workflows and recommended practice.
 
-Set `AWS_DOCUMENTATION_PARTITION=aws-cn` before the wrapper command when the user asks about AWS China. The default partition is `aws`.
+For AWS China, verify that the connection supports the required partition and documentation domain. A local `AWS_DOCUMENTATION_PARTITION` environment variable does not configure the remote executor connection. If support is unavailable, report the limitation rather than treating standard-partition documentation as China-specific evidence.
+
+If discovery tools are missing, refresh the executor tool list before concluding that AWS documentation is unavailable. If the connection fails, report the failure and required connection setup; do not install a local server as an automatic fallback.
