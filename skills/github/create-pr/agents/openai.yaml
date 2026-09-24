@@ -1,4 +1,4 @@
 interface:
   display_name: "Create PR"
-  short_description: "Create clear, reviewer-oriented pull requests"
-  default_prompt: "Use $create-pr to create or update a pull request with a proportional, evidence-backed title and description."
+  short_description: "Create pull requests from well-formed commits"
+  default_prompt: "Use $create-pr to commit the intended change and create a pull request filled from that commit."
