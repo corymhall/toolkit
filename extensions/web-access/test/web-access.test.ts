@@ -6,6 +6,7 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import webAccessExtension, { formatSearchSources } from "../index.ts";
 import { EmptyToolResult, type CompactTheme } from "../../pi-ui/tool-cards/rendering.ts";
 import { fetchGitHubContent, parseGitHubUrl } from "../github.ts";
+import { fetchGitHubActions } from "../github-actions.ts";
 import { fetchGitHubIssue } from "../github-issue.ts";
 import { fetchGitHubPullRequest } from "../github-pull-request.ts";
 import { buildGitHubSearchQuery, searchGitHub } from "../github-search.ts";
@@ -81,6 +82,12 @@ test("parses supported GitHub URLs and rejects unrelated pages", () => {
     repo: "widgets",
     kind: "pull_request",
     number: 17,
+  });
+  assert.deepEqual(parseGitHubUrl("https://github.com/acme/widgets/actions/runs/123"), {
+    owner: "acme",
+    repo: "widgets",
+    kind: "actions_run",
+    runId: 123,
   });
   assert.equal(parseGitHubUrl("https://github.com/acme/widgets/issues/not-a-number"), null);
   assert.equal(parseGitHubUrl("http://github.com/acme/widgets"), null);
@@ -478,6 +485,138 @@ test("reads pull-request check runs and commit statuses from the head SHA", asyn
   assert.match(result.fetched.content, /"context": "deploy"/);
 });
 
+test("fetches pasted GitHub Actions run URLs as summaries", async () => {
+  const calls: string[][] = [];
+  const pi = {
+    async exec(command: string, args: string[]) {
+      calls.push([command, ...args]);
+      return {
+        code: 0,
+        stdout: JSON.stringify({
+          id: 123,
+          name: "CI",
+          display_title: "Test retries",
+          status: "completed",
+          conclusion: "failure",
+          head_branch: "retry",
+          head_sha: "abc123",
+          html_url: "https://github.com/acme/widgets/actions/runs/123",
+        }),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+
+  const result = await fetchGitHubContent("https://github.com/acme/widgets/actions/runs/123", pi);
+  assert.equal(calls[0][4], "repos/acme/widgets/actions/runs/123");
+  assert.equal(result?.title, "acme/widgets: Test retries");
+  assert.match(result?.content ?? "", /"conclusion": "failure"/);
+});
+
+test("reads GitHub Actions jobs and failed-job logs", async () => {
+  const run = {
+    id: 123,
+    name: "CI",
+    display_title: "Test retries",
+    html_url: "https://github.com/acme/widgets/actions/runs/123",
+  };
+  const jobs = {
+    total_count: 3,
+    jobs: [
+      {
+        id: 44,
+        run_id: 123,
+        name: "test",
+        status: "completed",
+        conclusion: "failure",
+        html_url: "https://github.com/acme/widgets/actions/runs/123/job/44",
+        steps: [{ number: 1, name: "Run tests", status: "completed", conclusion: "failure" }],
+      },
+      {
+        id: 45,
+        run_id: 123,
+        name: "lint",
+        status: "completed",
+        conclusion: "success",
+      },
+    ],
+  };
+  const responses: Array<unknown> = [run, jobs, run, jobs, "line 1\nline 2\nline 3\n"];
+  const calls: string[][] = [];
+  const pi = {
+    async exec(command: string, args: string[]) {
+      calls.push([command, ...args]);
+      const response = responses.shift();
+      return {
+        code: 0,
+        stdout: typeof response === "string" ? response : JSON.stringify(response),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+
+  const jobsResult = await fetchGitHubActions(pi, {
+    owner: "acme",
+    repo: "widgets",
+    view: "jobs",
+    runId: 123,
+  });
+  assert.equal(calls[1][4], "repos/acme/widgets/actions/runs/123/jobs?per_page=100");
+  assert.equal(jobsResult.fetched.truncated, true);
+  assert.match(jobsResult.fetched.content, /"name": "Run tests"/);
+
+  const logsResult = await fetchGitHubActions(pi, {
+    owner: "acme",
+    repo: "widgets",
+    view: "failed_logs",
+    runId: 123,
+    tailLines: 2,
+  });
+  assert.equal(calls[4][4], "repos/acme/widgets/actions/jobs/44/logs");
+  assert.match(logsResult.fetched.content, /line 1/);
+  assert.doesNotMatch(logsResult.fetched.modelContent ?? "", /line 1/);
+  assert.match(logsResult.fetched.modelContent ?? "", /line 2\nline 3/);
+  assert.equal(logsResult.details.resultCount, 1);
+});
+
+test("reads one GitHub Actions job log without requiring a run ID", async () => {
+  const calls: string[][] = [];
+  const responses: Array<unknown> = [
+    {
+      id: 44,
+      name: "test",
+      html_url: "https://github.com/acme/widgets/actions/runs/123/job/44",
+    },
+    "first\nsecond\nthird\n",
+  ];
+  const pi = {
+    async exec(command: string, args: string[]) {
+      calls.push([command, ...args]);
+      const response = responses.shift();
+      return {
+        code: 0,
+        stdout: typeof response === "string" ? response : JSON.stringify(response),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+
+  const result = await fetchGitHubActions(pi, {
+    owner: "acme",
+    repo: "widgets",
+    view: "job_logs",
+    jobId: 44,
+    tailLines: 1,
+  });
+  assert.equal(calls[0][4], "repos/acme/widgets/actions/jobs/44");
+  assert.equal(calls[1][4], "repos/acme/widgets/actions/jobs/44/logs");
+  assert.equal(result.fetched.modelContent, "third\n");
+  assert.match(result.fetched.content, /first/);
+});
+
 test("does not mistake a GitHub API 404 for a missing gh CLI", async () => {
   const pi = {
     async exec() {
@@ -783,7 +922,14 @@ test("registers tool-card renderers for the intended tools and describes fetch_c
   } as unknown as ExtensionAPI);
   assert.deepEqual(
     tools.map((tool) => tool.name),
-    ["web_search", "github_search", "github_issue", "github_pull_request", "fetch_content"],
+    [
+      "web_search",
+      "github_search",
+      "github_issue",
+      "github_pull_request",
+      "github_actions",
+      "fetch_content",
+    ],
   );
   assert.equal(
     tools.every(
@@ -858,13 +1004,31 @@ test("registers tool-card renderers for the intended tools and describes fetch_c
   );
   assert.match(pullCard.render(120).join("\n"), /PR: acme\/widgets#17 · View: checks/u);
 
+  const githubActions = tools.find((tool) => tool.name === "github_actions");
+  assert.equal(githubActions?.executionMode, "sequential");
+  const actionsContext = {
+    ...renderContext,
+    args: { owner: "acme", repo: "widgets", view: "failed_logs", runId: 123 },
+    state: {},
+    toolCallId: "actions-render",
+  };
+  const actionsCard = githubActions?.renderCall?.(
+    actionsContext.args,
+    { fg: (_color: string, text: string) => text },
+    actionsContext,
+  );
+  assert.match(
+    actionsCard.render(120).join("\n"),
+    /Actions: acme\/widgets · View: failed_logs · Run: 123/u,
+  );
+
   const fetchContent = tools.find((tool) => tool.name === "fetch_content");
   assert.equal(fetchContent?.executionMode, "sequential");
   assert.match(
     fetchContent?.description ?? "",
-    /GitHub repository roots, issue pages, pull-request pages/,
+    /GitHub repository roots, issue pages, pull-request pages, Actions run pages/,
   );
-  assert.match(fetchContent?.description ?? "", /commits, releases, and Actions/);
+  assert.match(fetchContent?.description ?? "", /commits and releases/);
 });
 
 test("labels GitHub code search results as untrusted and bounds fragments", async (t) => {
@@ -917,6 +1081,50 @@ test("labels GitHub code search results as untrusted and bounds fragments", asyn
   assert.match(result.content[0].text, /"repository": "acme\/private"/);
   assert.doesNotMatch(result.content[0].text, /x{501}/);
   assert.equal(await readFile(fullOutputPath, "utf8"), result.content[0].text);
+});
+
+test("saves complete Actions logs privately while returning only the requested tail", async (t) => {
+  const tools: Array<{ name: string; execute: (...args: any[]) => Promise<any> }> = [];
+  const responses: Array<unknown> = [
+    {
+      id: 44,
+      name: "test",
+      html_url: "https://github.com/acme/widgets/actions/runs/123/job/44",
+    },
+    "secret first line\nsecond line\nfinal line\n",
+  ];
+  const pi = {
+    registerTool: (tool: { name: string; execute: (...args: any[]) => Promise<any> }) =>
+      tools.push(tool),
+    async exec() {
+      const response = responses.shift();
+      return {
+        code: 0,
+        stdout: typeof response === "string" ? response : JSON.stringify(response),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+  webAccessExtension(pi);
+  const tool = tools.find((candidate) => candidate.name === "github_actions");
+  assert.ok(tool);
+
+  const result = await tool.execute(
+    "call",
+    { owner: "acme", repo: "widgets", view: "job_logs", jobId: 44, tailLines: 1 },
+    undefined,
+    undefined,
+  );
+  const fullOutputPath = result.details.fullOutputPath as string;
+  t.after(() => rm(fullOutputPath, { force: true }));
+
+  assert.doesNotMatch(result.content[0].text, /secret first line/);
+  assert.match(result.content[0].text, /final line/);
+  assert.match(result.content[0].text, /limited to the requested log tail/);
+  const saved = await readFile(fullOutputPath, "utf8");
+  assert.match(saved, /secret first line/);
+  assert.equal((await stat(fullOutputPath)).mode & 0o777, 0o600);
 });
 
 test("preserves a complete pull-request diff privately while bounding model output", async (t) => {

@@ -102,8 +102,8 @@ dependencies automatically.
 
 ### Web Access extension
 
-`extensions/web-access` registers `web_search`, `github_search`,
-`github_issue`, `github_pull_request`, and `fetch_content`:
+`extensions/web-access` registers `web_search`, `github_search`, `github_issue`,
+`github_pull_request`, `github_actions`, and `fetch_content`:
 
 - `web_search` uses Pi's OpenAI Codex subscription login exclusively.
 - `github_search` performs authenticated GitHub issue, pull-request, and code
@@ -113,10 +113,12 @@ dependencies automatically.
   pages through authenticated, read-only `gh api` calls.
 - `github_pull_request` reads normalized pull-request summaries, files, diffs,
   commits, conversation comments, reviews, checks, and commit statuses.
-- GitHub repository, issue, pull-request, tree, and blob URLs use constrained
-  read-only `gh api` calls and never clone or execute repository content.
-  Private repositories work when the authenticated `gh` account can access
-  them.
+- `github_actions` reads workflow runs, jobs, individual job logs, and failed-job
+  logs with private complete output and bounded model-visible tails.
+- GitHub repository, issue, pull-request, Actions-run, tree, and blob URLs use
+  constrained read-only `gh api` calls and never clone or execute repository
+  content. Private repositories work when the authenticated `gh` account can
+  access them.
 - Other HTTP(S) pages are fetched directly and HTML is converted locally with
   Readability. Extraction failures are returned without external-service
   fallbacks.

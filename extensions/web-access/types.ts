@@ -20,5 +20,6 @@ export interface FetchedContent {
   url: string;
   title: string;
   content: string;
+  modelContent?: string;
   truncated: boolean;
 }

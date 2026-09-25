@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { fetchGitHubActions } from "./github-actions.ts";
 import { fetchGitHubApiJson } from "./github-api.ts";
 import { fetchGitHubIssue } from "./github-issue.ts";
 import { fetchGitHubPullRequest } from "./github-pull-request.ts";
@@ -10,10 +11,11 @@ const MAX_LIST_ENTRIES = 200;
 export interface GitHubUrl {
   owner: string;
   repo: string;
-  kind: "repo" | "blob" | "tree" | "issue" | "pull_request";
+  kind: "repo" | "blob" | "tree" | "issue" | "pull_request" | "actions_run";
   ref?: string;
   path?: string;
   number?: number;
+  runId?: number;
 }
 
 const OWNER_REPO = /^[A-Za-z0-9_.-]+$/;
@@ -52,6 +54,14 @@ export function parseGitHubUrl(raw: string): GitHubUrl | null {
     if (kind === "pull") {
       return { owner, repo, kind: "pull_request", number: Number(parts[3]) };
     }
+  }
+  if (
+    kind === "actions" &&
+    parts.length === 5 &&
+    parts[3] === "runs" &&
+    /^[1-9][0-9]*$/.test(parts[4])
+  ) {
+    return { owner, repo, kind: "actions_run", runId: Number(parts[4]) };
   }
   if ((kind !== "blob" && kind !== "tree") || parts.length < 4) return null;
   const ref = parts[3];
@@ -137,6 +147,11 @@ export async function fetchGitHubContent(
         { owner, repo, number: parsed.number!, view: "summary" },
         signal,
       )
+    ).fetched;
+  }
+  if (parsed.kind === "actions_run") {
+    return (
+      await fetchGitHubActions(pi, { owner, repo, runId: parsed.runId!, view: "run" }, signal)
     ).fetched;
   }
 

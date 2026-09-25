@@ -174,14 +174,15 @@ explicit tool calls.
   dispatch are implemented and validated in the current working tree.
 - Pull-request diff and commit views are implemented and validated in the
   current working tree.
-- Actions reads remain planned.
+- Actions run, jobs, individual job logs, failed-job logs, and Actions-run URL
+  dispatch are implemented and validated in the current working tree.
 
 ## Implementation Order
 
 1. Add `github_issue` and issue URL dispatch. (Implemented and validated.)
 2. Add `github_pull_request` summary, files, comments, reviews, and checks. (Implemented and validated.)
 3. Add pull-request diff and commit views. (Implemented and validated.)
-4. Add `github_actions` run, jobs, job logs, and failed-log retrieval.
+4. Add `github_actions` run, jobs, job logs, and failed-log retrieval. (Implemented and validated.)
 5. Re-run Evaler usage analysis before considering write tools.
 
 ## Current Repository State At Plan Creation

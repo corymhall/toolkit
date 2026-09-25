@@ -1,11 +1,12 @@
 # Web Access extension
 
-A deliberately narrow Pi extension with five tools:
+A deliberately narrow Pi extension with six tools:
 
 - `web_search`: OpenAI `web_search` through Pi's OpenAI Codex subscription login.
 - `github_search`: authenticated GitHub issue, pull-request, and code search through structured `gh api` queries.
 - `github_issue`: authenticated GitHub issue summaries and comments through constrained `gh api` reads.
 - `github_pull_request`: authenticated pull-request summaries, files, diffs, commits, comments, reviews, checks, and commit statuses.
+- `github_actions`: authenticated workflow-run summaries, jobs, individual job logs, and failed-job logs.
 - `fetch_content`: constrained GitHub reads through `gh api`, or direct HTTP(S) fetching with local Readability-to-Markdown conversion.
 
 It does not contain skills and does not use third-party search or extraction fallbacks. In particular, it does not use Jina Reader, Gemini, Parallel, Brave, Exa, Tavily, or Perplexity.
@@ -65,19 +66,29 @@ without review-thread resolution metadata. The default limit is 30 and the
 maximum is 100. Diff output relies on Pi's model-visible bound while preserving
 the complete API response in the private output file.
 
+## GitHub Actions
+
+`github_actions` reads a workflow run, up to 100 jobs for a run, one job's logs,
+or logs for up to 20 failed jobs from the returned jobs page. Log reads save the
+complete retrieved output privately and return the last 200 lines per job by
+default; `tailLines` accepts 1 through 2,000. Failed logs are fetched
+sequentially to avoid concurrent subprocess stalls. A run with more than 100
+jobs reports that its job view is bounded.
+
 ## Supported GitHub URLs
 
 - `https://github.com/owner/repo`
 - `https://github.com/owner/repo/issues/123`
 - `https://github.com/owner/repo/pull/123`
+- `https://github.com/owner/repo/actions/runs/123`
 - `https://github.com/owner/repo/blob/ref/path/to/file`
 - `https://github.com/owner/repo/tree/ref/path/to/directory`
 
-Issue and pull-request URLs return summaries without related collections; use
-`github_issue` or `github_pull_request` for richer views. Repository URLs return
-the root listing and README. Private repositories work when the authenticated
-`gh` account can access them. The
-extension never clones or executes repository content. Branch names containing
+Issue, pull-request, and Actions-run URLs return summaries without related
+collections; use the corresponding GitHub tool for richer views. Repository
+URLs return the root listing and README. Private repositories work when the
+authenticated `gh` account can access them. The extension never clones or
+executes repository content. Branch names containing
 `/` are not currently supported in GitHub web URLs because the ref/path
 boundary is ambiguous.
 
