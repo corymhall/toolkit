@@ -1,5 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { fetchGitHubApiJson } from "./github-api.ts";
+import { fetchGitHubIssue } from "./github-issue.ts";
+import { fetchGitHubPullRequest } from "./github-pull-request.ts";
 import type { FetchedContent } from "./types.ts";
 
 const MAX_FILE_BYTES = 1_000_000;
@@ -8,9 +10,10 @@ const MAX_LIST_ENTRIES = 200;
 export interface GitHubUrl {
   owner: string;
   repo: string;
-  kind: "repo" | "blob" | "tree";
+  kind: "repo" | "blob" | "tree" | "issue" | "pull_request";
   ref?: string;
   path?: string;
+  number?: number;
 }
 
 const OWNER_REPO = /^[A-Za-z0-9_.-]+$/;
@@ -44,6 +47,12 @@ export function parseGitHubUrl(raw: string): GitHubUrl | null {
   if (!OWNER_REPO.test(owner) || !OWNER_REPO.test(repo)) return null;
   if (parts.length === 2) return { owner, repo, kind: "repo" };
   const kind = parts[2];
+  if (parts.length === 4 && /^[1-9][0-9]*$/.test(parts[3])) {
+    if (kind === "issues") return { owner, repo, kind: "issue", number: Number(parts[3]) };
+    if (kind === "pull") {
+      return { owner, repo, kind: "pull_request", number: Number(parts[3]) };
+    }
+  }
   if ((kind !== "blob" && kind !== "tree") || parts.length < 4) return null;
   const ref = parts[3];
   const path = parts.slice(4).join("/");
@@ -116,6 +125,21 @@ export async function fetchGitHubContent(
   const parsed = parseGitHubUrl(raw);
   if (!parsed) return null;
   const { owner, repo } = parsed;
+  if (parsed.kind === "issue") {
+    return (
+      await fetchGitHubIssue(pi, { owner, repo, number: parsed.number!, view: "summary" }, signal)
+    ).fetched;
+  }
+  if (parsed.kind === "pull_request") {
+    return (
+      await fetchGitHubPullRequest(
+        pi,
+        { owner, repo, number: parsed.number!, view: "summary" },
+        signal,
+      )
+    ).fetched;
+  }
+
   const metadata = await fetchGitHubApiJson(pi, `repos/${owner}/${repo}`, { signal });
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata))
     throw new Error("GitHub repository response was invalid");

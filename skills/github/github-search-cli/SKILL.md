@@ -1,17 +1,19 @@
 ---
 name: github-search-cli
-description: Use GitHub CLI search safely as a fallback for issues, pull requests, code, and advanced qualifiers. Use when a dedicated `github_search` tool is unavailable or cannot express the required search, especially when `gh search` queries include repo or org scope, quoted phrases, labels, or state filters.
+description: Use GitHub CLI search safely when the executor GitHub integration and dedicated github_search tool are unavailable or cannot express the required query. Use especially for advanced qualifiers or CLI searches involving repository or organization scope, quoted phrases, labels, dates, authors, or state filters.
 ---
 
 # GitHub Search CLI
 
 ## Overview
 
-Use the dedicated `github_search` tool when it is available and supports the
-required filters. It provides structured scope, normalized bounded output, and
-avoids CLI argument-grouping mistakes.
+Prefer the executor GitHub integration for semantic search and deeper GitHub
+investigation. Use the dedicated `github_search` tool for exact or exhaustive
+searches when it supports the required filters; it provides structured scope,
+normalized bounded output, and avoids CLI argument-grouping mistakes.
 
-Otherwise, build `gh search` commands so GitHub parses qualifiers as qualifiers,
+Use `gh search` when both preferred paths are unavailable or cannot express the
+required qualifiers. Build commands so GitHub parses qualifiers as qualifiers,
 not as literal text inside one big search phrase.
 
 ## Command Rules

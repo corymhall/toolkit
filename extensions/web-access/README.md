@@ -1,9 +1,11 @@
 # Web Access extension
 
-A deliberately narrow Pi extension with three tools:
+A deliberately narrow Pi extension with five tools:
 
 - `web_search`: OpenAI `web_search` through Pi's OpenAI Codex subscription login.
 - `github_search`: authenticated GitHub issue, pull-request, and code search through structured `gh api` queries.
+- `github_issue`: authenticated GitHub issue summaries and comments through constrained `gh api` reads.
+- `github_pull_request`: authenticated pull-request summaries, files, diffs, commits, comments, reviews, checks, and commit statuses.
 - `fetch_content`: constrained GitHub reads through `gh api`, or direct HTTP(S) fetching with local Readability-to-Markdown conversion.
 
 It does not contain skills and does not use third-party search or extraction fallbacks. In particular, it does not use Jina Reader, Gemini, Parallel, Brave, Exa, Tavily, or Perplexity.
@@ -43,13 +45,41 @@ Search uses the authenticated `gh` account and can return private repository
 results. GitHub's REST code-search endpoint uses its legacy code search engine,
 so code results can differ from searches on github.com.
 
+## GitHub issues
+
+`github_issue` reads one issue by owner, repository, and number. Its `summary`
+view returns normalized metadata and the complete issue body. `comments` returns
+the first bounded page of normalized comments, and `all` returns both. The
+default comment limit is 30 and the maximum is 100. Results report when
+additional comments were omitted.
+
+## GitHub pull requests
+
+`github_pull_request` reads one pull request by owner, repository, and number.
+Its views return a summary, changed files, the unified diff, commits,
+conversation comments, submitted reviews with inline review comments, or
+head-commit check runs and commit statuses. Related collections return their
+first bounded page. For the reviews view, the limit applies separately to
+reviews and inline comments. Inline comments are returned as a flat REST list
+without review-thread resolution metadata. The default limit is 30 and the
+maximum is 100. Diff output relies on Pi's model-visible bound while preserving
+the complete API response in the private output file.
+
 ## Supported GitHub URLs
 
 - `https://github.com/owner/repo`
+- `https://github.com/owner/repo/issues/123`
+- `https://github.com/owner/repo/pull/123`
 - `https://github.com/owner/repo/blob/ref/path/to/file`
 - `https://github.com/owner/repo/tree/ref/path/to/directory`
 
-Repository URLs return the root listing and README. Private repositories work when the authenticated `gh` account can access them. The extension never clones or executes repository content. Branch names containing `/` are not currently supported in GitHub web URLs because the ref/path boundary is ambiguous.
+Issue and pull-request URLs return summaries without related collections; use
+`github_issue` or `github_pull_request` for richer views. Repository URLs return
+the root listing and README. Private repositories work when the authenticated
+`gh` account can access them. The
+extension never clones or executes repository content. Branch names containing
+`/` are not currently supported in GitHub web URLs because the ref/path
+boundary is ambiguous.
 
 ## Security boundaries
 

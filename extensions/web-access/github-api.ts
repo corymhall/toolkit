@@ -11,11 +11,11 @@ interface GitHubApiOptions {
   signal?: AbortSignal;
 }
 
-export async function fetchGitHubApiJson(
+export async function fetchGitHubApiText(
   pi: ExtensionAPI,
   endpoint: string,
   options: GitHubApiOptions = {},
-): Promise<unknown> {
+): Promise<string> {
   const operation = options.operation ?? "fetching";
   const result = await pi.exec(
     "gh",
@@ -42,8 +42,18 @@ export async function fetchGitHubApiJson(
     const prefix = operation === "search" ? "GitHub search" : "GitHub";
     throw new Error(`${prefix} API request failed: ${message}`);
   }
+  return result.stdout;
+}
+
+export async function fetchGitHubApiJson(
+  pi: ExtensionAPI,
+  endpoint: string,
+  options: GitHubApiOptions = {},
+): Promise<unknown> {
+  const operation = options.operation ?? "fetching";
+  const stdout = await fetchGitHubApiText(pi, endpoint, options);
   try {
-    return JSON.parse(result.stdout);
+    return JSON.parse(stdout);
   } catch {
     const prefix = operation === "search" ? "GitHub search" : "GitHub";
     throw new Error(`${prefix} API returned invalid JSON`);

@@ -6,6 +6,8 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import webAccessExtension, { formatSearchSources } from "../index.ts";
 import { EmptyToolResult, type CompactTheme } from "../../pi-ui/tool-cards/rendering.ts";
 import { fetchGitHubContent, parseGitHubUrl } from "../github.ts";
+import { fetchGitHubIssue } from "../github-issue.ts";
+import { fetchGitHubPullRequest } from "../github-pull-request.ts";
 import { buildGitHubSearchQuery, searchGitHub } from "../github-search.ts";
 import { fetchHttpContent } from "../http.ts";
 import { parseOpenAIResponse, searchWithCodex } from "../openai-search.ts";
@@ -68,7 +70,19 @@ test("parses supported GitHub URLs and rejects unrelated pages", () => {
     ref: "main",
     path: "src/a.ts",
   });
-  assert.equal(parseGitHubUrl("https://github.com/acme/widgets/issues/1"), null);
+  assert.deepEqual(parseGitHubUrl("https://github.com/acme/widgets/issues/42"), {
+    owner: "acme",
+    repo: "widgets",
+    kind: "issue",
+    number: 42,
+  });
+  assert.deepEqual(parseGitHubUrl("https://github.com/acme/widgets/pull/17"), {
+    owner: "acme",
+    repo: "widgets",
+    kind: "pull_request",
+    number: 17,
+  });
+  assert.equal(parseGitHubUrl("https://github.com/acme/widgets/issues/not-a-number"), null);
   assert.equal(parseGitHubUrl("http://github.com/acme/widgets"), null);
 });
 
@@ -93,6 +107,375 @@ test("fetches GitHub files through a constrained gh API invocation", async () =>
   assert.deepEqual(calls[0].slice(0, 4), ["gh", "api", "--hostname", "github.com"]);
   assert.match(calls[1][4], /^repos\/acme\/widgets\/contents\/README\.md\?ref=main$/);
   assert.equal(calls.flat().includes("clone"), false);
+});
+
+test("fetches pasted GitHub issue URLs as summaries", async () => {
+  const calls: string[][] = [];
+  const pi = {
+    async exec(command: string, args: string[]) {
+      calls.push([command, ...args]);
+      return {
+        code: 0,
+        stdout: JSON.stringify({
+          number: 42,
+          title: "Fix timeout",
+          body: "Issue body",
+          state: "open",
+          user: { login: "octocat", html_url: "https://github.com/octocat" },
+          labels: [{ name: "bug" }],
+          assignees: [],
+          comments: 2,
+          html_url: "https://github.com/acme/widgets/issues/42",
+        }),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+
+  const result = await fetchGitHubContent("https://github.com/acme/widgets/issues/42", pi);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][4], "repos/acme/widgets/issues/42");
+  assert.equal(result?.title, "acme/widgets#42: Fix timeout");
+  assert.match(result?.content ?? "", /"body": "Issue body"/);
+  assert.doesNotMatch(result?.content ?? "", /returnedComments/);
+});
+
+test("reads and normalizes GitHub issue comments with a bounded page", async () => {
+  const calls: string[][] = [];
+  const responses = [
+    {
+      number: 42,
+      title: "Fix timeout",
+      body: "Issue body",
+      state: "closed",
+      state_reason: "completed",
+      draft: true,
+      type: { name: "Bug" },
+      reactions: { total_count: 2, heart: 2 },
+      user: { login: "octocat", html_url: "https://github.com/octocat" },
+      labels: [{ name: "bug" }],
+      assignees: [{ login: "maintainer", html_url: "https://github.com/maintainer" }],
+      comments: 3,
+      html_url: "https://github.com/acme/widgets/issues/42",
+    },
+    [
+      {
+        id: 7,
+        body: "A comment",
+        user: { login: "maintainer", html_url: "https://github.com/maintainer" },
+        author_association: "MEMBER",
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+        html_url: "https://github.com/acme/widgets/issues/42#issuecomment-7",
+        reactions: { total_count: 1, "+1": 1 },
+      },
+    ],
+  ];
+  const pi = {
+    async exec(command: string, args: string[]) {
+      calls.push([command, ...args]);
+      return {
+        code: 0,
+        stdout: JSON.stringify(responses.shift()),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+
+  await assert.rejects(
+    () => fetchGitHubIssue(pi, { owner: "acme/other", repo: "widgets", number: 42 }),
+    /Invalid GitHub owner/,
+  );
+  assert.equal(calls.length, 0);
+
+  const result = await fetchGitHubIssue(pi, {
+    owner: "acme",
+    repo: "widgets",
+    number: 42,
+    view: "all",
+    limit: 1,
+  });
+  assert.equal(calls[0][4], "repos/acme/widgets/issues/42");
+  assert.equal(calls[1][4], "repos/acme/widgets/issues/42/comments?per_page=1");
+  assert.equal(result.details.commentCount, 3);
+  assert.equal(result.details.returnedComments, 1);
+  assert.equal(result.fetched.truncated, true);
+  assert.match(result.fetched.content, /"stateReason": "completed"/);
+  assert.match(result.fetched.content, /"issueType": "Bug"/);
+  assert.match(result.fetched.content, /"draft": true/);
+  assert.match(result.fetched.content, /"heart": 2/);
+  assert.match(result.fetched.content, /"body": "A comment"/);
+  assert.match(result.fetched.content, /"plusOne": 1/);
+});
+
+test("fetches pasted GitHub pull-request URLs as summaries", async () => {
+  const calls: string[][] = [];
+  const pi = {
+    async exec(command: string, args: string[]) {
+      calls.push([command, ...args]);
+      return {
+        code: 0,
+        stdout: JSON.stringify({
+          number: 17,
+          title: "Improve retries",
+          body: "PR body",
+          state: "open",
+          head: { ref: "retry", sha: "abc123", repo: { full_name: "acme/widgets" } },
+          base: { ref: "main", sha: "def456", repo: { full_name: "acme/widgets" } },
+          html_url: "https://github.com/acme/widgets/pull/17",
+        }),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+
+  const result = await fetchGitHubContent("https://github.com/acme/widgets/pull/17", pi);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][4], "repos/acme/widgets/pulls/17");
+  assert.equal(result?.title, "acme/widgets#17: Improve retries");
+  assert.match(result?.content ?? "", /"body": "PR body"/);
+  assert.match(result?.content ?? "", /"sha": "abc123"/);
+});
+
+test("reads a complete pull-request diff and bounded commit metadata", async () => {
+  const pull = {
+    number: 17,
+    title: "Improve retries",
+    commits: 3,
+    head: { sha: "abc123" },
+    html_url: "https://github.com/acme/widgets/pull/17",
+  };
+  const responses: Array<unknown> = [
+    "diff --git a/src/retry.ts b/src/retry.ts\n+retry();\n",
+    pull,
+    [
+      {
+        sha: "abc123",
+        html_url: "https://github.com/acme/widgets/commit/abc123",
+        commit: {
+          message: "Improve retries",
+          author: { name: "Octo Cat", email: "octo@example.com", date: "2026-01-01T00:00:00Z" },
+          committer: {
+            name: "Octo Cat",
+            email: "octo@example.com",
+            date: "2026-01-01T00:00:00Z",
+          },
+        },
+        author: { login: "octocat", html_url: "https://github.com/octocat" },
+        parents: [{ sha: "def456" }],
+      },
+    ],
+  ];
+  const calls: string[][] = [];
+  const pi = {
+    async exec(command: string, args: string[]) {
+      calls.push([command, ...args]);
+      const response = responses.shift();
+      return {
+        code: 0,
+        stdout: typeof response === "string" ? response : JSON.stringify(response),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+
+  const diff = await fetchGitHubPullRequest(pi, {
+    owner: "acme",
+    repo: "widgets",
+    number: 17,
+    view: "diff",
+  });
+  assert.equal(calls[0][4], "repos/acme/widgets/pulls/17");
+  assert.equal(calls[0].includes("Accept: application/vnd.github.diff"), true);
+  assert.equal(diff.fetched.content, "diff --git a/src/retry.ts b/src/retry.ts\n+retry();\n");
+  assert.equal(diff.fetched.truncated, false);
+
+  const commits = await fetchGitHubPullRequest(pi, {
+    owner: "acme",
+    repo: "widgets",
+    number: 17,
+    view: "commits",
+    limit: 1,
+  });
+  assert.equal(calls[2][4], "repos/acme/widgets/pulls/17/commits?per_page=1");
+  assert.equal(commits.fetched.truncated, true);
+  assert.match(commits.fetched.content, /"message": "Improve retries"/);
+  assert.match(commits.fetched.content, /"githubAuthor":/);
+  assert.match(commits.fetched.content, /"def456"/);
+});
+
+test("reads bounded pull-request files, comments, and reviews", async () => {
+  const pull = {
+    number: 17,
+    title: "Improve retries",
+    state: "open",
+    changed_files: 4,
+    comments: 3,
+    head: { sha: "abc123" },
+    html_url: "https://github.com/acme/widgets/pull/17",
+  };
+  const responses = [
+    pull,
+    [
+      {
+        filename: "src/retry.ts",
+        status: "modified",
+        additions: 5,
+        deletions: 2,
+        changes: 7,
+        patch: "@@ -1 +1 @@",
+        blob_url: "https://github.com/acme/widgets/blob/abc123/src/retry.ts",
+      },
+    ],
+    pull,
+    [
+      {
+        id: 8,
+        body: "Conversation comment",
+        user: { login: "octocat" },
+        html_url: "https://github.com/acme/widgets/pull/17#issuecomment-8",
+      },
+    ],
+    pull,
+    [
+      {
+        id: 9,
+        state: "APPROVED",
+        body: "Looks good",
+        user: { login: "reviewer" },
+        html_url: "https://github.com/acme/widgets/pull/17#pullrequestreview-9",
+      },
+      { id: 10, state: "COMMENTED", body: "One more", user: { login: "reviewer" } },
+    ],
+    [
+      {
+        id: 11,
+        body: "Handle this error",
+        user: { login: "reviewer" },
+        path: "src/retry.ts",
+        line: 42,
+        side: "RIGHT",
+        diff_hunk: "@@ -40,3 +40,4 @@",
+        html_url: "https://github.com/acme/widgets/pull/17#discussion_r11",
+      },
+    ],
+  ];
+  const calls: string[][] = [];
+  const pi = {
+    async exec(command: string, args: string[]) {
+      calls.push([command, ...args]);
+      return {
+        code: 0,
+        stdout: JSON.stringify(responses.shift()),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+
+  const files = await fetchGitHubPullRequest(pi, {
+    owner: "acme",
+    repo: "widgets",
+    number: 17,
+    view: "files",
+    limit: 1,
+  });
+  assert.equal(calls[1][4], "repos/acme/widgets/pulls/17/files?per_page=1");
+  assert.equal(files.fetched.truncated, true);
+  assert.match(files.fetched.content, /"filename": "src\/retry.ts"/);
+
+  const comments = await fetchGitHubPullRequest(pi, {
+    owner: "acme",
+    repo: "widgets",
+    number: 17,
+    view: "comments",
+    limit: 1,
+  });
+  assert.equal(calls[3][4], "repos/acme/widgets/issues/17/comments?per_page=1");
+  assert.equal(comments.fetched.truncated, true);
+  assert.match(comments.fetched.content, /Conversation comment/);
+
+  const reviews = await fetchGitHubPullRequest(pi, {
+    owner: "acme",
+    repo: "widgets",
+    number: 17,
+    view: "reviews",
+    limit: 1,
+  });
+  assert.equal(calls[5][4], "repos/acme/widgets/pulls/17/reviews?per_page=2");
+  assert.equal(calls[6][4], "repos/acme/widgets/pulls/17/comments?per_page=1");
+  assert.equal(reviews.fetched.truncated, true);
+  assert.match(reviews.fetched.content, /"state": "APPROVED"/);
+  assert.match(reviews.fetched.content, /"body": "Handle this error"/);
+  assert.match(reviews.fetched.content, /"line": 42/);
+  assert.doesNotMatch(reviews.fetched.content, /One more/);
+});
+
+test("reads pull-request check runs and commit statuses from the head SHA", async () => {
+  const calls: string[][] = [];
+  const responses = [
+    {
+      number: 17,
+      title: "Improve retries",
+      head: { sha: "abc123" },
+      html_url: "https://github.com/acme/widgets/pull/17",
+    },
+    {
+      total_count: 2,
+      check_runs: [
+        {
+          id: 11,
+          name: "test",
+          status: "completed",
+          conclusion: "failure",
+          details_url: "https://github.com/acme/widgets/actions/runs/1",
+          app: { name: "GitHub Actions" },
+          output: { title: "Tests failed", summary: "failure details" },
+        },
+      ],
+    },
+    {
+      state: "success",
+      total_count: 1,
+      statuses: [
+        {
+          id: 12,
+          state: "success",
+          context: "deploy",
+          target_url: "https://ci.example/run/12",
+        },
+      ],
+    },
+  ];
+  const pi = {
+    async exec(command: string, args: string[]) {
+      calls.push([command, ...args]);
+      return {
+        code: 0,
+        stdout: JSON.stringify(responses.shift()),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+
+  const result = await fetchGitHubPullRequest(pi, {
+    owner: "acme",
+    repo: "widgets",
+    number: 17,
+    view: "checks",
+    limit: 1,
+  });
+  assert.equal(calls[1][4], "repos/acme/widgets/commits/abc123/check-runs?per_page=1");
+  assert.equal(calls[2][4], "repos/acme/widgets/commits/abc123/status?per_page=1");
+  assert.equal(result.fetched.truncated, true);
+  assert.match(result.fetched.content, /"conclusion": "failure"/);
+  assert.match(result.fetched.content, /"combinedStatus":/);
+  assert.match(result.fetched.content, /"context": "deploy"/);
 });
 
 test("does not mistake a GitHub API 404 for a missing gh CLI", async () => {
@@ -400,7 +783,7 @@ test("registers tool-card renderers for the intended tools and describes fetch_c
   } as unknown as ExtensionAPI);
   assert.deepEqual(
     tools.map((tool) => tool.name),
-    ["web_search", "github_search", "fetch_content"],
+    ["web_search", "github_search", "github_issue", "github_pull_request", "fetch_content"],
   );
   assert.equal(
     tools.every(
@@ -447,12 +830,41 @@ test("registers tool-card renderers for the intended tools and describes fetch_c
   assert.match(githubOutput, /Query: timeout · Repo: acme\/widgets/u);
   assert.match(githubOutput, /2 of 7 results/u);
 
+  const githubIssue = tools.find((tool) => tool.name === "github_issue");
+  const issueContext = {
+    ...renderContext,
+    args: { owner: "acme", repo: "widgets", number: 42, view: "all" },
+    state: {},
+    toolCallId: "issue-render",
+  };
+  const issueCard = githubIssue?.renderCall?.(
+    issueContext.args,
+    { fg: (_color: string, text: string) => text },
+    issueContext,
+  );
+  assert.match(issueCard.render(120).join("\n"), /Issue: acme\/widgets#42 · View: all/u);
+
+  const githubPullRequest = tools.find((tool) => tool.name === "github_pull_request");
+  const pullContext = {
+    ...renderContext,
+    args: { owner: "acme", repo: "widgets", number: 17, view: "checks" },
+    state: {},
+    toolCallId: "pull-render",
+  };
+  const pullCard = githubPullRequest?.renderCall?.(
+    pullContext.args,
+    { fg: (_color: string, text: string) => text },
+    pullContext,
+  );
+  assert.match(pullCard.render(120).join("\n"), /PR: acme\/widgets#17 · View: checks/u);
+
   const fetchContent = tools.find((tool) => tool.name === "fetch_content");
   assert.equal(fetchContent?.executionMode, "sequential");
   assert.match(
     fetchContent?.description ?? "",
-    /do not use this tool for GitHub issues, pull requests, commits, releases/,
+    /GitHub repository roots, issue pages, pull-request pages/,
   );
+  assert.match(fetchContent?.description ?? "", /commits, releases, and Actions/);
 });
 
 test("labels GitHub code search results as untrusted and bounds fragments", async (t) => {
@@ -505,6 +917,95 @@ test("labels GitHub code search results as untrusted and bounds fragments", asyn
   assert.match(result.content[0].text, /"repository": "acme\/private"/);
   assert.doesNotMatch(result.content[0].text, /x{501}/);
   assert.equal(await readFile(fullOutputPath, "utf8"), result.content[0].text);
+});
+
+test("preserves a complete pull-request diff privately while bounding model output", async (t) => {
+  const tools: Array<{ name: string; execute: (...args: any[]) => Promise<any> }> = [];
+  const completeDiff = `diff --git a/a b/a\n${"+x\n".repeat(20_000)}END-OF-DIFF\n`;
+  const responses: Array<unknown> = [completeDiff];
+  const pi = {
+    registerTool: (tool: { name: string; execute: (...args: any[]) => Promise<any> }) =>
+      tools.push(tool),
+    async exec() {
+      const response = responses.shift();
+      return {
+        code: 0,
+        stdout: typeof response === "string" ? response : JSON.stringify(response),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+  webAccessExtension(pi);
+  const tool = tools.find((candidate) => candidate.name === "github_pull_request");
+  assert.ok(tool);
+
+  const result = await tool.execute(
+    "call",
+    { owner: "acme", repo: "widgets", number: 17, view: "diff" },
+    undefined,
+    undefined,
+  );
+  const fullOutputPath = result.details.fullOutputPath as string;
+  t.after(() => rm(fullOutputPath, { force: true }));
+
+  assert.match(result.content[0].text, /Model-visible content truncated at Pi's safety limit/);
+  assert.doesNotMatch(result.content[0].text, /END-OF-DIFF/);
+  const saved = await readFile(fullOutputPath, "utf8");
+  assert.match(saved, /END-OF-DIFF/);
+  assert.equal((await stat(fullOutputPath)).mode & 0o777, 0o600);
+});
+
+test("distinguishes bounded GitHub collections from model-visible truncation", async (t) => {
+  const tools: Array<{ name: string; execute: (...args: any[]) => Promise<any> }> = [];
+  const responses = [
+    {
+      number: 17,
+      title: "Improve retries",
+      changed_files: 2,
+      head: { sha: "abc123" },
+      html_url: "https://github.com/acme/widgets/pull/17",
+    },
+    [
+      {
+        filename: "src/retry.ts",
+        status: "modified",
+        patch: "@@ -1 +1 @@",
+        blob_url: "https://github.com/acme/widgets/blob/abc123/src/retry.ts",
+      },
+    ],
+  ];
+  const pi = {
+    registerTool: (tool: { name: string; execute: (...args: any[]) => Promise<any> }) =>
+      tools.push(tool),
+    async exec() {
+      return {
+        code: 0,
+        stdout: JSON.stringify(responses.shift()),
+        stderr: "",
+        killed: false,
+      };
+    },
+  } as unknown as ExtensionAPI;
+  webAccessExtension(pi);
+  const tool = tools.find((candidate) => candidate.name === "github_pull_request");
+  assert.ok(tool);
+
+  const result = await tool.execute(
+    "call",
+    { owner: "acme", repo: "widgets", number: 17, view: "files", limit: 1 },
+    undefined,
+    undefined,
+  );
+  const fullOutputPath = result.details.fullOutputPath as string;
+  t.after(() => rm(fullOutputPath, { force: true }));
+
+  assert.match(result.content[0].text, /Result limited at the extension's safety bound/);
+  assert.match(result.content[0].text, /Full bounded output:/);
+  const saved = await readFile(fullOutputPath, "utf8");
+  assert.match(saved, /"filename": "src\/retry.ts"/);
+  assert.doesNotMatch(saved, /Full bounded output:/);
+  assert.equal((await stat(fullOutputPath)).mode & 0o777, 0o600);
 });
 
 test("saves fetched content and renders only its remote-content summary", async (t) => {
