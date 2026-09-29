@@ -10,6 +10,8 @@ interface CodexAuth {
   apiKey: string;
   model: string;
   headers: Record<string, string>;
+  url: string;
+  legacy: boolean;
 }
 
 function materializeHeaders(
@@ -45,16 +47,35 @@ function extractAccountId(token: string): string | undefined {
 }
 
 async function resolveCodexAuth(ctx: ExtensionContext): Promise<CodexAuth> {
-  for (const modelId of CODEX_MODELS) {
-    const model = ctx.modelRegistry.find("openai-codex", modelId);
-    if (!model) continue;
+  const current = ctx.model;
+  const candidates = [
+    ...(current?.provider === "openai" && current.api === "openai-responses" ? [current] : []),
+    ...ctx.modelRegistry
+      .getAvailable()
+      .filter(
+        (model) =>
+          model.provider === "openai" &&
+          model.api === "openai-responses" &&
+          model.compat &&
+          "supportsAdditionalTools" in model.compat &&
+          model.compat.supportsAdditionalTools,
+      ),
+    ...CODEX_MODELS.map((id) => ctx.modelRegistry.find("openai-codex", id)),
+  ];
+  for (const model of candidates) {
+    if (!model || !ctx.modelRegistry.isUsingOAuth(model)) continue;
     try {
       const resolved = await ctx.modelRegistry.getApiKeyAndHeaders(model);
       if (resolved.ok && resolved.apiKey) {
         return {
           apiKey: resolved.apiKey,
-          model: modelId,
+          model: model.id,
           headers: materializeHeaders(resolved.headers),
+          url:
+            model.provider === "openai-codex"
+              ? CODEX_RESPONSES_URL
+              : `${(resolved.baseUrl ?? model.baseUrl).replace(/\/$/, "")}/responses`,
+          legacy: model.provider === "openai-codex",
         };
       }
     } catch {
@@ -62,7 +83,7 @@ async function resolveCodexAuth(ctx: ExtensionContext): Promise<CodexAuth> {
     }
   }
   throw new Error(
-    "OpenAI web search requires a Pi OpenAI Codex subscription login. Run /login and select OpenAI Codex.",
+    "OpenAI web search requires a Pi ChatGPT subscription login. Run /login and select OpenAI (ChatGPT subscription).",
   );
 }
 
@@ -258,11 +279,10 @@ export async function searchWithCodex(
     ...auth.headers,
     Authorization: `Bearer ${auth.apiKey}`,
     "Content-Type": "application/json",
-    "OpenAI-Beta": "responses=experimental",
-    originator: "pi",
+    ...(auth.legacy ? { "OpenAI-Beta": "responses=experimental", originator: "pi" } : {}),
   };
   const accountId = extractAccountId(auth.apiKey);
-  if (accountId) headers["chatgpt-account-id"] = accountId;
+  if (auth.legacy && accountId) headers["chatgpt-account-id"] = accountId;
 
   const filters = domainFilters(options.domainFilter);
   const body = {
@@ -278,7 +298,7 @@ export async function searchWithCodex(
   };
   const timeout = AbortSignal.timeout(SEARCH_TIMEOUT_MS);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
-  const response = await fetchImpl(CODEX_RESPONSES_URL, {
+  const response = await fetchImpl(auth.url, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
@@ -286,12 +306,12 @@ export async function searchWithCodex(
   });
   if (!response.ok) {
     const error = (await readResponseText(response, 64 * 1024)).replace(/\s+/g, " ").slice(0, 300);
-    throw new Error(`OpenAI Codex web search failed (${response.status}): ${error}`);
+    throw new Error(`OpenAI web search failed (${response.status}): ${error}`);
   }
   const parsed = await parseOpenAIResponse(response);
   const output = Array.isArray(parsed.output) ? parsed.output : [];
   const result = extractResponse(output, options.numResults);
   if (!result.answer && !result.results.length)
-    throw new Error("OpenAI Codex web search returned no answer or sources");
+    throw new Error("OpenAI web search returned no answer or sources");
   return result;
 }

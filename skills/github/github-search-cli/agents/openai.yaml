@@ -1,4 +1,4 @@
 interface:
   display_name: "GitHub Search CLI"
   short_description: "Use gh search safely as a fallback"
-  default_prompt: "When executor and the dedicated GitHub search tool cannot express a query, search with gh CLI using safe qualifier and quoting patterns."
+  default_prompt: "When the dedicated GitHub search tool is unavailable or cannot express a query, search with gh CLI using safe qualifier and quoting patterns. Do not look for a GitHub integration through executor."

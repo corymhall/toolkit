@@ -9,7 +9,7 @@ Set the current selection as the new-session default:
 /session-default save
 ```
 
-For example, select `openai-codex/gpt-5.6-sol`, set thinking to `medium`, and run
+For example, select `openai/gpt-6.1-sol`, set thinking to `medium`, and run
 `/session-default save`. You can then change the current session to `xhigh`.
 Another new session starts with the saved `medium` default.
 
@@ -36,7 +36,7 @@ keeps its recorded model and thinking-level changes. Sessions opened with
 
 Explicit startup options have priority over the saved default. `--model`,
 `--provider`, and `--models` keep the model selected by the CLI. `--thinking`
-and a thinking suffix such as `--model openai-codex/gpt-5.6-luna:xhigh` keep
+and a thinking suffix such as `--model openai/gpt-6-luna:xhigh` keep
 the thinking level selected by the CLI. These options apply to the initial
 session. A later `/new` uses the saved new-session default.
 

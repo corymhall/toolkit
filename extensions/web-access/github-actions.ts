@@ -1,5 +1,10 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { fetchGitHubApiJson, fetchGitHubApiText } from "./github-api.ts";
+import {
+  fetchGitHubApiJson,
+  fetchGitHubApiText,
+  MAX_GITHUB_TEXT_BYTES,
+  type GitHubTextFetcher,
+} from "./github-api.ts";
 import {
   githubInteger,
   githubRecord,
@@ -160,9 +165,13 @@ async function fetchJobLog(
   owner: string,
   repo: string,
   jobId: number,
-  signal?: AbortSignal,
+  signal: AbortSignal | undefined,
+  fetchText: GitHubTextFetcher,
 ): Promise<string> {
-  return fetchGitHubApiText(pi, `repos/${owner}/${repo}/actions/jobs/${jobId}/logs`, { signal });
+  return fetchText(pi, `repos/${owner}/${repo}/actions/jobs/${jobId}/logs`, {
+    maxBytes: MAX_GITHUB_TEXT_BYTES,
+    signal,
+  });
 }
 
 /** Read and normalize a workflow run, its jobs, or complete logs with model-visible tails. */
@@ -170,6 +179,7 @@ export async function fetchGitHubActions(
   pi: ExtensionAPI,
   options: GitHubActionsOptions,
   signal?: AbortSignal,
+  fetchText: GitHubTextFetcher = fetchGitHubApiText,
 ): Promise<{ fetched: FetchedContent; details: GitHubActionsDetails }> {
   validate(options);
   const tailLines = Math.min(Math.max(Math.floor(options.tailLines ?? 200), 1), 2_000);
@@ -183,7 +193,7 @@ export async function fetchGitHubActions(
       }),
     );
     if (!job) throw new Error("GitHub Actions job response was invalid");
-    const logs = await fetchJobLog(pi, options.owner, options.repo, jobId, signal);
+    const logs = await fetchJobLog(pi, options.owner, options.repo, jobId, signal, fetchText);
     const jobName = githubString(job.name) ?? `job ${jobId}`;
     return {
       fetched: {
@@ -270,7 +280,7 @@ export async function fetchGitHubActions(
     logs.push({
       id: jobId,
       name: githubString(job.raw.name) ?? `job ${jobId}`,
-      logs: await fetchJobLog(pi, options.owner, options.repo, jobId, signal),
+      logs: await fetchJobLog(pi, options.owner, options.repo, jobId, signal, fetchText),
     });
   }
   const renderLogs = (select: (log: (typeof logs)[number]) => string) =>

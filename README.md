@@ -105,7 +105,7 @@ dependencies automatically.
 `extensions/web-access` registers `web_search`, `github_search`, `github_issue`,
 `github_pull_request`, `github_actions`, and `fetch_content`:
 
-- `web_search` uses Pi's OpenAI Codex subscription login exclusively.
+- `web_search` uses Pi's ChatGPT subscription login and the selected OpenAI Responses model; legacy OpenAI Codex logins remain supported.
 - `github_search` performs authenticated GitHub issue, pull-request, and code
   searches with structured scope and filter fields. Private repository results
   work when the authenticated `gh` account can access them.

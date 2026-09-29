@@ -1,7 +1,7 @@
 # Codex Fast Mode extension
 
-Adds a persistent, provider-specific Fast mode toggle for supported OpenAI Codex
-subscription models:
+Adds a persistent Fast mode toggle for supported OpenAI Responses and legacy
+OpenAI Codex models:
 
 ```text
 /codex-fast on
@@ -9,7 +9,7 @@ subscription models:
 /codex-fast status
 ```
 
-When enabled, requests for supported `openai-codex` Responses models receive:
+When enabled, requests for supported `openai` and `openai-codex` Responses models receive:
 
 ```json
 {
@@ -29,8 +29,7 @@ toggle is enabled and the selected model is supported.
 
 Pi's model type does not currently expose OpenAI's service-tier capability
 metadata. The extension therefore uses a conservative allowlist derived from
-the OpenAI Codex model catalog entries that advertise the `priority` tier as
-`Fast`:
+the OpenAI Fast mode documentation and Codex model catalog:
 
 - `gpt-5.4`
 - `gpt-5.5`
@@ -38,6 +37,9 @@ the OpenAI Codex model catalog entries that advertise the `priority` tier as
 - `gpt-5.6-sol`
 - `gpt-5.6-terra`
 - `gpt-6-astra`
+- `gpt-6-sol`
+- `gpt-6-luna`
+- `gpt-6.1-sol`
 
 Astra's entry was verified in the local OpenAI Codex catalog fetched on
 2026-09-09. It lists `priority` as `Fast` with the description
@@ -45,4 +47,8 @@ Astra's entry was verified in the local OpenAI Codex catalog fetched on
 
 Unknown models and `gpt-5.4-mini` are left unchanged. `/codex-fast status`
 reports when the toggle is enabled but inactive for the selected model. The
-allowlist should be reviewed when Pi adds or removes OpenAI Codex models.
+allowlist should be reviewed when Pi adds or removes OpenAI models.
+
+The current [OpenAI Fast mode guide](https://developers.openai.com/api/docs/guides/fast-mode)
+shows `gpt-6.1-sol` and confirms that `priority` and `fast` select the same tier.
+Fast mode increases usage or cost; the toggle remains off by default.

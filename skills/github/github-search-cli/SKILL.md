@@ -1,18 +1,18 @@
 ---
 name: github-search-cli
-description: Use GitHub CLI search safely when the executor GitHub integration and dedicated github_search tool are unavailable or cannot express the required query. Use especially for advanced qualifiers or CLI searches involving repository or organization scope, quoted phrases, labels, dates, authors, or state filters.
+description: Use GitHub CLI search safely as a fallback when the dedicated github_search tool is unavailable or cannot express the required query, especially for advanced qualifiers, dates, authors, or unsupported filters.
 ---
 
 # GitHub Search CLI
 
 ## Overview
 
-Prefer the executor GitHub integration for semantic search and deeper GitHub
-investigation. Use the dedicated `github_search` tool for exact or exhaustive
-searches when it supports the required filters; it provides structured scope,
-normalized bounded output, and avoids CLI argument-grouping mistakes.
+Use the dedicated `github_search` tool when it supports the required filters;
+it provides structured scope, normalized bounded output, and avoids CLI
+argument-grouping mistakes. Do not look for a GitHub integration through
+executor.
 
-Use `gh search` when both preferred paths are unavailable or cannot express the
+Use `gh search` when `github_search` is unavailable or cannot express the
 required qualifiers. Build commands so GitHub parses qualifiers as qualifiers,
 not as literal text inside one big search phrase.
 
@@ -35,8 +35,9 @@ not as literal text inside one big search phrase.
   `--state open` and `--state closed` searches. Use `--state all` only when the
   installed command's help lists it.
 - `gh search prs --json` does not expose `mergedAt` locally. Search with
-  `closedAt` or `updatedAt`, then use
-  `gh pr view <number> --json mergedAt,mergedBy,mergeCommit` for a candidate.
+  `closedAt` or `updatedAt`, then use `github_pull_request` for the candidate
+  when available. Otherwise use
+  `gh pr view <number> --json mergedAt,mergedBy,mergeCommit`.
 - If a query fails, reduce it to explicit scope plus one or two terms, then add
   filters back incrementally. When exhaustive results matter, query a known
   repository list rather than relying on broad organization search ordering.

@@ -1,5 +1,10 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { fetchGitHubApiJson, fetchGitHubApiText } from "./github-api.ts";
+import {
+  fetchGitHubApiJson,
+  fetchGitHubApiText,
+  MAX_GITHUB_TEXT_BYTES,
+  type GitHubTextFetcher,
+} from "./github-api.ts";
 import {
   githubBoolean,
   githubInteger,
@@ -238,6 +243,7 @@ export async function fetchGitHubPullRequest(
   pi: ExtensionAPI,
   options: GitHubPullRequestOptions,
   signal?: AbortSignal,
+  fetchText: GitHubTextFetcher = fetchGitHubApiText,
 ): Promise<{ fetched: FetchedContent; details: GitHubPullRequestDetails }> {
   validate(options);
   const limit = Math.min(Math.max(Math.floor(options.limit ?? 30), 1), 100);
@@ -247,8 +253,9 @@ export async function fetchGitHubPullRequest(
       fetched: {
         url: `https://github.com/${options.owner}/${options.repo}/pull/${options.number}`,
         title: `${options.owner}/${options.repo}#${options.number} diff`,
-        content: await fetchGitHubApiText(pi, base, {
+        content: await fetchText(pi, base, {
           accept: "application/vnd.github.diff",
+          maxBytes: MAX_GITHUB_TEXT_BYTES,
           signal,
         }),
         truncated: false,
@@ -305,21 +312,23 @@ export async function fetchGitHubPullRequest(
     truncated = resultCount < totalCount;
     content = { comments, totalComments: totalCount, returnedComments: resultCount };
   } else if (options.view === "reviews") {
-    const reviewRequestLimit = Math.min(limit + 1, 100);
     const reviews = normalizeArray(
-      await fetchGitHubApiJson(pi, `${base}/reviews?per_page=${reviewRequestLimit}`, { signal }),
+      await fetchGitHubApiJson(pi, `${base}/reviews?per_page=${limit}`, { signal }),
       "GitHub pull request reviews response was invalid",
       normalizeReview,
     );
-    const reviewComments = normalizeArray(
-      await fetchGitHubApiJson(pi, `${base}/comments?per_page=${limit}`, { signal }),
-      "GitHub pull request review-comments response was invalid",
-      normalizeReviewComment,
-    );
-    const reviewsHaveMore = reviews.length > limit || (limit === 100 && reviews.length === 100);
+    const remaining = Math.max(limit - reviews.length, 0);
+    const reviewComments = remaining
+      ? normalizeArray(
+          await fetchGitHubApiJson(pi, `${base}/comments?per_page=${remaining}`, { signal }),
+          "GitHub pull request review-comments response was invalid",
+          normalizeReviewComment,
+        )
+      : [];
+    const reviewsHaveMore = reviews.length === limit;
     const totalReviewComments = githubInteger(pull.review_comments) ?? reviewComments.length;
     const reviewCommentsHaveMore = reviewComments.length < totalReviewComments;
-    const returnedReviews = reviews.slice(0, limit);
+    const returnedReviews = reviews;
     const returnedReviewComments = reviewComments;
     truncated = reviewsHaveMore || reviewCommentsHaveMore;
     resultCount = returnedReviews.length + returnedReviewComments.length;
@@ -350,10 +359,11 @@ export async function fetchGitHubPullRequest(
       "GitHub pull request check-runs response was invalid",
       normalizeCheckRun,
     );
+    const remaining = Math.max(limit - checkRuns.length, 0);
     const statusValue = githubRecord(
       await fetchGitHubApiJson(
         pi,
-        `repos/${options.owner}/${options.repo}/commits/${headSha}/status?per_page=${limit}`,
+        `repos/${options.owner}/${options.repo}/commits/${headSha}/status?per_page=${Math.max(remaining, 1)}`,
         { signal },
       ),
     );
@@ -364,7 +374,7 @@ export async function fetchGitHubPullRequest(
       statusValue.statuses,
       "GitHub pull request combined-status response was invalid",
       normalizeStatus,
-    );
+    ).slice(0, remaining);
     totalCount = githubInteger(checksValue.total_count) ?? checkRuns.length;
     const totalStatuses = githubInteger(statusValue.total_count) ?? statuses.length;
     resultCount = checkRuns.length + statuses.length;

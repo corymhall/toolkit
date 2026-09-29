@@ -80,6 +80,12 @@ and `mise run validate` at pre-push. Install Git 2.54+ global hooks once with
 - First-party Pi extensions live under `extensions/<name>/`, with `index.ts` as
   the entry point, a focused README, and tests under `test/` when behavior can
   be isolated.
+- When upgrading Pi, align the repository's `@earendil-works/pi-*` development
+  dependencies and `typebox` with the new runtime, run `mise run validate`, and
+  review newly public extension APIs that can replace local workarounds. In
+  particular, check whether Pi now supports registering a renderer for an
+  existing tool without replacing its implementation; if it does, reconsider
+  adding Pi UI tool-card rendering for built-in `codemode` and its nested calls.
 - Expose a new packaged extension in `package.json` under `pi.extensions`, add
   its test script when applicable, and update the expected extension list in
   `scripts/test-pi-package.sh`. Document user-facing commands or tools in the

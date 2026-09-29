@@ -4,8 +4,8 @@ import { getAgentDir, type ExtensionAPI } from "@earendil-works/pi-coding-agent"
 
 export const CODEX_FAST_MODE_CHANGED_EVENT = "codex-fast-mode:changed";
 
-// These are the models whose current OpenAI Codex catalog entry advertises the
-// `priority` service tier with the display name "Fast". Keep this conservative:
+// Models supported by the OpenAI Fast mode documentation and Codex catalog.
+// Both Responses connections accept the `priority` service tier. Keep this conservative:
 // an unknown model is left unchanged rather than tested with a live request.
 export const CODEX_FAST_MODE_MODEL_IDS = new Set([
   "gpt-5.4",
@@ -14,6 +14,9 @@ export const CODEX_FAST_MODE_MODEL_IDS = new Set([
   "gpt-5.6-sol",
   "gpt-5.6-terra",
   "gpt-6-astra",
+  "gpt-6-sol",
+  "gpt-6-luna",
+  "gpt-6.1-sol",
 ]);
 
 export type CodexFastModeModel = {
@@ -30,8 +33,8 @@ export type CodexFastModeChanged = CodexFastModeState;
 
 export function supportsCodexFastMode(model: CodexFastModeModel | undefined): boolean {
   return (
-    model?.provider === "openai-codex" &&
-    model.api === "openai-codex-responses" &&
+    ((model?.provider === "openai-codex" && model.api === "openai-codex-responses") ||
+      (model?.provider === "openai" && model.api === "openai-responses")) &&
     typeof model.id === "string" &&
     CODEX_FAST_MODE_MODEL_IDS.has(model.id)
   );

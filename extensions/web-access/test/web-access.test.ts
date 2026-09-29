@@ -7,6 +7,7 @@ import webAccessExtension, { formatSearchSources } from "../index.ts";
 import { EmptyToolResult, type CompactTheme } from "../../pi-ui/tool-cards/rendering.ts";
 import { fetchGitHubContent, parseGitHubUrl } from "../github.ts";
 import { fetchGitHubActions } from "../github-actions.ts";
+import { execBoundedCommand, fetchGitHubApiText, type GitHubTextFetcher } from "../github-api.ts";
 import { fetchGitHubIssue } from "../github-issue.ts";
 import { fetchGitHubPullRequest } from "../github-pull-request.ts";
 import { buildGitHubSearchQuery, searchGitHub } from "../github-search.ts";
@@ -23,9 +24,14 @@ const plainTheme: CompactTheme = {
   fg: (_color, text) => text,
 };
 
+const mockGitHubText: GitHubTextFetcher = (pi, endpoint, options) =>
+  fetchGitHubApiText(pi, endpoint, { ...options, maxBytes: undefined });
+
 test("uses gpt-6-astra and drops provider header deletion markers for Codex web search", async () => {
   const ctx = {
     modelRegistry: {
+      getAvailable: () => [],
+      isUsingOAuth: () => true,
       find(provider: string, modelId: string) {
         assert.equal(provider, "openai-codex");
         assert.equal(modelId, "gpt-6-astra");
@@ -56,6 +62,48 @@ test("uses gpt-6-astra and drops provider header deletion markers for Codex web 
 
   const result = await searchWithCodex("query", {}, ctx, fetchImpl);
   assert.equal(result.answer, "answer");
+});
+
+test("uses the selected OpenAI subscription model and resolved Responses endpoint", async () => {
+  const model = {
+    provider: "openai",
+    api: "openai-responses",
+    id: "gpt-6.1-sol",
+    baseUrl: "https://api.openai.com/v1",
+  };
+  const ctx = {
+    model,
+    modelRegistry: {
+      getAvailable: () => [model],
+      find: () => undefined,
+      isUsingOAuth: () => true,
+      getApiKeyAndHeaders: async () => ({
+        ok: true,
+        apiKey: "subscription-token",
+        baseUrl: "https://api.openai.com/v1/",
+        headers: { "x-delete": null },
+      }),
+    },
+  } as unknown as ExtensionContext;
+  const fetchImpl: typeof fetch = async (url, init) => {
+    assert.equal(url, "https://api.openai.com/v1/responses");
+    const body = JSON.parse(init?.body as string);
+    assert.equal(body.model, "gpt-6.1-sol");
+    assert.equal(body.tools[0].type, "web_search");
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get("Authorization"), "Bearer subscription-token");
+    assert.equal(headers.has("OpenAI-Beta"), false);
+    assert.equal(headers.has("chatgpt-account-id"), false);
+    assert.equal(headers.has("x-delete"), false);
+    return new Response(
+      JSON.stringify({
+        output: [{ type: "message", content: [{ type: "output_text", text: "answer" }] }],
+      }),
+    );
+  };
+  assert.equal((await searchWithCodex("query", {}, ctx, fetchImpl)).answer, "answer");
+  ctx.modelRegistry.isUsingOAuth = () => false;
+  await assert.rejects(searchWithCodex("query", {}, ctx, fetchImpl), /ChatGPT subscription login/);
 });
 
 test("parses supported GitHub URLs and rejects unrelated pages", () => {
@@ -290,12 +338,17 @@ test("reads a complete pull-request diff and bounded commit metadata", async () 
     },
   } as unknown as ExtensionAPI;
 
-  const diff = await fetchGitHubPullRequest(pi, {
-    owner: "acme",
-    repo: "widgets",
-    number: 17,
-    view: "diff",
-  });
+  const diff = await fetchGitHubPullRequest(
+    pi,
+    {
+      owner: "acme",
+      repo: "widgets",
+      number: 17,
+      view: "diff",
+    },
+    undefined,
+    mockGitHubText,
+  );
   assert.equal(calls[0][4], "repos/acme/widgets/pulls/17");
   assert.equal(calls[0].includes("Accept: application/vnd.github.diff"), true);
   assert.equal(diff.fetched.content, "diff --git a/src/retry.ts b/src/retry.ts\n+retry();\n");
@@ -411,15 +464,16 @@ test("reads bounded pull-request files, comments, and reviews", async () => {
     repo: "widgets",
     number: 17,
     view: "reviews",
-    limit: 1,
+    limit: 3,
   });
-  assert.equal(calls[5][4], "repos/acme/widgets/pulls/17/reviews?per_page=2");
+  assert.equal(calls[5][4], "repos/acme/widgets/pulls/17/reviews?per_page=3");
   assert.equal(calls[6][4], "repos/acme/widgets/pulls/17/comments?per_page=1");
-  assert.equal(reviews.fetched.truncated, true);
+  assert.equal(reviews.details.resultCount, 3);
+  assert.equal(reviews.fetched.truncated, false);
   assert.match(reviews.fetched.content, /"state": "APPROVED"/);
   assert.match(reviews.fetched.content, /"body": "Handle this error"/);
   assert.match(reviews.fetched.content, /"line": 42/);
-  assert.doesNotMatch(reviews.fetched.content, /One more/);
+  assert.match(reviews.fetched.content, /One more/);
 });
 
 test("reads pull-request check runs and commit statuses from the head SHA", async () => {
@@ -482,7 +536,8 @@ test("reads pull-request check runs and commit statuses from the head SHA", asyn
   assert.equal(result.fetched.truncated, true);
   assert.match(result.fetched.content, /"conclusion": "failure"/);
   assert.match(result.fetched.content, /"combinedStatus":/);
-  assert.match(result.fetched.content, /"context": "deploy"/);
+  assert.match(result.fetched.content, /"returnedStatuses": 0/);
+  assert.equal(result.details.resultCount, 1);
 });
 
 test("fetches pasted GitHub Actions run URLs as summaries", async () => {
@@ -567,13 +622,18 @@ test("reads GitHub Actions jobs and failed-job logs", async () => {
   assert.equal(jobsResult.fetched.truncated, true);
   assert.match(jobsResult.fetched.content, /"name": "Run tests"/);
 
-  const logsResult = await fetchGitHubActions(pi, {
-    owner: "acme",
-    repo: "widgets",
-    view: "failed_logs",
-    runId: 123,
-    tailLines: 2,
-  });
+  const logsResult = await fetchGitHubActions(
+    pi,
+    {
+      owner: "acme",
+      repo: "widgets",
+      view: "failed_logs",
+      runId: 123,
+      tailLines: 2,
+    },
+    undefined,
+    mockGitHubText,
+  );
   assert.equal(calls[4][4], "repos/acme/widgets/actions/jobs/44/logs");
   assert.match(logsResult.fetched.content, /line 1/);
   assert.doesNotMatch(logsResult.fetched.modelContent ?? "", /line 1/);
@@ -604,17 +664,32 @@ test("reads one GitHub Actions job log without requiring a run ID", async () => 
     },
   } as unknown as ExtensionAPI;
 
-  const result = await fetchGitHubActions(pi, {
-    owner: "acme",
-    repo: "widgets",
-    view: "job_logs",
-    jobId: 44,
-    tailLines: 1,
-  });
+  const result = await fetchGitHubActions(
+    pi,
+    {
+      owner: "acme",
+      repo: "widgets",
+      view: "job_logs",
+      jobId: 44,
+      tailLines: 1,
+    },
+    undefined,
+    mockGitHubText,
+  );
   assert.equal(calls[0][4], "repos/acme/widgets/actions/jobs/44");
   assert.equal(calls[1][4], "repos/acme/widgets/actions/jobs/44/logs");
   assert.equal(result.fetched.modelContent, "third\n");
   assert.match(result.fetched.content, /first/);
+});
+
+test("stops a streamed command when stdout exceeds its byte limit", async () => {
+  const result = await execBoundedCommand(
+    process.execPath,
+    ["-e", "process.stdout.write('x'.repeat(64 * 1024))"],
+    1_024,
+  );
+  assert.equal(result.exceededLimit, true);
+  assert.ok(Buffer.byteLength(result.stdout) <= 1_024);
 });
 
 test("does not mistake a GitHub API 404 for a missing gh CLI", async () => {
@@ -1106,7 +1181,7 @@ test("saves complete Actions logs privately while returning only the requested t
       };
     },
   } as unknown as ExtensionAPI;
-  webAccessExtension(pi);
+  webAccessExtension(pi, { fetchGitHubText: mockGitHubText });
   const tool = tools.find((candidate) => candidate.name === "github_actions");
   assert.ok(tool);
 
@@ -1144,7 +1219,7 @@ test("preserves a complete pull-request diff privately while bounding model outp
       };
     },
   } as unknown as ExtensionAPI;
-  webAccessExtension(pi);
+  webAccessExtension(pi, { fetchGitHubText: mockGitHubText });
   const tool = tools.find((candidate) => candidate.name === "github_pull_request");
   assert.ok(tool);
 

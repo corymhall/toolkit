@@ -2,7 +2,7 @@
 
 A deliberately narrow Pi extension with six tools:
 
-- `web_search`: OpenAI `web_search` through Pi's OpenAI Codex subscription login.
+- `web_search`: OpenAI `web_search` through Pi's ChatGPT subscription login.
 - `github_search`: authenticated GitHub issue, pull-request, and code search through structured `gh api` queries.
 - `github_issue`: authenticated GitHub issue summaries and comments through constrained `gh api` reads.
 - `github_pull_request`: authenticated pull-request summaries, files, diffs, commits, comments, reviews, checks, and commit statuses.
@@ -29,7 +29,7 @@ read or cancellation promise never settles.
 
 ## Requirements
 
-- Sign into the `openai-codex` provider using Pi's `/login` command.
+- Sign into OpenAI (ChatGPT subscription) using Pi's `/login` command. Web search uses the selected OpenAI Responses model and subscription credentials. The legacy `openai-codex` connection remains supported.
 - Install and authenticate GitHub CLI (`gh auth login`) for GitHub URLs.
 - Install this package's npm dependencies.
 
@@ -60,18 +60,20 @@ additional comments were omitted.
 Its views return a summary, changed files, the unified diff, commits,
 conversation comments, submitted reviews with inline review comments, or
 head-commit check runs and commit statuses. Related collections return their
-first bounded page. For the reviews view, the limit applies separately to
-reviews and inline comments. Inline comments are returned as a flat REST list
+first bounded page. Compound reviews and checks views share one record budget
+across their collections. Inline comments are returned as a flat REST list
 without review-thread resolution metadata. The default limit is 30 and the
-maximum is 100. Diff output relies on Pi's model-visible bound while preserving
-the complete API response in the private output file.
+maximum is 100. Diff responses are limited to 10 MB, then Pi applies its
+model-visible bound while preserving the complete accepted API response in the
+private output file.
 
 ## GitHub Actions
 
 `github_actions` reads a workflow run, up to 100 jobs for a run, one job's logs,
-or logs for up to 20 failed jobs from the returned jobs page. Log reads save the
-complete retrieved output privately and return the last 200 lines per job by
-default; `tailLines` accepts 1 through 2,000. Failed logs are fetched
+or logs for up to 20 failed jobs from the returned jobs page. Each log response
+is limited to 10 MB. Accepted logs are saved completely and privately, while the
+model receives the last 200 lines per job by default; `tailLines` accepts 1
+through 2,000. Failed logs are fetched
 sequentially to avoid concurrent subprocess stalls. A run with more than 100
 jobs reports that its job view is bounded.
 
