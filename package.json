@@ -27,7 +27,7 @@
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-coding-agent": ">=1.0.1",
     "@earendil-works/pi-tui": "*",
     "typebox": "*"
   },
@@ -51,9 +51,9 @@
     ]
   },
   "devDependencies": {
-    "@earendil-works/pi-ai": "0.99.0",
-    "@earendil-works/pi-coding-agent": "0.99.0",
-    "@earendil-works/pi-tui": "0.99.0",
+    "@earendil-works/pi-ai": "1.0.4",
+    "@earendil-works/pi-coding-agent": "1.0.4",
+    "@earendil-works/pi-tui": "1.0.4",
     "@types/turndown": "5.0.6",
     "oxfmt": "0.64.0",
     "oxlint": "1.79.0",

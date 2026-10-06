@@ -329,20 +329,20 @@ test("uses separate active-theme tones without painting a status background", ()
 
 test("registers card renderers before session_start so reload can rebuild history", () => {
   const registered: any[] = [];
-  const listeners = new Map<string, (value: unknown) => void>();
   const pi = {
     on() {},
-    registerTool(definition: any) {
-      registered.push(definition);
+    registerTool() {
+      throw new Error("Rendering must not replace tool execution");
     },
-    events: {
-      on(name: string, handler: (value: unknown) => void) {
-        listeners.set(name, handler);
-        return () => listeners.delete(name);
-      },
-      emit(name: string, value: unknown) {
-        listeners.get(name)?.(value);
-      },
+    registerToolRenderer(resolve: any) {
+      for (const name of ["bash", "read", "edit", "write", "grep", "find", "ls", "codemode"]) {
+        registered.push({ name, ...resolve(name, () => undefined) });
+      }
+      const sentinel = {};
+      assert.equal(
+        resolve("other", () => sentinel),
+        sentinel,
+      );
     },
   } as unknown as ExtensionAPI;
 
@@ -350,7 +350,7 @@ test("registers card renderers before session_start so reload can rebuild histor
 
   assert.deepEqual(
     registered.map((definition) => definition.name),
-    ["bash", "read", "edit", "write", "grep", "find", "ls"],
+    ["bash", "read", "edit", "write", "grep", "find", "ls", "codemode"],
   );
   assert.equal(registered[0].renderShell, "self");
 

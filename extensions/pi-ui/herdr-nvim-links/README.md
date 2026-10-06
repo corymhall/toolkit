@@ -94,12 +94,11 @@ assistant, and thinking messages. It handles explicit Markdown links, angle
 bracket autolinks, reference destinations, and bare absolute local `file://`
 URLs. It does not change URLs in code or raw HTML.
 
-Pi has no global link-click or renderer middleware API. For native tools, the
-module overrides local built-in `read`, `edit`, and `write` definitions and
-wraps their existing title renderers. It skips a native tool already owned by
-another extension. The toolkit Tool Cards module instead provides a display-only
-render-time event, which also works when Pi rebuilds history during `/reload`.
-Links from other custom message and tool renderers are unchanged.
+Pi 1.0.1+ provides `registerToolRenderer()`. The module composes with the
+existing `read`, `edit`, and `write` call and result renderers, including toolkit
+cards, without replacing tool definitions. Registration happens before Pi
+rebuilds history during `/reload`. Links from other custom message and tool
+renderers are unchanged.
 
 ## Troubleshooting
 

@@ -1,7 +1,7 @@
 # Tool Cards
 
-The Pi UI Tool Cards module replaces the default built-in tool display with
-bordered, compact cards:
+The Pi UI Tool Cards module uses Pi 1.0.1+ renderer registration to display
+built-in tools, including `codemode`, as bordered cards:
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
@@ -44,23 +44,52 @@ expansion notice, and standard border and status colors. They keep the neutral
 terminal surface instead of painting the complete card with a success or error
 background. No Droid theme or extension-specific palette is required.
 
+## Codemode
+
+Collapsed codemode cards show actions rather than JavaScript or argument JSON:
+
+```text
+┌──────────────────────────────────────────────────────────┐
+│  Tool calls · 1 failed                                   │
+│  ✓ Edit  README.md                                  7ms  │
+│  ✗ Run  npm run test:pi-ui                          3.7s  │
+│    ℹ pass 45                                             │
+│    ℹ fail 1                                              │
+│    Error: Theme not initialized                          │
+│  Ctrl+O to show script and full output                    │
+└──────────────────────────────────────────────────────────┘
+```
+
+Each row names the action and its target, with status and available duration or
+model cost. Failed child calls appear in the batch heading even when the script
+itself completed successfully. Running commands show recent progress; completed
+commands show recognized test outcomes, and failures show bounded error context
+or the output tail. Routine successful reads and edits occupy one row.
+
+Large batches show the latest eight routine actions and up to eight failures,
+with an expansion notice for omitted actions. Script failures and scripts with
+no nested calls retain an output preview. Word counts and the script source are
+absent from collapsed cards.
+
+Expansion reveals highlighted JavaScript and Pi's complete native result,
+including arguments, errors, model costs, and output. Execution events provide
+readable targets and command previews. Bounded display summaries are saved in
+codemode result details so new cards retain these across reloads; full nested
+results are not copied. Older history falls back to Pi's argument previews and
+stored error text. Truncated old previews can omit a target.
+
 ## Behavior
 
-The module changes presentation only. It delegates execution to Pi's
-built-in implementations for `bash`, `read`, `edit`, `write`, `grep`, `find`,
-and `ls`. It keeps Pi's cancellation, output truncation, file mutation queues,
-and session behavior.
-
-The overrides register when Pi loads Pi UI so `/reload` rebuilds historical
-calls with the card renderer. Pi uses the first extension registration for a
-duplicate tool name, so an override must load before Pi UI to take precedence.
-The Herdr Neovim Links module decorates compact `read`, `edit`, and `write`
-cards through their shared render-time event.
+The module registers presentation through `pi.registerToolRenderer()` and
+leaves tool definitions and execution with Pi. Execution events supply timing
+metadata. Renderers register when Pi loads Pi UI so `/reload` rebuilds historical
+calls with the card renderer. Other tool renderers compose through `next()`;
+expanded file and Bash results use the downstream native renderer.
+The Herdr Neovim Links resolver wraps `read`, `edit`, and `write` cards.
 
 Pi exposes one expansion state for the complete transcript. `Ctrl+O` therefore
 expands or collapses all tool rows. Pi does not currently expose a public API to
 focus, click, or expand one historical tool row independently.
 
-Card and compact rendering apply only in interactive TUI mode. In RPC, JSON,
-and print modes, the registered definitions still delegate to Pi's normal tool
-implementations.
+Cards render in the interactive transcript and Pi's HTML exports. RPC, JSON,
+and print execution uses Pi's tool implementations directly.

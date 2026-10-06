@@ -32,6 +32,8 @@ export interface CompactTheme {
 
 export interface CompactRenderState {
   card?: CompactToolCard;
+  /** Native renderers reuse their own result component, separate from the card. */
+  nativeResult?: Component;
   summary?: string;
   expandable?: boolean;
 }

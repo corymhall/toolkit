@@ -142,148 +142,83 @@ test("component delegates lifecycle and rewrites rendered lines", () => {
   assert.equal(invalidated, true);
 });
 
-test("overrides only local built-in file tools in TUI mode", () => {
+test("composes file renderers before history renders and reuses wrapped components", () => {
   withHerdrEnvironment(() => {
-    const handlers = new Map<string, (...args: any[]) => void>();
-    const registered: any[] = [];
-    const markdownTransformers: Array<(markdown: string, context: unknown) => string> = [];
-    const baseComponent: Component = {
+    let resolve: any;
+    let transform: any;
+    const base: Component = {
       render: () => ["\x1b]8;;file:///repo/main.ts\x07main.ts\x1b]8;;\x07"],
       invalidate() {},
     };
-    let renderCalls = 0;
-    const renderCall = (
-      _args: unknown,
-      _theme: unknown,
-      renderContext: { lastComponent?: Component },
-    ) => {
-      assert.equal(renderContext.lastComponent, renderCalls === 0 ? undefined : baseComponent);
-      renderCalls++;
-      return baseComponent;
+    let renders = 0;
+    const original = {
+      renderShell: "self",
+      renderCall(_args: unknown, _theme: unknown, context: any) {
+        assert.equal(context.lastComponent, renders++ === 0 ? undefined : base);
+        return base;
+      },
+      renderResult() {
+        return base;
+      },
     };
-    const definitions = [
-      { name: "read", execute() {}, renderCall },
-      { name: "edit", execute() {}, renderCall },
-      { name: "write", execute() {}, renderCall },
-    ];
-    const pi = {
-      on(name: string, handler: (...args: any[]) => void) {
-        handlers.set(name, handler);
+    herdrNvimLinksExtension({
+      registerTool() {
+        throw new Error("Must not replace execution");
       },
-      events: { on: () => () => {}, emit() {} },
-      getAllTools() {
-        return [
-          { name: "read", sourceInfo: { source: "builtin" } },
-          { name: "edit", sourceInfo: { source: "other-extension" } },
-          { name: "write", sourceInfo: { source: "builtin" } },
-        ];
+      registerToolRenderer(handler: any) {
+        resolve = handler;
       },
-      registerTool(definition: any) {
-        registered.push(definition);
+      registerMarkdownTransformer(handler: any) {
+        transform = handler;
       },
-      registerMarkdownTransformer(transformer: (markdown: string, context: unknown) => string) {
-        markdownTransformers.push(transformer);
-      },
-    } as unknown as ExtensionAPI;
-
-    herdrNvimLinksExtension(pi, { createDefinitions: () => definitions });
-    handlers.get("session_start")?.({}, { mode: "tui", cwd: "/repo" });
-
-    assert.equal(markdownTransformers.length, 1);
-    const streamed = markdownTransformers[0]("[source](file:///repo/main.ts)", {
-      messageType: "assistant",
-      isStreaming: true,
-      availableWidth: 80,
-    });
-    assert.match(streamed, /^\[source\]\(herdr-nvim:\/\/open\?/);
-    assert.match(streamed, /sourcePane=w1%3Ap1/);
-
-    assert.deepEqual(
-      registered.map((tool) => tool.name),
-      ["read", "write"],
+    } as unknown as ExtensionAPI);
+    assert.match(transform("[source](file:///repo/main.ts)"), /herdr-nvim:\/\/open\?/u);
+    assert.equal(
+      resolve("bash", () => original),
+      original,
     );
-    const first = registered[0].renderCall(
-      { offset: 7 },
+    assert.equal(
+      resolve("read", () => undefined),
+      undefined,
+    );
+    const renderer = resolve("read", () => original);
+    assert.equal(renderer.renderShell, "self");
+    const first = renderer.renderCall(
       {},
-      { cwd: "/repo", lastComponent: undefined },
-    );
-    const second = registered[0].renderCall(
-      { offset: 8 },
       {},
-      { cwd: "/repo", lastComponent: first },
+      {
+        args: { offset: 7 },
+        cwd: "/repo",
+        lastComponent: undefined,
+      },
     );
-    assert.equal(second, first);
-    assert.equal(renderCalls, 2);
-    assert.match(second.render(80)[0], /line=8/);
+    const second = renderer.renderCall(
+      {},
+      {},
+      {
+        args: { offset: 8 },
+        cwd: "/repo",
+        lastComponent: first,
+      },
+    );
+    assert.equal(first, second);
+    assert.match(second.render(80)[0], /line=8/u);
+    const result = renderer.renderResult({}, {}, {}, { cwd: "/repo" });
+    assert.match(result.render(80)[0], /herdr-nvim:\/\/open\?/u);
   });
 });
 
-test("decorates file tool cards when history is rendered", () => {
-  withHerdrEnvironment(() => {
-    let compactListener: ((value: unknown) => void) | undefined;
-    const pi = {
-      on() {},
-      events: {
-        on(_name: string, handler: (value: unknown) => void) {
-          compactListener = handler;
-          return () => {};
-        },
-        emit() {},
-      },
-      registerMarkdownTransformer() {},
-    } as unknown as ExtensionAPI;
-    herdrNvimLinksExtension(pi);
-
-    const component: Component = {
-      render: () => ["\x1b]8;;file:///repo/main.ts\x07Read main.ts\x1b]8;;\x07"],
-      invalidate() {},
-    };
-    const event = {
-      toolName: "read",
-      args: { path: "main.ts", offset: 4 },
-      component,
-      renderContext: { cwd: "/repo", lastComponent: undefined },
-    };
-    compactListener!(event);
-
-    const decorated = event.component;
-    assert.match(decorated.render(80)[0], /herdr-nvim:\/\/open\?/u);
-    assert.match(decorated.render(80)[0], /line=4/u);
-  });
-});
-
-test("does not override tools outside Herdr or outside TUI mode", () => {
+test("does not register renderers outside Herdr", () => {
   const previous = process.env.HERDR_ENV;
   delete process.env.HERDR_ENV;
   try {
-    let subscribed = false;
     herdrNvimLinksExtension({
-      on() {
-        subscribed = true;
+      registerToolRenderer() {
+        throw new Error("Unexpected renderer");
       },
     } as unknown as ExtensionAPI);
-    assert.equal(subscribed, false);
   } finally {
     if (previous === undefined) delete process.env.HERDR_ENV;
     else process.env.HERDR_ENV = previous;
   }
-
-  withHerdrEnvironment(() => {
-    const handlers = new Map<string, (...args: any[]) => void>();
-    let registrations = 0;
-    const pi = {
-      on(name: string, handler: (...args: any[]) => void) {
-        handlers.set(name, handler);
-      },
-      events: { on: () => () => {}, emit() {} },
-      getAllTools: () => [{ name: "read", sourceInfo: { source: "builtin" } }],
-      registerTool() {
-        registrations++;
-      },
-      registerMarkdownTransformer() {},
-    } as unknown as ExtensionAPI;
-    herdrNvimLinksExtension(pi, { createDefinitions: () => [] });
-    handlers.get("session_start")?.({}, { mode: "rpc", cwd: "/repo" });
-    assert.equal(registrations, 0);
-  });
 });

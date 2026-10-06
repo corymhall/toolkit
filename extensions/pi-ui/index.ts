@@ -5,10 +5,9 @@ import statusFooterExtension from "./status-footer/index.ts";
 import toolCardsExtension from "./tool-cards/index.ts";
 
 export default function piUiExtension(pi: ExtensionAPI) {
-  // Tool cards register at extension load time so they can render history. The
-  // Herdr link decorator subscribes after that shared renderer is available.
+  // Renderer resolvers compose in registration order. Links wrap the cards.
+  herdrNvimLinksExtension(pi);
   toolCardsExtension(pi);
   skillAutocompleteExtension(pi);
   statusFooterExtension(pi);
-  herdrNvimLinksExtension(pi);
 }

@@ -1,18 +1,8 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import {
-  createBashToolDefinition,
-  createEditToolDefinition,
-  createFindToolDefinition,
-  createGrepToolDefinition,
-  createLsToolDefinition,
-  createReadToolDefinition,
-  createWriteToolDefinition,
-  keyText,
-} from "@earendil-works/pi-coding-agent";
-import type { Component } from "@earendil-works/pi-tui";
-import { TOOL_CARD_CALL_RENDER_EVENT, type ToolCardCallRenderEvent } from "./events.ts";
+import type { ExtensionAPI, ToolRenderers } from "@earendil-works/pi-coding-agent";
+import { keyText } from "@earendil-works/pi-coding-agent";
+import { codemodeCards } from "./codemode.ts";
 import {
   CompactToolCard,
   countToolResultWords,
@@ -24,14 +14,6 @@ import {
   summarizeToolResult,
   type CompactRenderState,
 } from "./rendering.ts";
-
-interface ToolDefinitionLike {
-  name: string;
-  execute: (...args: any[]) => Promise<any>;
-  renderCall?: (...args: any[]) => Component;
-  renderResult?: (...args: any[]) => Component;
-  [key: string]: any;
-}
 
 const TOOL_NAMES = ["bash", "read", "edit", "write", "grep", "find", "ls"] as const;
 const COMPACT_CARD_TOOLS = new Set(["read", "write", "grep", "find", "ls"]);
@@ -47,53 +29,34 @@ function descriptionUrl(
   return pathToFileURL(path.resolve(cwd, args.path)).href;
 }
 
-const factories: Record<CompactToolName, (cwd: string) => ToolDefinitionLike> = {
-  bash: createBashToolDefinition,
-  read: createReadToolDefinition,
-  edit: createEditToolDefinition,
-  write: createWriteToolDefinition,
-  grep: createGrepToolDefinition,
-  find: createFindToolDefinition,
-  ls: createLsToolDefinition,
-};
-
 export default function toolCardsExtension(pi: ExtensionAPI) {
+  const renderCodemode = codemodeCards(pi);
   const expandHint = `${keyText("app.tools.expand")} to expand`;
   const startedAt = new Map<string, number>();
   const finishedAt = new Map<string, number>();
-  const definitions = new Map<string, ToolDefinitionLike>();
-  const getDefinition = (name: CompactToolName, cwd: string): ToolDefinitionLike => {
-    const key = `${name}\0${cwd}`;
-    let definition = definitions.get(key);
-    if (!definition) {
-      definition = factories[name](cwd);
-      definitions.set(key, definition);
+  pi.on("tool_execution_start", (event) => {
+    if (!event.parentToolCallId && TOOL_NAMES.includes(event.toolName as CompactToolName)) {
+      startedAt.set(event.toolCallId, Date.now());
     }
-    return definition;
-  };
+  });
+  pi.on("tool_execution_end", (event) => {
+    if (startedAt.has(event.toolCallId)) finishedAt.set(event.toolCallId, Date.now());
+  });
+  pi.on("session_start", () => {
+    startedAt.clear();
+    finishedAt.clear();
+  });
 
-  // Pi rebuilds chat history before session_start during /reload. Register at
-  // extension load time so historical and new tool calls use the same renderer.
-  for (const name of TOOL_NAMES) {
-    const initial = getDefinition(name, process.cwd());
-    const definition: ToolDefinitionLike = {
-      ...initial,
+  // Register before history is rebuilt, without changing the tool loadout.
+  pi.registerToolRenderer((toolName, next) => {
+    const original = next();
+    if (toolName === "codemode") return renderCodemode(original);
+    if (!TOOL_NAMES.includes(toolName as CompactToolName)) return original;
+    const name = toolName as CompactToolName;
+    return {
       renderShell: "self",
-      async execute(toolCallId, params, signal, onUpdate, executionCtx) {
-        startedAt.set(toolCallId, Date.now());
-        try {
-          return await getDefinition(name, executionCtx.cwd).execute(
-            toolCallId,
-            params,
-            signal,
-            onUpdate,
-            executionCtx,
-          );
-        } finally {
-          finishedAt.set(toolCallId, Date.now());
-        }
-      },
-      renderCall(args, theme, renderContext) {
+      renderCall(input, theme, renderContext) {
+        const args = (input ?? {}) as Record<string, unknown>;
         const state = renderContext.state as CompactRenderState;
         const status = {
           argsComplete: renderContext.argsComplete,
@@ -119,34 +82,29 @@ export default function toolCardsExtension(pi: ExtensionAPI) {
             theme,
           );
 
-        const event = {
-          toolName: name,
-          args,
-          component: card,
-          renderContext,
-        } satisfies ToolCardCallRenderEvent;
-        pi.events.emit(TOOL_CARD_CALL_RENDER_EVENT, event);
-        return event.component;
+        return card;
       },
       renderResult(result, options, theme, renderContext) {
+        const args = (renderContext.args ?? {}) as Record<string, unknown>;
         const state = renderContext.state as CompactRenderState;
         state.expandable = hasExpandableResult(name, result, renderContext.isError);
         state.summary = summarizeToolResult(name, result, renderContext.isError);
-        const nativeRenderResult = getDefinition(name, renderContext.cwd).renderResult;
+        const nativeRenderResult = original?.renderResult;
         const nativeResult =
           nativeRenderResult && state.expandable && options.expanded
             ? nativeRenderResult(result, options, theme, {
                 ...renderContext,
-                lastComponent: undefined,
+                lastComponent: state.nativeResult,
               })
             : undefined;
+        state.nativeResult = nativeResult;
         const start = startedAt.get(renderContext.toolCallId);
         const end = finishedAt.get(renderContext.toolCallId) ?? Date.now();
         state.card
-          ?.setDescriptionUrl(descriptionUrl(name, renderContext.args, renderContext.cwd))
+          ?.setDescriptionUrl(descriptionUrl(name, args, renderContext.cwd))
           .updateCall(
             name,
-            describeToolCall(name, renderContext.args, renderContext.cwd),
+            describeToolCall(name, args, renderContext.cwd),
             resolveToolVisual(name, {
               argsComplete: true,
               executionStarted: true,
@@ -165,17 +123,13 @@ export default function toolCardsExtension(pi: ExtensionAPI) {
               durationMs: start === undefined ? undefined : Math.max(0, end - start),
               timeoutMs:
                 name === "bash"
-                  ? (typeof renderContext.args.timeout === "number"
-                      ? renderContext.args.timeout
-                      : 300) * 1000
+                  ? (typeof args.timeout === "number" ? args.timeout : 300) * 1000
                   : undefined,
               words: countToolResultWords(result),
             },
           );
         return new EmptyToolResult();
       },
-    };
-
-    pi.registerTool(definition as any);
-  }
+    } satisfies ToolRenderers;
+  });
 }

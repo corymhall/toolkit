@@ -142,8 +142,10 @@ the current capability allowlist and validation behavior.
 
 `extensions/pi-ui` provides one entry point for the toolkit's interactive UI:
 
-- Tool Cards renders built-in and custom tool calls as bordered cards with Bash
+- Tool Cards uses Pi 1.0.1+ renderer registration for bordered cards with Bash
   output previews, compact informational calls, and execution metadata.
+  Codemode cards show readable action rows, running progress, and visible child
+  failures. Expansion reveals the script and complete native result.
 - Skill Autocomplete adds inline `$skill-name` completion and converts explicit
   user-only skill mentions to Pi's required leading command.
 - Status Footer prioritizes remaining Codex weekly quota and Pi context, then
