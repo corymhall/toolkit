@@ -1,7 +1,9 @@
 import { resolve } from "node:path";
 
-export const HERDR_START_COMMAND_TOOL_NAME = "herdr_start_command";
-export const HERDR_COMMAND_STATUS_TOOL_NAME = "herdr_command_status";
+export const START_COMMAND_TOOL_NAME = "start_command";
+export const COMMAND_STATUS_TOOL_NAME = "command_status";
+// Keep the original identifiers and marker protocol so existing Herdr panes
+// and persisted Pi sessions remain recoverable after the tool rename.
 export const HERDR_COMMAND_PANE_ENTRY = "herdr-command-pane";
 export const HERDR_COMMAND_RUN_ENTRY = "herdr-command-run";
 export const HERDR_COMMAND_METADATA_SOURCE = "pi:herdr-command";
@@ -91,7 +93,7 @@ export function validateCommandText(command: string): void {
   if (!command.trim()) throw new Error("command must not be empty");
   if (/[\r\n\t]/.test(command)) {
     throw new Error(
-      "herdr_start_command accepts one physical command line; use shell separators or a script file instead of tabs or newlines",
+      "start_command accepts one physical command line; use shell separators or a script file instead of tabs or newlines",
     );
   }
 }
@@ -195,10 +197,6 @@ export function parsePaneProcessInfo(stdout: string): PaneProcessInfo {
     foregroundProcesses,
     idle: foregroundProcesses.every((process) => process.pid === info.shell_pid),
   };
-}
-
-export function parsePaneIdle(stdout: string): boolean {
-  return parsePaneProcessInfo(stdout).idle;
 }
 
 export function isWaitTimeout(stdout: string, stderr: string): boolean {

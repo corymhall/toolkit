@@ -149,12 +149,12 @@ Default to a single HTML file under `/tmp`, such as
 `/tmp/explain-pr-<owner>-<repo>-<number>.html`. Inline CSS and small scripts so
 the page can be opened directly.
 
-If the page benefits from local serving and `HERDR_ENV=1`, load the Herdr
-skill, start the server in a non-focused sibling pane, wait for readiness, and
-report both the pane and URL. Re-list panes before acting because Herdr pane IDs
-are not durable.
+If the page benefits from local serving, use Herdr when `HERDR_ENV=1` or Rex
+when `REX_SESSION` and `REX_BLOCK` are set. Load the matching skill, start the
+server in a non-focused sibling pane, verify readiness, and report the pane and
+URL. Re-list terminal resources before later operations.
 
-Outside Herdr, use a detached tmux session:
+Outside Herdr and Rex, use a detached tmux session:
 
 ```bash
 tmux new-session -d -s explain-pr-server \
@@ -162,7 +162,7 @@ tmux new-session -d -s explain-pr-server \
 ```
 
 If that port is busy, try `8433`, `8434`, and so on. Reuse or choose a unique
-tmux session name when one already exists. Close the Herdr pane or tmux session
+tmux session name when one already exists. Close the server pane or tmux session
 when the server is no longer useful; do not leave unnecessary servers running
 when the user only needs the file.
 

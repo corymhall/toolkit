@@ -109,11 +109,15 @@ and `mise run validate` at pre-push. Install Git 2.54+ global hooks once with
 
 ## Process Management
 
-- When `HERDR_ENV=1`, load the Herdr skill before managing long-running or
-  interactive processes.
-- Herdr tab and pane IDs are not durable. Re-list tabs and panes before waiting,
-  reading, focusing, or closing.
-- Outside Herdr, use tmux for long-lived interactive processes.
+- When `HERDR_ENV=1`, use Herdr and load its skill before managing long-running
+  or interactive processes.
+- Otherwise, when `REX_SESSION` and `REX_BLOCK` are set, use Rex and load its
+  skill. Scope operations to that session and block rather than the user's focus.
+- Use `start_command` and `command_status` when available for ordinary
+  long-running commands. They select Herdr or Rex from the environment.
+- Re-list terminal resources before acting on saved IDs. Preserve unrelated
+  panes and running commands.
+- Outside Herdr and Rex, use tmux for long-lived interactive processes.
 
 ## Evaluation Lens
 

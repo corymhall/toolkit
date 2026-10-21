@@ -22,13 +22,12 @@ import {
   HERDR_COMMAND_RUN_TOKEN,
   HERDR_COMMAND_STARTED_AT_TOKEN,
   HERDR_COMMAND_RUN_ENTRY,
-  HERDR_COMMAND_STATUS_TOOL_NAME,
-  HERDR_START_COMMAND_TOOL_NAME,
-  parsePaneIdle,
+  COMMAND_STATUS_TOOL_NAME,
+  START_COMMAND_TOOL_NAME,
   parsePaneProcessInfo,
   parsePaneRead,
   shellQuote,
-} from "../herdr-command.ts";
+} from "../command-runner.ts";
 
 const FIXED_RUN_ID = "12345678-1234-1234-1234-123456789abc";
 const plainTheme: CompactTheme = {
@@ -178,7 +177,7 @@ async function restoreSession(
 test("renders compact start and status cards with expandable output", () => {
   withHerdrEnv(() => {
     const loaded = loadExtension(async () => ({ code: 0, stdout: "", stderr: "", killed: false }));
-    const start = tool(loaded, HERDR_START_COMMAND_TOOL_NAME);
+    const start = tool(loaded, START_COMMAND_TOOL_NAME);
     const startState = {};
     const startContext = {
       args: { command: "mise run validate" },
@@ -208,7 +207,7 @@ test("renders compact start and status cards with expandable output", () => {
     assert.ok(startResult instanceof EmptyToolResult);
     const startLines = startRow.render(100);
     assert.equal(startLines.length, 3);
-    assert.match(startLines[1] ?? "", /➔ Herdr Start ● \| Command: \$ mise run validate/u);
+    assert.match(startLines[1] ?? "", /➔ Command Start ● \| Command: \$ mise run validate/u);
     assert.doesNotMatch(startLines[1] ?? "", /wE:p2D|detached|words/u);
 
     const failedState = {};
@@ -221,12 +220,12 @@ test("renders compact start and status cards with expandable output", () => {
       failedContext,
     );
     const failedOutput = failedRow.render(100).join("\n");
-    assert.match(failedOutput, /➔ Herdr Start ✗/u);
+    assert.match(failedOutput, /➔ Command Start ✗/u);
     assert.match(failedOutput, /Command: \$ mise run validate/u);
     assert.match(failedOutput, /failed/u);
     assert.match(failedOutput, /Herdr request failed/u);
 
-    const status = tool(loaded, HERDR_COMMAND_STATUS_TOOL_NAME);
+    const status = tool(loaded, COMMAND_STATUS_TOOL_NAME);
     const statusState = {};
     const statusContext = {
       ...startContext,
@@ -277,7 +276,7 @@ test("renders compact start and status cards with expandable output", () => {
 
     assert.ok(collapsed instanceof EmptyToolResult);
     const statusOutput = statusRow.render(120).join("\n");
-    assert.match(statusOutput, /➔ Herdr Status ✗/u);
+    assert.match(statusOutput, /➔ Command Status ✗/u);
     assert.match(statusOutput, /Command: \$ mise run validate/u);
     assert.match(statusOutput, /exit 2 · 14s/u);
     assert.doesNotMatch(statusOutput, /wait 2.0s/u);
@@ -313,7 +312,7 @@ test("renders compact start and status cards with expandable output", () => {
       statusContext,
     );
     const successfulOutput = statusRow.render(120).join("\n");
-    assert.match(successfulOutput, /➔ Herdr Status ✓/u);
+    assert.match(successfulOutput, /➔ Command Status ✓/u);
     assert.match(successfulOutput, /exit 0 · 15s/u);
     assert.match(successfulOutput, /first line/u);
     assert.match(successfulOutput, /last line/u);
@@ -364,7 +363,7 @@ test("parses foreground processes and detects shell-only idle panes", () => {
   const active = parsePaneProcessInfo(processInfo(false, "go"));
   assert.equal(active.idle, false);
   assert.deepEqual(active.foregroundProcesses, [{ pid: 11, name: "go", cmdline: "go build" }]);
-  assert.equal(parsePaneIdle(processInfo(true)), true);
+  assert.equal(parsePaneProcessInfo(processInfo(true)).idle, true);
 });
 
 test("visible proxy reports a failing command without changing the parent cwd", async () => {
@@ -386,13 +385,16 @@ test("visible proxy reports a failing command without changing the parent cwd", 
   }
 });
 
-test("does not expose tools outside Herdr", () => {
+test("does not expose tools outside Herdr and Rex", () => {
   const previous = process.env.HERDR_ENV;
   delete process.env.HERDR_ENV;
+  const rexBlock = process.env.REX_BLOCK;
+  delete process.env.REX_BLOCK;
   try {
     const { tools } = loadExtension(async () => success());
     assert.deepEqual(tools, []);
   } finally {
+    if (rexBlock !== undefined) process.env.REX_BLOCK = rexBlock;
     if (previous === undefined) delete process.env.HERDR_ENV;
     else process.env.HERDR_ENV = previous;
   }
@@ -443,10 +445,10 @@ test("starts one visible command and returns without waiting or reading output",
 
     assert.deepEqual(
       loaded.tools.map((candidate) => candidate.name),
-      [HERDR_START_COMMAND_TOOL_NAME, HERDR_COMMAND_STATUS_TOOL_NAME],
+      [START_COMMAND_TOOL_NAME, COMMAND_STATUS_TOOL_NAME],
     );
-    const startTool = tool(loaded, HERDR_START_COMMAND_TOOL_NAME);
-    const statusTool = tool(loaded, HERDR_COMMAND_STATUS_TOOL_NAME);
+    const startTool = tool(loaded, START_COMMAND_TOOL_NAME);
+    const statusTool = tool(loaded, COMMAND_STATUS_TOOL_NAME);
     assert.match(startTool.description ?? "", /return immediately/);
     assert.match(startTool.promptGuidelines?.join("\n") ?? "", /continue useful independent work/);
     assert.match(statusTool.description ?? "", /bounded wait of at most 30 minutes/);
@@ -544,7 +546,7 @@ test("adopts a tagged command pane across Pi sessions instead of splitting", asy
   );
 
   await restoreSession(loaded, []);
-  const result = await tool(loaded, HERDR_START_COMMAND_TOOL_NAME).execute(
+  const result = await tool(loaded, START_COMMAND_TOOL_NAME).execute(
     "call",
     { command: "make build", cwd: "/", label: "build" },
     undefined,
@@ -605,7 +607,7 @@ test("retains run metadata when Herdr submission fails after an uncertain client
 
   await restoreSession(loaded, []);
   await assert.rejects(
-    tool(loaded, HERDR_START_COMMAND_TOOL_NAME).execute(
+    tool(loaded, START_COMMAND_TOOL_NAME).execute(
       "call",
       { command: "make build", cwd: "/" },
       undefined,
@@ -640,7 +642,7 @@ test("recovers a silent running command from pane metadata after Pi exits before
   );
 
   await restoreSession(loaded, []);
-  const result = await tool(loaded, HERDR_COMMAND_STATUS_TOOL_NAME).execute("call", {}, undefined);
+  const result = await tool(loaded, COMMAND_STATUS_TOOL_NAME).execute("call", {}, undefined);
 
   assert.equal(result.details.state, "running");
   assert.equal(result.details.runId, FIXED_RUN_ID);
@@ -764,7 +766,7 @@ test("does not steal a command pane owned by another Pi terminal", async () => {
       },
     },
   ]);
-  const result = await tool(loaded, HERDR_START_COMMAND_TOOL_NAME).execute(
+  const result = await tool(loaded, START_COMMAND_TOOL_NAME).execute(
     "call",
     { command: "make build", cwd: "/" },
     undefined,
@@ -799,7 +801,7 @@ test("reports an adopted pane owned by another running session as busy", async (
   );
 
   await restoreSession(loaded, []);
-  const result = await tool(loaded, HERDR_START_COMMAND_TOOL_NAME).execute(
+  const result = await tool(loaded, START_COMMAND_TOOL_NAME).execute(
     "call",
     { command: "make test", cwd: "/" },
     undefined,
@@ -849,7 +851,7 @@ test("reports a running command immediately with foreground process and recent o
     { customType: HERDR_COMMAND_RUN_ENTRY, data: run },
   ]);
 
-  const result = await tool(loaded, HERDR_COMMAND_STATUS_TOOL_NAME).execute("call", {}, undefined);
+  const result = await tool(loaded, COMMAND_STATUS_TOOL_NAME).execute("call", {}, undefined);
   assert.equal(result.details.state, "running");
   assert.equal(result.details.durationMs, 3_000);
   assert.deepEqual(result.details.foregroundProcesses, [
@@ -903,7 +905,7 @@ test("reports a completed nonzero command and recovers it after session reload",
     },
   ]);
 
-  const result = await tool(loaded, HERDR_COMMAND_STATUS_TOOL_NAME).execute("call", {}, undefined);
+  const result = await tool(loaded, COMMAND_STATUS_TOOL_NAME).execute("call", {}, undefined);
   assert.equal(result.details.state, "completed");
   assert.equal(result.details.exitCode, 2);
   assert.match(result.content[0].text, /failed with exit code 2/);
@@ -949,7 +951,7 @@ test("optionally waits for a bounded interval without turning status timeouts in
     },
   ]);
 
-  const result = await tool(loaded, HERDR_COMMAND_STATUS_TOOL_NAME).execute(
+  const result = await tool(loaded, COMMAND_STATUS_TOOL_NAME).execute(
     "call",
     { waitMs: 5_000, lines: 20 },
     undefined,
@@ -1001,7 +1003,7 @@ test("does not submit a second command while the first launch is still reaching 
     },
   ]);
 
-  const result = await tool(loaded, HERDR_START_COMMAND_TOOL_NAME).execute(
+  const result = await tool(loaded, START_COMMAND_TOOL_NAME).execute(
     "call",
     { command: "make test", cwd: "/" },
     undefined,
@@ -1048,7 +1050,7 @@ test("refuses a second command while the managed pane is busy", async () => {
     },
   ]);
 
-  const result = await tool(loaded, HERDR_START_COMMAND_TOOL_NAME).execute(
+  const result = await tool(loaded, START_COMMAND_TOOL_NAME).execute(
     "call",
     { command: "make build", cwd: "/" },
     undefined,
@@ -1067,7 +1069,7 @@ test("status reports no tracked command before the first launch", async () => {
       throw new Error("Herdr should not be called");
     }),
   );
-  const result = await tool(loaded, HERDR_COMMAND_STATUS_TOOL_NAME).execute("call", {}, undefined);
+  const result = await tool(loaded, COMMAND_STATUS_TOOL_NAME).execute("call", {}, undefined);
   assert.equal(result.details.state, "none");
-  assert.match(result.content[0].text, /No Herdr command is tracked/);
+  assert.match(result.content[0].text, /No command is tracked/);
 });

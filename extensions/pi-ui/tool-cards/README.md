@@ -31,7 +31,7 @@ compact card with the call detail and execution metadata on one row. `grep` is
 labeled `Search`, `ls` is labeled `List`, and call details use concise `Path:`
 or `Query:` fields.
 Expanded calls return to the full card so Pi's native result renderer has room.
-The toolkit's Web Access and Herdr command extensions reuse the same public card
+The toolkit's Web Access and command runner extensions reuse the same public card
 component for their custom tools.
 
 Press the configured `app.tools.expand` key, `Ctrl+O` by default, to expand or
@@ -85,7 +85,7 @@ leaves tool definitions and execution with Pi. Execution events supply timing
 metadata. Renderers register when Pi loads Pi UI so `/reload` rebuilds historical
 calls with the card renderer. Other tool renderers compose through `next()`;
 expanded file and Bash results use the downstream native renderer.
-The Herdr Neovim Links resolver wraps `read`, `edit`, and `write` cards.
+Local file links retain their normal `file://` targets.
 
 Pi exposes one expansion state for the complete transcript. `Ctrl+O` therefore
 expands or collapses all tool rows. Pi does not currently expose a public API to

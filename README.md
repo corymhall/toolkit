@@ -14,7 +14,7 @@ Agent-Skills-compatible harnesses.
   metadata.
 
 The repository does not use a Codex CLI plugin marketplace. Long-running
-processes and visible review sidecars are coordinated through Herdr when available rather
+processes use Herdr or Rex when available, while review sidecars use Herdr rather
 than hidden background-process or generic subagent abstractions.
 
 ## Local Installation
@@ -93,7 +93,7 @@ The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
 `extensions/codex-fast-mode`, `extensions/pi-ui`,
 `extensions/session-default-model`, `extensions/system-prompt`,
-`extensions/delegate`, and `extensions/herdr-command` extensions.
+and `extensions/command-runner` extensions.
 `codex-skills/spec-to-goal` is omitted because Pi does not provide Codex CLI's
 `/goal` workflow. The package does not add hidden background-process or generic
 subagent tools.
@@ -150,15 +150,9 @@ the current capability allowlist and validation behavior.
   user-only skill mentions to Pi's required leading command.
 - Status Footer prioritizes remaining Codex weekly quota and Pi context, then
   adds model, thinking level, Fast mode, and Git branch when space permits.
-- Herdr Neovim Links redirects local file links to a right-hand Neovim pane when
-  Pi runs in Herdr and its native integration is installed.
 
 `Ctrl+O` uses Pi's global tool expansion state and native expanded result
-renderers. Install the optional Herdr native and Neovim integration with:
-
-```bash
-extensions/pi-ui/herdr-nvim-links/install.sh
-```
+renderers. Local file links use their normal `file://` targets.
 
 See [extensions/pi-ui/README.md](extensions/pi-ui/README.md) for links to each
 feature's behavior, requirements, and limitations.
@@ -183,32 +177,18 @@ outside Pi's prompt API. See
 [extensions/system-prompt/README.md](extensions/system-prompt/README.md) for the
 exact boundary and sensitivity warning.
 
-### Delegate extension
+### Command runner extension
 
-`/delegate research <goal>` creates a solution-free problem report for
-independent research. `/delegate conversation <request>` copies the new request
-and the last assistant response so another session can continue the discussion.
-If no mode is present, Pi asks the user to select one. After user confirmation,
-the extension starts a normal Pi session in a checkout opened as a non-focused
-native Herdr worktree. A new Worktrunk worktree is the default; the existing
-destination checkout is used only when explicitly requested. The agent-facing
-tool is registered only after `/delegate` is invoked and is disabled again after
-use.
-See [extensions/delegate/README.md](extensions/delegate/README.md)
-for requirements and failure behavior.
+When Pi runs inside Herdr or Rex, `start_command` starts an ordinary
+long-running command in one reusable, non-focused pane and returns immediately.
+`command_status` reports completion, exit status, foreground processes, and
+recent output, with an optional bounded wait. The backend is selected from the
+terminal environment and reported by the tools. Both tools share Pi UI cards.
+New Pi sessions in the same terminal can adopt its existing command pane.
+Outside Herdr and Rex, use tmux manually for long-lived processes.
 
-### Herdr command extension
-
-When Pi runs inside Herdr, `herdr_start_command` starts an ordinary long-running
-command in one reusable, non-focused pane owned by the calling Pi terminal and
-returns immediately so the agent can continue independent work. New Pi sessions
-in that terminal adopt the same command pane. `herdr_command_status` later
-reports completion, exit status, foreground processes, and recent pane output,
-with an optional bounded wait. Both tools use the Pi UI Tool Cards module and
-expand terminal output inside the card. Explicit working directories prevent
-the persistent pane shell from drifting between commands. See
-[extensions/herdr-command/README.md](extensions/herdr-command/README.md) for the
-command protocol and requirements.
+See [extensions/command-runner/README.md](extensions/command-runner/README.md)
+for recovery, requirements, and backend differences.
 
 Package installation loads the `memory-guard` guidance but cannot create the
 `~/.local/bin/make` proxy. Run `scripts/install-local-skills.sh` from a local

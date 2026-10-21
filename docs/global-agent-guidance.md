@@ -1,15 +1,22 @@
 # Suggested Global Agent Guidance
 
-Use these instructions in a global agent context file when Herdr is the normal
-terminal environment. For Pi, the file is `~/.pi/agent/AGENTS.md` (or
+Use these instructions in a global agent context file for terminal-aware process
+management. For Pi, the file is `~/.pi/agent/AGENTS.md` (or
 `$PI_CODING_AGENT_DIR/AGENTS.md`). Merge the section with existing global
 instructions rather than replacing unrelated guidance.
 
 ```markdown
 ## Process And Agent Coordination
 
-- When `HERDR_ENV=1`, load the Herdr skill before managing long-running or
-  interactive processes and visible sidecar agents.
+- When `HERDR_ENV=1`, use Herdr and load its skill before managing long-running
+  or interactive processes.
+- Otherwise, when `REX_SESSION` and `REX_BLOCK` are set, use Rex and load its
+  skill. Scope operations to that session and block rather than the user's focus.
+- Use `start_command` and `command_status` when available for ordinary
+  long-running commands. They select Herdr or Rex from the environment.
+- Re-list terminal resources before acting on saved IDs. Preserve unrelated
+  panes and running commands.
+- The following review sidecar workflow remains Herdr-only.
 - Give each sidecar its own non-focused Herdr tab in the current workspace. Use
   a semantic label such as `agent-general-review` and add a short task suffix
   when duplicate roles may coexist.
@@ -20,7 +27,7 @@ instructions rather than replacing unrelated guidance.
   blocked agent.
 - Keep a sidecar tab through synthesis so its output remains inspectable. Close
   it after findings are captured and reported unless the user asks to retain it.
-- Outside Herdr, use tmux for long-lived interactive processes.
+- Outside Herdr and Rex, use tmux for long-lived interactive processes.
 - One main agent session owns implementation and integration. Use sidecars only
   for bounded research, independent review, or specialist checks; do not
   delegate overlapping implementation work to multiple agents.

@@ -41,7 +41,7 @@ test("registers the UI modules through one extension entry point", () => {
     piUiExtension(pi);
 
     assert.deepEqual(tools, []);
-    assert.equal(renderers.length, 2);
+    assert.equal(renderers.length, 1);
     const native = {
       renderResult: () => new Text("\x1b]8;;file:///repo/README.md\x07source\x1b]8;;\x07", 0, 0),
     };
@@ -72,12 +72,10 @@ test("registers the UI modules through one extension entry point", () => {
     );
     const rendered = card.render(120).join("\n");
     assert.match(rendered, /Path: README.md:7/u);
-    assert.match(rendered, /herdr-nvim:\/\/open\?/u);
-    assert.match(rendered, /line=7/u);
+    assert.match(rendered, /file:\/\/\/repo\/README.md/u);
     assert.match(rendered, /source/u);
-    assert.ok(!rendered.includes("\x1b]8;;file:"));
     assert.deepEqual(commands, ["status-refresh"]);
-    assert.equal(markdownTransformers, 1);
+    assert.equal(markdownTransformers, 0);
   } finally {
     process.env = previous;
   }

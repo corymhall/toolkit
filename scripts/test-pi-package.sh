@@ -65,8 +65,7 @@ expected_extensions = [
     "extensions/pi-ui/index.ts",
     "extensions/session-default-model/index.ts",
     "extensions/system-prompt/index.ts",
-    "extensions/delegate/index.ts",
-    "extensions/herdr-command/index.ts",
+    "extensions/command-runner/index.ts",
 ]
 if extensions != expected_extensions:
     raise SystemExit(f"unexpected Pi extensions manifest: {extensions!r}")
