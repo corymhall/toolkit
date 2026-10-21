@@ -42,11 +42,9 @@ shared_expected=$(
     -mindepth 2 -type f -name SKILL.md | wc -l | tr -d ' '
 )
 shared_actual=$(find "${home}/.agents/skills" -mindepth 1 -maxdepth 1 -type l | wc -l | tr -d ' ')
-codex_expected=$(find "${repo_root}/codex-skills" -mindepth 2 -type f -name SKILL.md | wc -l | tr -d ' ')
-codex_actual=$(find "${codex_home}/skills" -mindepth 1 -maxdepth 1 -type l | wc -l | tr -d ' ')
 
 [[ "${shared_actual}" == "${shared_expected}" ]]
-[[ "${codex_actual}" == "${codex_expected}" ]]
+[[ ! -d "${codex_home}/skills" ]]
 [[ "$(readlink "${home}/.agents/skills/herdr")" == "${repo_root}/.agents/skills/herdr" ]]
 [[ "$(readlink "${home}/.agents/skills/triage-provider-issue")" == "${repo_root}/.agents/skills/triage-provider-issue" ]]
 [[ "$(readlink "${home}/.agents/skills/pulumi-upgrade-provider")" == "${repo_root}/.agents/skills/pulumi-upgrade-provider" ]]

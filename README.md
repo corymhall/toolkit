@@ -7,7 +7,6 @@ Agent-Skills-compatible harnesses.
 - `extensions/` contains first-party Pi extensions.
 - `skills/` contains runtime-neutral skills, optionally grouped in nested
   directories.
-- `codex-skills/` contains workflows that require Codex CLI-specific features.
 - `.agents/skills/` contains reviewed third-party skills managed by APM or a
   focused repository updater.
 - Each first-party skill owns its references, scripts, assets, and agent
@@ -31,8 +30,8 @@ mise run build
 
 `mise run build` synchronizes generated skill invocation metadata, installs and
 checks all local links, and runs the complete repository validation graph. The
-local-install check is non-mutating and verifies every expected shared and
-Codex-only skill link plus the memory guard's `make` proxy against this checkout.
+local-install check is non-mutating and verifies every expected shared skill
+link plus the memory guard's `make` proxy against this checkout.
 
 List available tasks with `mise tasks`. Common entry points include
 `mise run build`, `mise run validate`, `mise run test`, `mise run lint:typescript`,
@@ -70,7 +69,6 @@ The installer maps:
 ```text
 skills/**/<skill>       -> ~/.agents/skills/<skill>
 .agents/skills/*        -> ~/.agents/skills/*
-codex-skills/**/<skill> -> ${CODEX_HOME:-~/.codex}/skills/<skill>
 ```
 
 It also links the memory guard's `make` proxy to `~/.local/bin/make` and removes
@@ -78,8 +76,7 @@ legacy toolkit reviewer-role symlinks left by the former plugin installer. The
 script is idempotent and refuses to replace non-symlink destinations. Restart
 the agent or reload its resources after installation.
 
-Pi discovers shared skills from `~/.agents/skills`; Codex CLI loads those shared
-skills plus the Codex CLI-only skills from its own skill directory.
+Pi and Codex CLI discover the same shared skills from `~/.agents/skills`.
 
 ## Install for Pi
 
@@ -94,9 +91,7 @@ third-party `.agents/skills/*`, and the focused `extensions/web-access`,
 `extensions/codex-fast-mode`, `extensions/pi-ui`,
 `extensions/session-default-model`, `extensions/system-prompt`,
 and `extensions/command-runner` extensions.
-`codex-skills/spec-to-goal` is omitted because Pi does not provide Codex CLI's
-`/goal` workflow. The package does not add hidden background-process or generic
-subagent tools.
+The package does not add hidden background-process or generic subagent tools.
 Git package installation installs the web-access extension's local parsing
 dependencies automatically.
 
@@ -243,7 +238,6 @@ checkout.
 | Provider work | `triage-provider-issue`, `pulumi-rpc-lifecycle-investigation`, `bridge-parity-investigation`, `stage-pulumi-provider-repro`, `stage-terraform-provider-repro`, `investigate-converted-provider-docs` |
 | Provider maintenance | `pulumi-upgrade-provider`, `upstream-patches` |
 | Pulumi audit | `pulumi-test-rationalization-audit` |
-| Codex CLI-only | `spec-to-goal` |
 
 `capture-decision-context` is a manually invoked way to preserve the motivation,
 evidence, rationale, tradeoffs, accepted limitations, and open questions from a
@@ -322,7 +316,7 @@ mise install
 mise run validate
 ```
 
-The graph validates every shared, managed, and Codex-only skill against the
+The graph validates every shared and managed skill against the
 Agent Skills specification, checks repository policy, invocation metadata, and
 text hygiene, runs ShellCheck, tests all extensions, and exercises the helper
 scripts, local installer, memory guard, and Pi package. Pi's

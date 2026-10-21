@@ -50,14 +50,6 @@ for entry in entries:
 if not selected:
     raise SystemExit("Pi skill manifest resolves to no skills")
 
-for skill in selected:
-    if root / "codex-skills" in skill.parents:
-        raise SystemExit(f"Codex-only skill was exposed to Pi: {skill}")
-
-spec_to_goal = (root / "codex-skills/spec-to-goal").resolve()
-if spec_to_goal in selected:
-    raise SystemExit("Codex-only spec-to-goal skill was exposed to Pi")
-
 extensions = manifest.get("pi", {}).get("extensions")
 expected_extensions = [
     "extensions/web-access/index.ts",
@@ -145,8 +137,6 @@ loaded = {
 missing = expected - loaded
 if missing:
     raise SystemExit(f"Pi did not load expected skills: {sorted(missing)}")
-if "spec-to-goal" in loaded:
-    raise SystemExit("Pi loaded Codex-only spec-to-goal")
 if "herdr" not in loaded:
     raise SystemExit("Pi did not load the managed Herdr skill")
 PY

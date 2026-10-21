@@ -56,8 +56,6 @@ skills:
     model_invocable: false
   skill-authoring:
     model_invocable: false
-  spec-to-goal:
-    model_invocable: true
   stage-pulumi-provider-repro:
     model_invocable: true
   stage-terraform-provider-repro:

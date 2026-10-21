@@ -12,7 +12,6 @@
     ".pi/**",
     ".roo/**",
     ".windsurf/**",
-    "codex-skills/**",
     "skills/**",
     "tools/oxlint/anti-slop/**"
   ],

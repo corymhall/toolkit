@@ -18,7 +18,7 @@ from typing import Any
 import yaml
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[1]
-SKILL_ROOTS = ("skills", "codex-skills", ".agents/skills")
+SKILL_ROOTS = ("skills", ".agents/skills")
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---(?=\n|\Z)", re.DOTALL)
 PI_FIELD = "disable-model-invocation"
 OPENAI_FIELD = "allow_implicit_invocation"

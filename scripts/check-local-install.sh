@@ -3,8 +3,6 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 shared_dest="${HOME}/.agents/skills"
-codex_home="${CODEX_HOME:-${HOME}/.codex}"
-codex_dest="${codex_home}/skills"
 make_dest="${HOME}/.local/bin/make"
 errors=0
 
@@ -83,12 +81,9 @@ check_stale_links() {
 
 shared_source="${repo_root}/skills"
 managed_source="${repo_root}/.agents/skills"
-codex_source="${repo_root}/codex-skills"
 check_skill_tree "${shared_source}" "${shared_dest}" "shared"
 check_skill_tree "${managed_source}" "${shared_dest}" "managed third-party"
-check_skill_tree "${codex_source}" "${codex_dest}" "Codex-only"
 check_stale_links "${shared_dest}" "shared skill" "${shared_source}" "${managed_source}"
-check_stale_links "${codex_dest}" "Codex-only skill" "${codex_source}"
 
 make_source="${repo_root}/skills/memory-guard/scripts/make"
 check_link "${make_source}" "${make_dest}" "memory guard proxy"

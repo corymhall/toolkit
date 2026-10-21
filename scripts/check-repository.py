@@ -13,7 +13,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL_ROOTS = (ROOT / "skills", ROOT / "codex-skills", ROOT / ".agents" / "skills")
+SKILL_ROOTS = (ROOT / "skills", ROOT / ".agents" / "skills")
 IGNORED_PARTS = {
     ".git",
     ".mise",

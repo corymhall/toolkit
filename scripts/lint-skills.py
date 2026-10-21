@@ -17,7 +17,7 @@ import tempfile
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL_ROOTS = (ROOT / "skills", ROOT / "codex-skills", ROOT / ".agents" / "skills")
+SKILL_ROOTS = (ROOT / "skills", ROOT / ".agents" / "skills")
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---(?=\n|\Z)", re.DOTALL)
 PI_ONLY_FIELD = "disable-model-invocation"
 

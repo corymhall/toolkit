@@ -7,7 +7,6 @@ trap 'rm -rf "$temporary"' EXIT HUP INT TERM
 
 mkdir -p \
   "$temporary/skills/enabled/agents" \
-  "$temporary/codex-skills" \
   "$temporary/.agents/skills/remote" \
   "$temporary/.agents/skills/codex-only"
 

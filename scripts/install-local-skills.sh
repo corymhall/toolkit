@@ -4,10 +4,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 shared_source="${repo_root}/skills"
 managed_source="${repo_root}/.agents/skills"
-codex_source="${repo_root}/codex-skills"
 shared_dest="${HOME}/.agents/skills"
 codex_home="${CODEX_HOME:-${HOME}/.codex}"
-codex_dest="${codex_home}/skills"
 bin_dest="${HOME}/.local/bin"
 
 check_destination() {
@@ -90,10 +88,8 @@ link_path() {
 # not leave a partially installed skill set. Nested source groups are flattened
 # by skill directory name, so reject duplicate names before linking.
 check_duplicate_skill_names "${shared_source}" "${managed_source}"
-check_duplicate_skill_names "${codex_source}"
 for_each_skill "${shared_source}" preflight_skill "${shared_dest}" "shared"
 for_each_skill "${managed_source}" preflight_skill "${shared_dest}" "managed third-party"
-for_each_skill "${codex_source}" preflight_skill "${codex_dest}" "Codex-only"
 make_proxy="${shared_source}/memory-guard/scripts/make"
 if [[ ! -x "${make_proxy}" ]]; then
   echo "Missing executable memory guard proxy: ${make_proxy}" >&2
@@ -101,10 +97,9 @@ if [[ ! -x "${make_proxy}" ]]; then
 fi
 check_destination "${bin_dest}/make"
 
-mkdir -p "${shared_dest}" "${codex_dest}" "${bin_dest}"
+mkdir -p "${shared_dest}" "${bin_dest}"
 for_each_skill "${shared_source}" link_path "${shared_dest}" "shared"
 for_each_skill "${managed_source}" link_path "${shared_dest}" "managed third-party"
-for_each_skill "${codex_source}" link_path "${codex_dest}" "Codex-only"
 
 # The former plugin installer linked focused reviewer TOML files directly into
 # Codex. Remove only links created from this checkout's exact former paths.

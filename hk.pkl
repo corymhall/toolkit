@@ -29,7 +29,6 @@ local pre_commit_checks = new Mapping<String, Step> {
   ["skills"] {
     glob = List(
       ".agents/skills/**",
-      "codex-skills/**",
       "skills/**",
       "scripts/lint-skills.py",
       "mise.toml",

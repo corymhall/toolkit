@@ -7,8 +7,6 @@ This repository is organized around self-contained Agent Skills:
 - `skills/` contains skills shared by Pi, Codex CLI, and other
   Agent-Skills-compatible harnesses. Skills may be grouped in nested
   directories; each directory containing `SKILL.md` is an individual skill.
-- `codex-skills/` contains skills that depend on Codex CLI-only workflows. Skills
-  may be grouped using the same convention.
 - `.agents/skills/<skill-name>/` contains reviewed third-party skills managed by
   APM or a focused repository updater; do not edit vendored copies by hand.
 - References, scripts, assets, and metadata owned by a skill belong inside that
@@ -29,10 +27,9 @@ mise run check:local-install
 
 The check is non-mutating and verifies the live links against the current
 checkout. The installer links first-party and managed third-party shared skills
-into `~/.agents/skills`, Codex CLI-only skills into
-`${CODEX_HOME:-~/.codex}/skills`, and
-the memory guard's `make` proxy into `~/.local/bin`. It may remove only legacy
-toolkit-owned reviewer symlinks from the former plugin layout. It must not edit
+into `~/.agents/skills` and the memory guard's `make` proxy into `~/.local/bin`.
+It may remove only legacy toolkit-owned reviewer symlinks from the former plugin
+layout. It must not edit
 agent settings or package caches, and it must refuse to replace non-symlink
 destinations.
 
@@ -55,9 +52,9 @@ than editing the rendered Pi or Codex policy fields by hand. Review managed
 skill and lockfile diffs before committing them.
 
 The root `package.json` exposes the recursive `skills/` tree and
-`.agents/skills/*` to Pi. Keep Codex CLI-only skills out of that manifest. The local
-installer discovers nested skill directories recursively but links each skill
-flat into `~/.agents/skills` for cross-harness compatibility.
+`.agents/skills/*` to Pi. The local installer discovers nested skill directories
+recursively but links each skill flat into `~/.agents/skills` for cross-harness
+compatibility.
 
 After changing skills, extensions, installers, or package metadata, run the
 complete local validation graph:
