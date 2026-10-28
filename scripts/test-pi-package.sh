@@ -58,6 +58,8 @@ expected_extensions = [
     "extensions/session-default-model/index.ts",
     "extensions/system-prompt/index.ts",
     "extensions/command-runner/index.ts",
+    "extensions/copy-session/index.ts",
+    "extensions/review-pane/index.ts",
 ]
 if extensions != expected_extensions:
     raise SystemExit(f"unexpected Pi extensions manifest: {extensions!r}")

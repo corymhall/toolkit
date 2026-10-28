@@ -90,7 +90,7 @@ The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
 `extensions/codex-fast-mode`, `extensions/pi-ui`,
 `extensions/session-default-model`, `extensions/system-prompt`,
-and `extensions/command-runner` extensions.
+`extensions/command-runner`, `extensions/copy-session`, and `extensions/review-pane` extensions.
 The package does not add hidden background-process or generic subagent tools.
 Git package installation installs the web-access extension's local parsing
 dependencies automatically.
@@ -171,6 +171,23 @@ another session copy. Provider payload rewrites and host-level instructions are
 outside Pi's prompt API. See
 [extensions/system-prompt/README.md](extensions/system-prompt/README.md) for the
 exact boundary and sensitivity warning.
+
+### Review pane extension
+
+`/review` opens Neovim Diffview in a Rex split beside this chat and attaches
+Commentry to this Pi agent. Use `/review <revision>` for a diff base, or ask the
+agent to call `open_review` when its work is ready. Confirmation is required
+because attachment can deliver pending comments. See
+[extensions/review-pane/README.md](extensions/review-pane/README.md).
+
+### Copy Session extension
+
+`/copy-session`, or Ctrl+S in the main prompt editor, copies a ready-to-paste
+prompt asking another session to use
+Evaler to inspect this saved session. Use `/copy-session <question>` to focus
+the lookup. The prompt includes the exact session path, ID, and working
+directory, without copying the transcript. See
+[extensions/copy-session/README.md](extensions/copy-session/README.md).
 
 ### Command runner extension
 

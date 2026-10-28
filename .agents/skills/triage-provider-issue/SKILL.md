@@ -9,7 +9,7 @@ Triage provider issues as an evidence-driven routing problem, not a single-pass 
 
 Determine what is known, what is not known, and which next action most directly increases certainty or gives the user a practical path forward.
 
-Do not directly post comments, apply labels, close issues, or create issues. A hosting integration may publish the final triage artifact according to its configured policy. Bounded local investigation is allowed.
+Do not directly post comments, apply labels, close issues, or create issues. A hosting integration may publish the final triage artifact according to its configured policy. Bounded local investigation, including staging and running focused credential-free tests, is part of triage.
 
 ## Core Rules
 
@@ -27,6 +27,15 @@ Do not directly post comments, apply labels, close issues, or create issues. A h
 - Cross repository boundaries for read-only investigation when the environment supports it. If the next durable artifact belongs to another repository and this session cannot own it safely, leave a structured handoff for a repository-scoped session.
 - Treat workaround discovery as a valid continuation after attribution.
 - Cite repository files as repository-relative `path/to/file.go:123` references unless the hosting application provides a stable source-link format.
+
+## Existing Issues And Epics
+
+Search existing issues early, even when the reporter supplies a related issue or a root-cause analysis. Treat supplied links as leads, not the search boundary.
+
+- Enumerate the repository's open epics and inspect the plausible workstreams. Include issue-type epics and the repository's label-based trackers; paginate rather than silently truncating the list.
+- Also search general issues, open and closed, by symptom, failing operation, and implementation boundary. Resource-name matches alone miss shared defect classes. Follow relevant parent/child links and canonical-tracker references.
+- Similar issues can justify grouping under an existing workstream without being duplicates. Check whether that workstream's scope and acceptance criteria cover this case; identify any missing case explicitly.
+- If search is unavailable, report the failed search and limitation. Do not substitute the reporter's link for an independent search.
 
 ## GitHub Search Hygiene
 
@@ -63,15 +72,24 @@ Read `references/disposition-gates.md` before finalizing a strong routing or dup
 1. Read the issue and classify the issue type. Extract observations and repro details separately from causal claims; do not start with the issue's proposed cause.
 2. Probe the repository layout before assuming paths.
 3. Identify the resource's provider implementation family using `references/provider-families.md`.
-4. Identify the likely implementation boundary involved.
-5. Gather only enough evidence to choose the next best action.
-6. Estimate confidence and decide whether routing is settled.
-7. If routing is not settled, select the installed specialist skill that most directly reduces uncertainty.
-8. If routing is settled but the user still needs a practical path forward, enter workaround investigation using `references/workaround-investigation.md`.
+4. Search existing issues and open epics independently of reporter-supplied links.
+5. Identify the likely implementation boundary involved.
+6. Gather focused evidence, including safe local execution, before choosing the next action.
+7. Estimate confidence and decide whether routing is settled.
+8. If routing is not settled, use the installed specialist that most directly reduces uncertainty rather than merely naming it as future work.
+9. If routing is settled but the user still needs a practical path forward, enter workaround investigation using `references/workaround-investigation.md`.
 
-By default, stop after the triage artifact. Do not slide into implementation, PR work, or broad project planning unless the user explicitly changes phase or a selected specialist skill exists to stage the required evidence artifact.
+### Execute The Safe Discriminator
 
-When continuing past triage, state that triage is complete and name the new phase.
+Run relevant, focused credential-free checks before returning the triage artifact. If a small deterministic regression would resolve a material uncertainty, stage and run it without a separate phase approval. Use actual repository metadata and lifecycle helpers where practical; test a plausible alternative explanation rather than mirroring the implementation. Report what the execution proves and what it cannot prove. An intentionally failing regression is evidence, not a passed validation check.
+
+Respect repository test-safety rules, runtime limits, and dependency availability. Do not run unrelated suites, live tests, or a broad test matrix merely because they need no credentials. Preserve existing user changes and do not implement the product fix as part of this evidence step.
+
+If the remaining discriminator needs credentials or external mutations, prepare a runnable artifact when feasible, with its prerequisites, success checks, cleanup/recovery, and exact command. Ask only for the missing access or approval; do not stop at a generic suggestion to reproduce. Preparation does not authorize execution or establish the live result.
+
+By default, stop after the evidence-backed triage artifact and any prepared blocked discriminator. Stop before product implementation, PR work, broad planning, or unapproved external mutations—not before bounded evidence gathering.
+
+When continuing into implementation or another downstream phase, state that triage is complete and name the new phase.
 
 For a bridged-provider issue involving generated docs, converted Terraform examples, or code-sample casing, select `investigate-converted-provider-docs` when that specialist is installed.
 
@@ -139,6 +157,7 @@ Always leave a compact artifact another pass can continue from:
 - artifacts prepared
 - blocked steps and required access
 - workaround status
+- existing-issue and open-epic search results, including the best workstream placement and any scope gap
 - closest related issues and whether they are duplicates, same-family, or background only
 
 Label unproven mechanisms plainly:

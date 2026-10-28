@@ -6,7 +6,7 @@ compatibility: Requires the executor MCP server with an authenticated Notion con
 
 # Notion Docs
 
-Use the Notion connection through executor. Discover actions with `executor_search_notion_com`. Before calling `executor_execute`, read `executor_skills` with `name: "execute"`. Inspect the selected tool's live schema and call its returned path through executor. Do not assume a connection address or tool argument shape.
+Use the Notion connection through Executor. Follow the selected server's advertised discovery and execution guidance, inspect the selected tool's live schema, and call its returned path. Do not assume a connection address or tool argument shape.
 
 ## Find and Read Pages
 
@@ -46,4 +46,4 @@ After an update, fetch the page again and verify the requested result.
 
 ## Authentication and Failures
 
-If executor reports missing or expired authorization, ask the user to reconnect Notion in executor. Do not inspect token files or print credentials. Do not start a new authorization flow unless the user asks. If discovery tools are missing, refresh the executor tool list before concluding that Notion is unavailable.
+If executor reports missing or expired authorization, ask the user to reconnect Notion in executor. Do not inspect token files or print credentials. Do not start a new authorization flow unless the user asks. If actions are missing, follow the server's discovery diagnostics before concluding that Notion is unavailable.

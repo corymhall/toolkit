@@ -79,6 +79,35 @@ not add comments that merely narrate obvious statements.
 - Run the narrowest meaningful formatting, lint, and test gates, then broader
   repository-standard validation when justified and practical.
 
+#### Unit Tests
+
+Audit the tests touched by the change for what they protect, not merely whether
+they pass. Keep tests of decisions the implementation owns, meaningful defaults,
+validation, and regressions against intended behavior.
+
+- Remove tautological tests, duplicated coverage, and assertions that merely
+  mirror the implementation or verify data built by the test helper itself.
+- Avoid locking incidental details such as internal encodings, presentation, or
+  execution order unless they are an intended compatibility contract.
+- Use independent expected results and mocks that distinguish correct behavior
+  from plausible mistakes. Do not test every forwarded field or copy entire
+  defaults tables without a meaningful contract to protect.
+
+#### Integration Tests
+
+Test observable behavior across real boundaries rather than repeating unit-test
+assertions about configuration. For infrastructure code, unit tests establish
+that the intended IaC is generated; integration tests establish that it achieves
+its purpose.
+
+- Exercise the operation, such as making a request or using a granted permission,
+  rather than only inspecting resource properties or policy documents.
+- Avoid re-testing guarantees owned by a dependency or cloud service. Inspect
+  configuration only when needed to prove an integration contract that unit
+  tests cannot establish.
+- Do not claim real-service acceptance from mocks or successful provisioning
+  alone. State which behavior remains unverified when live validation is blocked.
+
 ## Boundaries
 
 - Perform one focused pass; do not create a new plan or checklist artifact.
