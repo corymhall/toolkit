@@ -90,7 +90,8 @@ The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
 `extensions/codex-fast-mode`, `extensions/pi-ui`,
 `extensions/session-default-model`, `extensions/system-prompt`,
-`extensions/command-runner`, `extensions/copy-session`, and `extensions/review-pane` extensions.
+`extensions/command-runner`, `extensions/copy-session`, `extensions/review-pane`,
+and `extensions/delegate` extensions.
 The package does not add hidden background-process or generic subagent tools.
 Git package installation installs the web-access extension's local parsing
 dependencies automatically.
@@ -176,9 +177,17 @@ exact boundary and sensitivity warning.
 
 `/review` opens Neovim Diffview in a Rex split beside this chat and attaches
 Commentry to this Pi agent. Use `/review <revision>` for a diff base, or ask the
-agent to call `open_review` when its work is ready. Confirmation is required
-because attachment can deliver pending comments. See
+agent to call `open_review` when its work is ready. No additional confirmation
+is shown. Commentry attachment can deliver pending comments. See
 [extensions/review-pane/README.md](extensions/review-pane/README.md).
+
+### Delegate extension
+
+`/delegate <instructions>` opens a Television project picker, asks for a new
+worktree branch, and starts a new Pi conversation after Worktrunk setup succeeds.
+The new agent receives your instructions and the current session reference for
+Evaler. This reuses the local Rex picker rather than duplicating its worktree or
+session grouping logic. See [extensions/delegate/README.md](extensions/delegate/README.md).
 
 ### Copy Session extension
 

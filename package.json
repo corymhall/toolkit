@@ -8,7 +8,8 @@
     "format": "oxfmt extensions",
     "format:check": "oxfmt --check extensions",
     "lint": "oxlint extensions",
-    "test": "npm run test:codex-fast-mode && npm run test:pi-ui && npm run test:session-default-model && npm run test:command-runner && npm run test:system-prompt && npm run test:web-access && npm run test:web-access:bun && npm run test:review-pane",
+    "test": "npm run test:codex-fast-mode && npm run test:pi-ui && npm run test:session-default-model && npm run test:command-runner && npm run test:system-prompt && npm run test:web-access && npm run test:web-access:bun && npm run test:review-pane && npm run test:delegate",
+    "test:delegate": "node --experimental-strip-types --test extensions/delegate/test/*.test.ts && python3 -B -m unittest discover -s extensions/delegate/test -p 'test_*.py'",
     "test:review-pane": "node --experimental-strip-types --test extensions/review-pane/test/*.test.ts",
     "test:codex-fast-mode": "node --experimental-strip-types --test extensions/codex-fast-mode/test/*.test.ts",
     "test:pi-ui": "node --experimental-strip-types --test extensions/pi-ui/test/*.test.ts extensions/pi-ui/*/test/*.test.ts",
@@ -44,7 +45,8 @@
       "extensions/system-prompt/index.ts",
       "extensions/command-runner/index.ts",
       "extensions/copy-session/index.ts",
-      "extensions/review-pane/index.ts"
+      "extensions/review-pane/index.ts",
+      "extensions/delegate/index.ts"
     ],
     "skills": [
       "skills",

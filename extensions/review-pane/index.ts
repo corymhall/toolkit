@@ -40,7 +40,6 @@ export default function reviewPane(pi: ExtensionAPI) {
     const session = env.REX_SESSION;
     const block = env.REX_BLOCK;
     if (!session || !block) throw new Error("Open Pi inside Rex to use the review pane.");
-    if (!ctx.hasUI) throw new Error("Opening a review pane requires an interactive confirmation.");
     const exec = async (program: string, args: string[]) => {
       const result = await pi.exec(program, args, { cwd: ctx.cwd, signal, timeout: 15_000 });
       if (result.code !== 0)
@@ -73,13 +72,6 @@ export default function reviewPane(pi: ExtensionAPI) {
     if (discovery.ok !== true || !Array.isArray(discovery.result?.sessions))
       throw new Error(`Commentry discovery failed: ${JSON.stringify(discovery)}`);
     const target = selectTarget(discovery.result.sessions, session, block);
-    if (
-      !(await ctx.ui.confirm(
-        "Open review pane?",
-        "Start or focus Neovim beside this chat and attach Commentry to this agent. Attaching may deliver pending comments.",
-      ))
-    )
-      throw new Error("Review pane cancelled.");
     // Check dependencies before changing the layout or Commentry selection.
     await exec("nvim", ["--version"]);
     const attached = JSON.parse(
@@ -143,7 +135,7 @@ export default function reviewPane(pi: ExtensionAPI) {
     name: "open_review",
     label: "Open Review",
     description:
-      "Open or focus a Rex pane to the right of this chat with Neovim Diffview and attach Commentry to this exact Pi agent. Use only when the user asks to open their review pane, after completing the requested work. Requires confirmation. Attaching can deliver pending comments.",
+      "Open or focus a Rex pane to the right of this chat with Neovim Diffview and attach Commentry to this exact Pi agent. Use only when the user asks to open their review pane, after completing the requested work. The user request authorizes opening the pane without an additional confirmation. Attaching can deliver pending comments.",
     parameters: Type.Object({
       base: Type.Optional(
         Type.String({

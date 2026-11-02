@@ -20,14 +20,13 @@ test("attachment requires a unique Pi target in the exact calling pane", () => {
   assert.throws(() => selectTarget([{ ...target, harness: "codex" }], "s", "b"));
 });
 
-test("opens once, reuses the owned pane, and never mutates on cancelled confirmation", async () => {
+test("opens without confirmation, recovers a lost response, and reuses the owned pane", async () => {
   const previous = { ...process.env };
   process.env.REX_SESSION = "s";
   process.env.REX_BLOCK = "b";
   try {
     let handler!: (args: string, ctx: ExtensionContext) => Promise<void>;
     let label: string | undefined;
-    let confirmed = false;
     let deliveryError: string | undefined;
     let loseSplitResponse = true;
     const calls: string[][] = [];
@@ -81,14 +80,13 @@ test("opens once, reuses the owned pane, and never mutates on cancelled confirma
       cwd: "/repo with spaces",
       hasUI: true,
       sessionManager: { getSessionId: () => "pi-session" },
-      ui: { confirm: async () => confirmed, notify: (message: string) => notices.push(message) },
+      ui: {
+        confirm: async () => {
+          throw new Error("Review requests must not prompt for confirmation");
+        },
+        notify: (message: string) => notices.push(message),
+      },
     } as unknown as ExtensionContext;
-    await handler("", ctx);
-    assert.equal(
-      calls.some((call) => call.includes("attach") || call.includes("split")),
-      false,
-    );
-    confirmed = true;
     deliveryError = "native queue unavailable";
     await handler("", ctx);
     assert.ok(notices.at(-1)?.includes("pending comment delivery failed"));
