@@ -1,4 +1,4 @@
-min_version = "2025.1.0"
+min_version = "2026.10.23"
 
 [settings]
 experimental = true
@@ -9,14 +9,16 @@ lockfile_platforms = ["linux-x64", "macos-arm64", "macos-x64"]
 HK_MISE = "1"
 
 [tools]
-hk = "1.51.0"
+# hk no longer publishes Intel macOS binaries.
+hk = { version = "1.51.0", os = ["linux", "macos/arm64"] }
 node = "26.5.0"
 bun = "1.3.13"
 python = "3.13.14"
-uv = "0.11.29"
+uv = "0.12.10"
 "pipx:apm-cli" = "0.25.0"
 "pipx:skills-ref" = "0.1.1"
 shellcheck = "0.11.0"
+go = "1.26.10"
 
 [deps.npm]
 auto = true
@@ -76,7 +78,7 @@ scripts/test-pi-package.sh
 
 [tasks.validate]
 description = "Run all repository validation"
-depends = ["format:check", "lint:typescript", "lint:shell", "lint:skills", "check:repository", "check:skill-invocation", "check:hooks", "test", "test:integration"]
+depends = ["format:check", "lint:typescript", "lint:shell", "lint:skills", "check:repository", "check:skill-invocation", "check:hooks", "test", "test:integration", "herdr:test", "herdr:lint"]
 
 [tasks.build]
 description = "Prepare the local checkout and run all repository validation"
@@ -87,6 +89,63 @@ scripts/install-local-skills.sh
 scripts/check-local-install.sh
 mise run validate
 '''
+
+[tasks."herdr:test"]
+description = "Test workbench policy, safe installation, and GitHub collection"
+run = '''
+set -eu
+node --test herdr/test/*.test.js
+python3 -m unittest discover -s herdr/test -p 'test_*.py'
+GOWORK=off go -C herdr/github-status test ./...
+'''
+
+[tasks."herdr:lint"]
+description = "Check Herdr source formatting, JavaScript, shell, and Go"
+run = '''
+set -eu
+npm exec -- oxfmt --check herdr
+npm exec -- oxlint --config herdr/.oxlintrc.json herdr/mods herdr/test
+shellcheck herdr/scripts/*.sh
+test -z "$(gofmt -l herdr/github-status)"
+GOWORK=off go -C herdr/github-status vet ./...
+'''
+
+[tasks."herdr:check"]
+description = "Render workbench with Herdr-app in an isolated temporary home"
+run = "python3 herdr/scripts/check-mod.py"
+
+[tasks."herdr:build"]
+description = "Build the workbench GitHub collector"
+run = '''
+set -eu
+mkdir -p .build/herdr
+GOWORK=off go -C herdr/github-status build -o ../../.build/herdr/herdr-github-status ./cmd/herdr-github-status
+'''
+
+[tasks."herdr:install"]
+description = "Link toolkit-owned Herdr assets without activating them"
+depends = ["herdr:build", "herdr:test", "herdr:check"]
+run = "bash herdr/scripts/install.sh"
+
+[tasks."herdr:check-install"]
+description = "Check toolkit-owned Herdr links without changing them"
+run = "bash herdr/scripts/install.sh --check"
+
+[tasks."herdr:service-install"]
+description = "Install the collector launchd definition without starting it"
+run = "python3 herdr/scripts/service.py install"
+
+[tasks."herdr:service-start"]
+description = "Explicitly start the installed collector service"
+run = "python3 herdr/scripts/service.py start"
+
+[tasks."herdr:service-stop"]
+description = "Stop the toolkit collector service only"
+run = "python3 herdr/scripts/service.py stop"
+
+[tasks."herdr:service-status"]
+description = "Inspect the toolkit collector service"
+run = "python3 herdr/scripts/service.py status"
 
 [tasks."skills:list"]
 description = "List project-managed Agent Skills"

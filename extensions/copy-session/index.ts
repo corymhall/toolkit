@@ -1,5 +1,7 @@
 import {
   copyToClipboard,
+  SessionManager,
+  SessionSelectorComponent,
   type ExtensionAPI,
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
@@ -32,6 +34,40 @@ async function copySession(args: string, ctx: ExtensionContext) {
 }
 
 export default function copySessionExtension(pi: ExtensionAPI) {
+  const referenceSession = async (_args: string, ctx: ExtensionContext) => {
+    if (ctx.mode !== "tui") {
+      ctx.ui.notify("reference-session requires interactive mode", "warning");
+      return;
+    }
+
+    const selected = await ctx.ui.custom<string | undefined>((tui, _theme, keybindings, done) => {
+      const picker = new SessionSelectorComponent(
+        (onProgress, signal) => SessionManager.list(ctx.cwd, undefined, onProgress, signal),
+        (onProgress, signal) => SessionManager.listAll(onProgress, signal),
+        done,
+        () => done(undefined),
+        () => done(undefined),
+        () => tui.requestRender(),
+        { keybindings, showRenameHint: false },
+        ctx.sessionManager.getSessionFile(),
+      );
+      // Referencing sessions must never modify or delete them.
+      picker.getSessionList().onDeleteSession = undefined;
+      return picker;
+    });
+
+    if (selected) ctx.ui.pasteToEditor(selected);
+  };
+
+  pi.registerCommand("reference-session", {
+    description: "Search saved sessions and paste a session file path into the editor",
+    handler: referenceSession,
+  });
+  pi.registerShortcut("ctrl+alt+s", {
+    description: "Insert a saved session reference into the current draft",
+    handler: (ctx) => referenceSession("", ctx),
+  });
+
   pi.registerCommand("copy-session", {
     description: "Copy an Evaler prompt for this session, optionally with a question",
     handler: copySession,

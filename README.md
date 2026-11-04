@@ -5,6 +5,8 @@ engineering workflows. The same skill sources work in Pi, Codex CLI, and other
 Agent-Skills-compatible harnesses.
 
 - `extensions/` contains first-party Pi extensions.
+- `herdr/` owns the personal Herdr-app workbench layout, sidebar mod, GitHub
+  collector, and explicit installation and service procedures.
 - `skills/` contains runtime-neutral skills, optionally grouped in nested
   directories.
 - `.agents/skills/` contains reviewed third-party skills managed by APM or a
@@ -77,6 +79,28 @@ script is idempotent and refuses to replace non-symlink destinations. Restart
 the agent or reload its resources after installation.
 
 Pi and Codex CLI discover the same shared skills from `~/.agents/skills`.
+
+## Herdr-app workbench
+
+The native workbench uses one repository tree for tracked work and auxiliary
+tabs, with persistent Activity membership, main-tab-only agent state, manual
+ordering, and separate Dismiss and confirmed Close controls. A shared collector
+publishes cached Git/GitHub metadata without participating in agent status.
+Native work and project pickers provide search, terminal/Git previews, scratch
+folders, and the Worktrunk creation/removal lifecycle without Television.
+
+```bash
+mise run herdr:build
+mise run herdr:test
+mise run herdr:check
+# Explicitly install assets, without switching layouts or starting a service:
+mise run herdr:install
+mise run herdr:check-install
+```
+
+Herdr installation is separate from skill installation. See
+[`herdr/README.md`](herdr/README.md) for activation, optional collector service
+commands, state ownership, and first-version limits.
 
 ## Install for Pi
 
@@ -191,6 +215,12 @@ session grouping logic. See [extensions/delegate/README.md](extensions/delegate/
 
 ### Copy Session extension
 
+`/reference-session` opens a searchable session picker and inserts only the
+selected session file path into your draft, without switching sessions or
+submitting anything. Tab switches between the current directory and all
+projects and worktrees. Ctrl+Alt+S opens the picker without clearing your draft,
+so you can insert multiple references.
+
 `/copy-session`, or Ctrl+S in the main prompt editor, copies a ready-to-paste
 prompt asking another session to use
 Evaler to inspect this saved session. Use `/copy-session <question>` to focus
@@ -252,18 +282,18 @@ checkout.
 
 ## Skills
 
-| Area | Skills |
-|------|--------|
-| Review | `prepare-for-review`, `request-review`, `review-pr`, `explain-pr`, `claude-review` |
-| AI harness | `ai-contribution-readiness-audit`, `ai-harness-bootstrap`, `skill-authoring`, `harness-evaluation` |
-| Development | `go-development`, `neovim-plugin-development` |
-| General workflows | `collaborate`, `capture-decision-context`, `multi-model-evaluate`, `worktrunk-stack-prs` |
-| GitHub | `create-pr`, `github-search-cli` |
-| Documentation | `high-signal-docs`, `notion-docs` |
-| Operations | `memory-guard` |
-| Provider work | `triage-provider-issue`, `pulumi-rpc-lifecycle-investigation`, `bridge-parity-investigation`, `stage-pulumi-provider-repro`, `stage-terraform-provider-repro`, `investigate-converted-provider-docs` |
-| Provider maintenance | `pulumi-upgrade-provider`, `upstream-patches` |
-| Pulumi audit | `pulumi-test-rationalization-audit` |
+| Area                 | Skills                                                                                                                                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Review               | `prepare-for-review`, `request-review`, `review-pr`, `explain-pr`, `claude-review`                                                                                                                   |
+| AI harness           | `ai-contribution-readiness-audit`, `ai-harness-bootstrap`, `skill-authoring`, `harness-evaluation`                                                                                                   |
+| Development          | `go-development`, `neovim-plugin-development`                                                                                                                                                        |
+| General workflows    | `collaborate`, `capture-decision-context`, `multi-model-evaluate`, `worktrunk-stack-prs`                                                                                                             |
+| GitHub               | `create-pr`, `github-search-cli`                                                                                                                                                                     |
+| Documentation        | `high-signal-docs`, `notion-docs`                                                                                                                                                                    |
+| Operations           | `memory-guard`                                                                                                                                                                                       |
+| Provider work        | `triage-provider-issue`, `pulumi-rpc-lifecycle-investigation`, `bridge-parity-investigation`, `stage-pulumi-provider-repro`, `stage-terraform-provider-repro`, `investigate-converted-provider-docs` |
+| Provider maintenance | `pulumi-upgrade-provider`, `upstream-patches`                                                                                                                                                        |
+| Pulumi audit         | `pulumi-test-rationalization-audit`                                                                                                                                                                  |
 
 `capture-decision-context` is a manually invoked way to preserve the motivation,
 evidence, rationale, tradeoffs, accepted limitations, and open questions from a
