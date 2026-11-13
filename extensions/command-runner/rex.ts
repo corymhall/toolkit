@@ -6,8 +6,11 @@ import { setTimeout as delay } from "node:timers/promises";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { CommandBackend } from "./backends.ts";
 import {
+  buildRunMarkers,
+  paneRecordToManagedPane,
   exitCodeFromTranscript,
   HERDR_COMMAND_OWNER_TOKEN,
+  HERDR_COMMAND_RUN_TOKEN,
   type ManagedPane,
   type PaneProcessInfo,
   type PaneRecord,
@@ -16,6 +19,7 @@ import {
 type Registration = { paneId?: string; creationLabel?: string; tokens: Record<string, string> };
 type Process = { pid: number; name: string };
 const shells = new Set(["zsh", "bash", "sh"]);
+const floatingBounds = [0.1, 0.15, 0.8, 0.7];
 
 export function parseRexProcess(value: {
   child?: Process;
@@ -36,6 +40,47 @@ export function parseRexProcess(value: {
     shellPid: idle ? foreground.pid : (value.child?.pid ?? -1),
     foregroundProcesses: [{ pid: foreground.pid, name: foreground.name }],
     idle,
+  };
+}
+
+// Atuin's PTY proxy puts the real shell on a second controlling terminal.
+// Rex can report the outer login process instead of that terminal's foreground.
+export function parseAtuinProxyProcess(
+  loginPid: number,
+  snapshot: string,
+): PaneProcessInfo | undefined {
+  const rows = snapshot.split("\n").flatMap((line) => {
+    const match = line.trim().match(/^(\d+)\s+(\d+)\s+(\d+)\s+(-?\d+)\s+(.+)$/);
+    return match
+      ? [
+          {
+            pid: Number(match[1]),
+            parent: Number(match[2]),
+            group: Number(match[3]),
+            foreground: Number(match[4]),
+            name: match[5]!.split("/").at(-1)!,
+          },
+        ]
+      : [];
+  });
+  const login = rows.find((row) => row.pid === loginPid && row.name === "login");
+  if (!login) return;
+  const children = (pid: number) => rows.filter((row) => row.parent === pid);
+  const proxies = children(loginPid);
+  if (proxies.length !== 1 || proxies[0]!.name !== "atuin") return;
+  const shellsUnderProxy = children(proxies[0]!.pid);
+  if (shellsUnderProxy.length !== 1) return;
+  const shell = shellsUnderProxy[0]!;
+  if (!shells.has(shell.name) || shell.group !== shell.pid || shell.foreground <= 0) return;
+  // Process groups are host-wide. Include reparented processes too, since
+  // they may still share the shell's terminal and receive its input.
+  const foreground = rows.filter((row) => row.group === shell.foreground);
+  // Unknown foreground groups stay busy. Nested shells and commands sharing
+  // the shell's group also prevent input, even if a stale prompt is visible.
+  return {
+    shellPid: shell.pid,
+    foregroundProcesses: foreground.map(({ pid, name }) => ({ pid, name })),
+    idle: foreground.length === 1 && foreground[0]!.pid === shell.pid,
   };
 }
 
@@ -67,6 +112,7 @@ export function createRexBackend(
   const blockCall = (pane: ManagedPane, method: string, args: object = {}, signal?: AbortSignal) =>
     call(["block", "call", "-s", session, "-b", pane.paneId, method, JSON.stringify(args)], signal);
   let instance: string | undefined;
+  let hostId: string | undefined;
   let file: string | undefined;
   let registration: Registration = { tokens: {} };
   const initialize = async (signal?: AbortSignal) => {
@@ -77,6 +123,7 @@ export function createRexBackend(
       throw new Error("Rex server restarted; reload Pi before starting another command");
     if (instance) return;
     instance = status.instance_id;
+    hostId = status.host_id;
     const key = createHash("sha256")
       .update(JSON.stringify([instance, session, caller]))
       .digest("hex");
@@ -112,6 +159,24 @@ export function createRexBackend(
     await writeFile(temporary, JSON.stringify(registration), { mode: 0o600, flag: "wx" });
     await rename(temporary, file!);
   };
+  const inspect = async (signal?: AbortSignal) => {
+    const view = await call(["session", "inspect", session, "--json"], signal);
+    if (view.session_id !== session || !Array.isArray(view.windows))
+      throw new Error("Rex session view was incomplete");
+    return view;
+  };
+  const minimize = (layerId: string, signal?: AbortSignal) =>
+    call(
+      [
+        "api",
+        "call",
+        "-s",
+        session,
+        "session.set_layer_state",
+        JSON.stringify({ layer_id: layerId, state: "minimized" }),
+      ],
+      signal,
+    );
   const backend: CommandBackend = {
     name: "Rex",
     adoptUntaggedPane: false,
@@ -120,9 +185,7 @@ export function createRexBackend(
     list: async (signal) => {
       await initialize(signal);
       await load();
-      const view = await call(["session", "inspect", session, "--json"], signal);
-      if (view.session_id !== session || !Array.isArray(view.windows))
-        throw new Error("Rex session view was incomplete");
+      const view = await inspect(signal);
       const panes: PaneRecord[] = [];
       for (const window of view.windows)
         for (const layer of window.layers ?? [])
@@ -143,7 +206,7 @@ export function createRexBackend(
           }
       if (registration.creationLabel) {
         throw new Error(
-          `A Rex split response is unresolved. Inspect the session and registry ${file} before retrying; no duplicate pane was created.`,
+          `A Rex pane creation response is unresolved. Inspect the session and registry ${file} before retrying; no duplicate pane was created.`,
         );
       }
       return panes;
@@ -154,6 +217,13 @@ export function createRexBackend(
       await save();
     },
     create: async (cwd, owner, signal) => {
+      const view = await inspect(signal);
+      const window = view.windows.find((window: any) =>
+        window.layers?.some((layer: any) =>
+          layer.blocks?.some((block: any) => block.block_id === caller),
+        ),
+      );
+      if (!window) throw new Error("The calling Rex terminal is no longer present");
       // Persist a unique creation label before calling Rex. A lost response can
       // be recovered by listing, without creating a duplicate pane.
       registration = {
@@ -163,26 +233,29 @@ export function createRexBackend(
       await save();
       const result = await call(
         [
-          "split",
+          "api",
+          "call",
           "-s",
           session,
-          "-b",
-          caller,
-          "--split=below",
-          "--ratio",
-          "10",
-          "-c",
-          cwd,
-          "--label",
-          registration.creationLabel!,
-          "--focus=false",
-          "--json",
+          "session.new_layer",
+          JSON.stringify({
+            window_id: window.window_id,
+            bounds: floatingBounds,
+            focus: false,
+            layout: {
+              block: {
+                flavor: "com.superlogical.terminal.shell",
+                label: registration.creationLabel,
+                options: { cwd },
+              },
+            },
+          }),
         ],
         signal,
       );
       const paneId = result.block_ids?.[0];
       if (typeof paneId !== "string" || paneId === caller)
-        throw new Error("Rex split did not return a new block ID");
+        throw new Error("Rex floating layer did not return a new block ID");
       registration.paneId = paneId;
       delete registration.creationLabel;
       await save();
@@ -195,7 +268,8 @@ export function createRexBackend(
         workspaceId: session,
         tabId: pane.tab_id,
       };
-      // A split response does not mean its login shell is ready for input.
+      await backend.prepare!(managed, signal);
+      // A creation response does not mean its login shell is ready for input.
       const deadline = Date.now() + 10_000;
       while (!(await backend.process(managed, signal)).idle) {
         if (Date.now() >= deadline)
@@ -203,6 +277,72 @@ export function createRexBackend(
         await delay(100, undefined, { signal });
       }
       return managed;
+    },
+    prepare: async (pane, signal) => {
+      const view = await inspect(signal);
+      const layer = view.windows
+        .flatMap((window: any) => window.layers ?? [])
+        .find((layer: any) => layer.blocks?.some((block: any) => block.block_id === pane.paneId));
+      if (!layer) throw new Error("Rex command block is no longer present");
+      if (layer.kind === "tiled") {
+        delete registration.tokens["pi-command-floating"];
+        await save();
+        const result = await call(
+          [
+            "api",
+            "call",
+            "-s",
+            session,
+            "session.float_block",
+            JSON.stringify({ block_id: pane.paneId, bounds: floatingBounds }),
+          ],
+          signal,
+        );
+        if (typeof result.layer_id !== "string")
+          throw new Error("Rex did not return the floated layer ID");
+        await minimize(result.layer_id, signal);
+      } else if (
+        layer.kind === "floating" &&
+        layer.state !== "minimized" &&
+        registration.tokens["pi-command-floating"] !== pane.paneId
+      ) {
+        // Finish creation or migration after a lost response. Never minimize a
+        // layer shared with unrelated panes, or re-hide one the user restored.
+        if (layer.blocks.length !== 1) throw new Error("Rex command layer contains other panes");
+        await minimize(layer.layer_id, signal);
+      } else if (layer.kind !== "floating") {
+        throw new Error("Rex command layer has an unknown kind");
+      }
+      registration.tokens["pi-command-floating"] = pane.paneId;
+      await save();
+    },
+    shutdown: async () => {
+      const panes = await backend.list();
+      const paneId = registration.paneId;
+      const record = panes.find((pane) => pane.pane_id === paneId);
+      if (!record || registration.tokens[HERDR_COMMAND_OWNER_TOKEN] !== `${instance}/${caller}`)
+        return;
+      const pane = paneRecordToManagedPane(record);
+      if (!pane) return;
+      const runId = registration.tokens[HERDR_COMMAND_RUN_TOKEN];
+      // A queued or uncertain submission can still look like an idle shell.
+      // Require its completion marker as well as a current idle process check.
+      if (
+        runId &&
+        exitCodeFromTranscript(await backend.read(pane), buildRunMarkers(runId)) === undefined
+      )
+        return;
+      if (!(await backend.process(pane)).idle) return;
+      await call([
+        "api",
+        "call",
+        "-s",
+        session,
+        "block.close",
+        JSON.stringify({ block_id: paneId }),
+      ]);
+      registration = { tokens: {} };
+      await save();
     },
     rename: async (pane, label, signal) => {
       await call(
@@ -228,7 +368,39 @@ export function createRexBackend(
         throw new Error("Rex terminal format response was incomplete");
       return result.content;
     },
-    process: async (pane, signal) => parseRexProcess(await blockCall(pane, "process", {}, signal)),
+    process: async (pane, signal) => {
+      const value = await blockCall(pane, "process", {}, signal);
+      const info = parseRexProcess(value);
+      if (
+        info.idle ||
+        value.child?.name !== "login" ||
+        value.foreground?.pid !== value.child.pid ||
+        process.platform !== "darwin" ||
+        !server?.startsWith("unix://")
+      )
+        return info;
+      const view = await inspect(signal);
+      const block = view.windows
+        .flatMap((window: any) => window.layers ?? [])
+        .flatMap((layer: any) => layer.blocks ?? [])
+        .find((block: any) => block.block_id === pane.paneId);
+      // Never interpret a remote terminal's PIDs against this machine's table.
+      if (!hostId || block?.host_id !== hostId) return info;
+      const snapshot = await pi.exec("/bin/ps", ["-axo", "pid=,ppid=,pgid=,tpgid=,comm="], {
+        signal,
+        timeout: 5_000,
+      });
+      if (snapshot.code !== 0) return info;
+      // Recheck Rex's identity after the snapshot before accepting its PIDs.
+      const current = await blockCall(pane, "process", {}, signal);
+      if (
+        current.child?.pid !== value.child.pid ||
+        current.child?.name !== "login" ||
+        current.foreground?.pid !== value.child.pid
+      )
+        return parseRexProcess(current);
+      return parseAtuinProxyProcess(value.child.pid, snapshot.stdout) ?? info;
+    },
     submit: async (pane, command, signal) => {
       await blockCall(pane, "write", { data: `${command}\r` }, signal);
     },

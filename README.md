@@ -112,8 +112,7 @@ pi install git:github.com/corymhall/toolkit
 
 The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
-`extensions/codex-fast-mode`, `extensions/pi-ui`,
-`extensions/session-default-model`, `extensions/system-prompt`,
+`extensions/codex-fast-mode`, `extensions/pi-ui`, `extensions/system-prompt`,
 `extensions/command-runner`, `extensions/copy-session`, `extensions/review-pane`,
 and `extensions/delegate` extensions.
 The package does not add hidden background-process or generic subagent tools.
@@ -177,15 +176,11 @@ renderers. Local file links use their normal `file://` targets.
 See [extensions/pi-ui/README.md](extensions/pi-ui/README.md) for links to each
 feature's behavior, requirements, and limitations.
 
-### Session Default Model extension
+### Model defaults
 
-`/session-default save` keeps the current model and thinking level as the fixed
-default for new sessions. Later model or thinking changes stay temporary to the
-current session. Resumed, forked, and cloned sessions keep their recorded model
-state. Use `/session-default show` to inspect the saved default and
-`/session-default clear` to return to Pi's normal behavior. See
-[extensions/session-default-model/README.md](extensions/session-default-model/README.md)
-for storage and failure behavior.
+Use Pi's built-in `/model` and `/thinking` pickers. Selections apply to the
+current session; press `Ctrl+S` in either picker to save its startup default.
+Resumed sessions keep their recorded selection.
 
 ### System Prompt extension
 
@@ -236,6 +231,8 @@ long-running command in one reusable, non-focused pane and returns immediately.
 recent output, with an optional bounded wait. The backend is selected from the
 terminal environment and reported by the tools. Both tools share Pi UI cards.
 New Pi sessions in the same terminal can adopt its existing command pane.
+Rex command panes float in the caller's tab and start minimized. Orderly Pi quit
+closes completed idle Rex panes while preserving running or uncertain work.
 Outside Herdr and Rex, use tmux manually for long-lived processes.
 
 See [extensions/command-runner/README.md](extensions/command-runner/README.md)

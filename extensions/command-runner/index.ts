@@ -370,7 +370,10 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
           await tagManagedPane(current, caller.terminalId, signal);
           return rememberManagedPane(current);
         }
-        if (ownerTerminalId === caller.terminalId) return rememberManagedPane(current);
+        if (ownerTerminalId === caller.terminalId) {
+          await backend.prepare?.(current, signal);
+          return rememberManagedPane(current);
+        }
       }
       managedPane = undefined;
     }
@@ -382,7 +385,11 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
       );
     }
     const adopted = owned[0] && paneRecordToManagedPane(owned[0]);
-    return adopted ? rememberManagedPane(adopted) : undefined;
+    if (adopted) {
+      await backend.prepare?.(adopted, signal);
+      return rememberManagedPane(adopted);
+    }
+    return undefined;
   };
 
   const recoverManagedRun = (
@@ -664,6 +671,13 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
       } satisfies CommandDetails,
     };
   };
+
+  pi.on("session_shutdown", async (event) => {
+    // Reloads and conversation switches keep the caller's reusable pane.
+    if (event.reason !== "quit") return;
+    await launchQueue;
+    await backend.shutdown?.();
+  });
 
   pi.on("session_start", async (_event, ctx) => {
     managedPane = undefined;

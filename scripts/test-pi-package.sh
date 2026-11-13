@@ -55,7 +55,6 @@ expected_extensions = [
     "extensions/web-access/index.ts",
     "extensions/codex-fast-mode/index.ts",
     "extensions/pi-ui/index.ts",
-    "extensions/session-default-model/index.ts",
     "extensions/system-prompt/index.ts",
     "extensions/command-runner/index.ts",
     "extensions/copy-session/index.ts",

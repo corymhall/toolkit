@@ -11,12 +11,16 @@ manual fallback, not a command-runner backend.
 
 ## Contract
 
-- One non-focused command pane per calling Pi terminal, split below Pi with
+- One non-focused command pane per calling Pi terminal. Rex uses a floating
+  pane in the caller's tab, minimized by default. Herdr splits below Pi with
   approximately 10 percent of its height. Separate Pi terminals get separate
   command panes. Later Pi sessions in the same terminal can adopt the pane.
 - Commands return after terminal input is accepted, not after completion. They
-  survive tool cancellation, Pi reload, and Pi exit. The extension never kills
-  commands or closes panes automatically.
+  survive tool cancellation, Pi reload, and Pi exit. Rex closes its registered
+  pane on orderly Pi quit only when the shell is idle and any tracked command
+  has a completion marker. Running, uncertain, and unrecognized work is retained.
+  Reloads and conversation switches retain the pane. Herdr never closes panes
+  automatically. Forceful exits may leave panes for later reuse.
 - Only one command may occupy the pane. A busy or unrecognized foreground
   process prevents another submission.
 - Commands must occupy one physical line, without tabs or newlines. Use shell
@@ -53,21 +57,35 @@ pane, and run identities and start times. It does not store command text or cwd.
 Files are atomically replaced with owner-only permissions. Registry keys include
 the Rex server instance, session, and calling block. Recovery validates the live
 session and blocks before adoption. A unique temporary pane label allows
-recovery after a lost split response. Server restarts require reloading Pi.
+recovery after a lost creation response. Server restarts require reloading Pi.
 
-If a split response remains unresolved, the runner stops rather than creating
-another pane. Inspect the live Rex session and the registry file named in the
-error. If the temporary labeled pane exists, leave it in place and retry so the
-runner can adopt it. Only remove that registry file after confirming that the
-split did not create a pane and that no command is running there. The next start
-can then create a pane normally. Do not delete tracking for an uncertain live
-command.
+Rex requires `session.new_layer`, `session.float_block`, and
+`session.set_layer_state`. Existing registered tiled panes are floated and
+minimized on recovery without restarting their shells or losing output.
+Restoring a floating pane in Rex leaves it visible during subsequent tool calls.
+The extension never adopts or cleans up unrelated panes by label. Older orphaned
+panes need explicit ownership and process checks before manual cleanup.
+
+If a pane creation response remains unresolved, the runner stops rather than
+creating another pane. Inspect the live Rex session and the registry file named
+in the error. If the temporary labeled pane exists, leave it in place and retry
+so the runner can adopt it. Only remove that registry file after confirming that
+creation failed without leaving a pane or a running command. The next start can
+then create a pane normally. Do not delete tracking for an uncertain live command.
 
 Rex's native `wait` waits for the terminal program to exit. Since the command
 pane runs a persistent shell, status instead checks completion markers with
 bounded cancellable polling inside the adapter. Cancelling that wait leaves the
 command running. Rex shell-prompt detection supports sh, Bash, and Zsh. Other
 shells are treated as busy rather than receiving potentially unsafe input.
+
+On macOS, Atuin's PTY proxy can hide the real shell behind an outer `login`
+process in Rex's response. For a Unix-socket server and a block on that server's
+host, the adapter checks the local process table for the exact
+`login → atuin → shell` chain and the inner terminal's foreground process group.
+It accepts only an idle supported shell, never `login` itself or a visible prompt
+as proof of readiness. Unknown wrappers, running commands, nested shells, and
+remote blocks remain busy. Process snapshots exclude command arguments.
 
 ## Parameters and monitoring
 
@@ -93,8 +111,9 @@ the full bounded result.
 
 Run unit and adapter tests with `mise x -- npm run test:command-runner`.
 For a live Rex check, run the following from a Rex terminal. It creates one
-non-focused test pane, checks waiting, exit status, reuse, and replacement-session
-recovery, then closes only that pane.
+non-focused test pane, checks minimized floating placement, focus preservation,
+waiting, exit status, reuse, replacement-session recovery, and idle-quit cleanup.
+It closes only that test pane.
 
 ```sh
 mise x -- env REX_RUNNER_INTEGRATION=1 node --experimental-strip-types --test extensions/command-runner/test/rex-integration.test.ts

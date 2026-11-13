@@ -6,7 +6,7 @@ import test from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import commandRunner from "../index.ts";
 import { buildRunMarkers } from "../command-runner.ts";
-import { parseRexProcess } from "../rex.ts";
+import { parseAtuinProxyProcess, parseRexProcess } from "../rex.ts";
 
 const runId = "12345678-1234-1234-1234-123456789abc";
 const markers = buildRunMarkers(runId);
@@ -14,6 +14,10 @@ const markers = buildRunMarkers(runId);
 function server() {
   let instance = "server-one";
   let pane: { id: string; label: string } | undefined;
+  let floating = true;
+  let minimized = false;
+  let loseMinimize = false;
+  let closes = 0;
   let busy = false;
   let transcript = "";
   let submissions = 0;
@@ -21,12 +25,28 @@ function server() {
   let loseSubmission = false;
   let loseSplit = false;
   let finishOnRead = false;
+  let proxy = false;
+  let host = "local-host";
+  let psCalls = 0;
   const exec = async (command: string, raw: string[]) => {
+    if (command === "/bin/ps") {
+      assert.deepEqual(raw, ["-axo", "pid=,ppid=,pgid=,tpgid=,comm="]);
+      psCalls++;
+      return {
+        code: 0,
+        stderr: "",
+        killed: false,
+        stdout:
+          "10 1 10 10 /usr/bin/login\n11 10 10 10 atuin\n" +
+          (busy ? "12 11 12 20 /bin/zsh\n20 12 20 20 make\n" : "12 11 12 12 /bin/zsh\n"),
+      };
+    }
     assert.equal(command, "rex");
     assert.deepEqual(raw.slice(0, 3), ["--server", "unix:///test.sock", "--autostart=false"]);
     const args = raw.slice(3);
     let result: unknown;
-    if (args[0] === "api" && args[2] === "server.status") result = { instance_id: instance };
+    if (args[0] === "api" && args[2] === "server.status")
+      result = { instance_id: instance, host_id: "local-host" };
     else if (args[0] === "session") {
       assert.deepEqual(args, ["session", "inspect", "session:test", "--json"]);
       result = {
@@ -36,6 +56,8 @@ function server() {
             window_id: "window:test",
             layers: [
               {
+                kind: "tiled",
+                layer_id: "layer:tiled",
                 blocks: [
                   {
                     block_id: "block:caller",
@@ -47,7 +69,7 @@ function server() {
                     creator_name: "com.superlogical.terminal",
                     label: "Other Pi",
                   },
-                  ...(pane
+                  ...(pane && !floating
                     ? [
                         {
                           block_id: pane.id,
@@ -58,31 +80,62 @@ function server() {
                     : []),
                 ],
               },
+              ...(pane && floating
+                ? [
+                    {
+                      kind: "floating",
+                      layer_id: "layer:command",
+                      state: minimized ? "minimized" : undefined,
+                      blocks: [
+                        {
+                          block_id: pane.id,
+                          label: pane.label,
+                          host_id: host,
+                          creator_name: "com.superlogical.terminal",
+                        },
+                      ],
+                    },
+                  ]
+                : []),
             ],
           },
         ],
       };
-    } else if (args[0] === "split") {
-      assert.deepEqual(args.slice(0, 7), [
-        "split",
-        "-s",
-        "session:test",
-        "-b",
-        args[4],
-        "--split=below",
-        "--ratio",
-      ]);
-      assert.ok(args[4] === "block:caller" || args[4] === "block:other");
-      assert.equal(args[7], "10");
-      assert.ok(args.includes("--focus=false"));
+    } else if (args.includes("session.new_layer")) {
+      const data = JSON.parse(args.at(-1)!);
+      assert.equal(data.window_id, "window:test");
+      assert.equal(data.focus, false);
+      assert.equal(data.layout.block.flavor, "com.superlogical.terminal.shell");
+      assert.ok(data.layout.block.options.cwd);
       splits++;
       busy = false;
-      pane = { id: `block:command-${splits}`, label: args[args.indexOf("--label") + 1]! };
+      floating = true;
+      minimized = false;
+      pane = { id: `block:command-${splits}`, label: data.layout.block.label };
       if (loseSplit) {
         loseSplit = false;
         return { code: 1, stdout: "", stderr: "connection lost", killed: false };
       }
-      result = { block_ids: [pane.id, "block:caller"] };
+      result = { block_ids: [pane.id], layer_id: "layer:command" };
+    } else if (args.includes("session.float_block")) {
+      assert.equal(JSON.parse(args.at(-1)!).block_id, pane!.id);
+      assert.equal(floating, false);
+      floating = true;
+      result = { layer_id: "layer:command" };
+    } else if (args.includes("session.set_layer_state")) {
+      assert.deepEqual(JSON.parse(args.at(-1)!), { layer_id: "layer:command", state: "minimized" });
+      if (loseMinimize) {
+        loseMinimize = false;
+        return { code: 1, stdout: "", stderr: "minimize failed", killed: false };
+      }
+      minimized = true;
+      result = {};
+    } else if (args.includes("block.close")) {
+      assert.equal(JSON.parse(args.at(-1)!).block_id, pane!.id);
+      assert.equal(busy, false);
+      pane = undefined;
+      closes++;
+      result = {};
     } else if (args[0] === "api" && args.includes("session.set_block_label")) {
       const data = JSON.parse(args.at(-1)!);
       assert.equal(data.block_id, pane!.id);
@@ -93,11 +146,17 @@ function server() {
       const method = args[6];
       const data = JSON.parse(args[7]!);
       if (method === "process")
-        result = {
-          child: { pid: 10, name: "zsh" },
-          foreground: busy ? { pid: 20, name: "make" } : { pid: 10, name: "zsh" },
-          last_exit: null,
-        };
+        result = proxy
+          ? {
+              child: { pid: 10, name: "login" },
+              foreground: { pid: 10, name: "login" },
+              last_exit: null,
+            }
+          : {
+              child: { pid: 10, name: "zsh" },
+              foreground: busy ? { pid: 20, name: "make" } : { pid: 10, name: "zsh" },
+              last_exit: null,
+            };
       else if (method === "write") {
         assert.ok(data.data.startsWith("printf "));
         assert.ok(data.data.endsWith("\r"));
@@ -121,6 +180,34 @@ function server() {
   };
   return {
     exec,
+    enableProxy: () => {
+      proxy = true;
+    },
+    remoteHost: () => {
+      host = "remote-host";
+    },
+    get psCalls() {
+      return psCalls;
+    },
+    get minimized() {
+      return minimized;
+    },
+    get closes() {
+      return closes;
+    },
+    restoreLayer: () => {
+      minimized = false;
+    },
+    makeTiled: () => {
+      floating = false;
+      minimized = false;
+    },
+    loseMinimize: () => {
+      loseMinimize = true;
+    },
+    idleWithoutCompletion: () => {
+      busy = false;
+    },
     get submissions() {
       return submissions;
     },
@@ -168,6 +255,7 @@ function load(remote: ReturnType<typeof server>, directory: string, caller = "bl
   }
   return {
     tools,
+    shutdown: (reason = "quit") => handlers.get("session_shutdown")({ reason }),
     restore: (entries: unknown[] = []) =>
       handlers.get("session_start")({}, { sessionManager: { getBranch: () => entries } }),
     start: () =>
@@ -218,15 +306,131 @@ test("resuming Pi in another terminal does not steal the original Rex command pa
     assert.equal(remote.splits, 2);
   }));
 
-test("an unresolved Rex split refuses to create a duplicate", async () =>
+test("an unresolved Rex pane creation refuses to create a duplicate", async () =>
   fixture(async (remote, directory) => {
     remote.loseSplit();
     await assert.rejects(load(remote, directory).start(), /connection lost/);
     remote.removePane();
-    await assert.rejects(load(remote, directory).start(), /split response is unresolved/);
+    await assert.rejects(load(remote, directory).start(), /pane creation response is unresolved/);
     assert.equal(remote.splits, 1);
     assert.equal(remote.submissions, 0);
   }));
+
+test("Rex minimizes new panes, migrates tiled panes, and respects a user-restored layer", async () =>
+  fixture(async (remote, directory) => {
+    const runner = load(remote, directory);
+    const first = await runner.start();
+    assert.equal(remote.minimized, true);
+    remote.restoreLayer();
+    const replacement = load(remote, directory);
+    await replacement.restore();
+    await replacement.status();
+    assert.equal(remote.minimized, false);
+    remote.makeTiled();
+    const migrated = load(remote, directory);
+    await migrated.restore();
+    const recovered = await migrated.status();
+    assert.equal(recovered.details.paneId, first.details.paneId);
+    assert.equal(remote.minimized, true);
+    assert.equal(remote.splits, 1);
+    assert.equal(remote.submissions, 1);
+  }));
+
+test("Rex retries failed minimization without duplicating the pane or submitting work", async () =>
+  fixture(async (remote, directory) => {
+    remote.loseMinimize();
+    await assert.rejects(load(remote, directory).start(), /minimize failed/);
+    assert.equal(remote.submissions, 0);
+    await load(remote, directory).start();
+    assert.equal(remote.minimized, true);
+    assert.equal(remote.splits, 1);
+    assert.equal(remote.submissions, 1);
+  }));
+
+test("Rex shutdown preserves running and uncertain work and closes only completed idle panes", async () =>
+  fixture(async (remote, directory) => {
+    const runner = load(remote, directory);
+    await runner.start();
+    await runner.shutdown();
+    assert.equal(remote.closes, 0);
+    remote.idleWithoutCompletion();
+    await runner.shutdown();
+    assert.equal(remote.closes, 0);
+    remote.finishOnRead();
+    await runner.status();
+    for (const reason of ["reload", "new", "resume", "fork"]) await runner.shutdown(reason);
+    assert.equal(remote.closes, 0);
+    await runner.shutdown();
+    await runner.shutdown();
+    assert.equal(remote.closes, 1);
+    await load(remote, directory).start();
+    assert.equal(remote.splits, 2);
+  }));
+
+test("Rex shutdown in a different Pi terminal cannot close another terminal's pane", async () =>
+  fixture(async (remote, directory) => {
+    const runner = load(remote, directory);
+    await runner.start();
+    remote.finishOnRead();
+    await runner.status();
+    await load(remote, directory, "block:other").shutdown();
+    assert.equal(remote.closes, 0);
+  }));
+
+test(
+  "Rex submits through a local Atuin proxy but refuses busy and remote proxy terminals",
+  { skip: process.platform !== "darwin" },
+  async () =>
+    fixture(async (remote, directory) => {
+      remote.enableProxy();
+      const runner = load(remote, directory);
+      await runner.start();
+      assert.equal(remote.submissions, 1);
+      assert.equal((await runner.start()).details.state, "busy");
+      assert.equal(remote.submissions, 1);
+      assert.ok(remote.psCalls > 0);
+      remote.finishOnRead();
+      await runner.status();
+      const calls = remote.psCalls;
+      remote.remoteHost();
+      assert.equal((await runner.start()).details.state, "busy");
+      assert.equal(remote.psCalls, calls);
+      assert.equal(remote.submissions, 1);
+    }),
+);
+
+test("Atuin PTY inspection distinguishes the inner prompt from running and nested programs", () => {
+  const outer = "100 1 100 100 /usr/bin/login\n101 100 100 100 atuin\n";
+  const idle = outer + "110 101 110 110 /bin/zsh\n";
+  assert.deepEqual(parseAtuinProxyProcess(100, idle), {
+    shellPid: 110,
+    foregroundProcesses: [{ pid: 110, name: "zsh" }],
+    idle: true,
+  });
+  const running = outer + "110 101 110 120 /bin/zsh\n120 110 120 120 make\n121 120 120 120 go\n";
+  const info = parseAtuinProxyProcess(100, running)!;
+  assert.equal(info.idle, false);
+  assert.deepEqual(
+    info.foregroundProcesses.map((p) => p.name),
+    ["make", "go"],
+  );
+  for (const snapshot of [
+    outer + "110 101 110 120 /bin/zsh\n120 110 120 120 /bin/zsh\n",
+    idle + "120 110 110 110 python\n",
+    idle + "120 1 110 110 python\n",
+    outer + "110 101 110 120 /bin/zsh\n",
+  ])
+    assert.equal(parseAtuinProxyProcess(100, snapshot)?.idle, false);
+  for (const snapshot of [
+    idle.replace("atuin", "unknown"),
+    idle.replace("/bin/zsh", "fish"),
+    idle.replace("110 110 /bin/zsh", "110 -1 /bin/zsh"),
+    idle + "111 101 111 111 /bin/bash\n",
+    "100 1 100 100 /usr/bin/login\n",
+    "invalid output",
+  ])
+    assert.equal(parseAtuinProxyProcess(100, snapshot), undefined);
+});
 
 test("Rex shell detection rejects nested shells, other foreground programs, and unknown processes", () => {
   assert.equal(
@@ -299,7 +503,7 @@ test("an uncertain Rex submission remains recoverable without resending input", 
     assert.equal(remote.submissions, 1);
   }));
 
-test("a lost Rex split response is adopted through its unique label", async () =>
+test("a lost Rex pane creation response is adopted through its unique label", async () =>
   fixture(async (remote, directory) => {
     remote.loseSplit();
     await assert.rejects(load(remote, directory).start(), /connection lost/);

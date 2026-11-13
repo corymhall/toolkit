@@ -46,7 +46,28 @@ test(
       commandRunner(pi, { stateDirectory: directory });
       return { tools, handlers };
     };
+    const view = async () =>
+      JSON.parse(
+        (
+          await execute("rex", [
+            "--server",
+            process.env.REX_SERVER!,
+            "--autostart=false",
+            "session",
+            "inspect",
+            process.env.REX_SESSION!,
+            "--json",
+          ])
+        ).stdout,
+      );
     try {
+      const before = await view();
+      const callerWindow = before.windows.find((window: any) =>
+        window.layers.some((layer: any) =>
+          layer.blocks.some((block: any) => block.block_id === process.env.REX_BLOCK),
+        ),
+      );
+      assert.ok(callerWindow);
       const runner = load();
       const start = (command: string) =>
         runner.tools
@@ -59,6 +80,17 @@ test(
             { cwd: directory },
           );
       const first = await start("printf 'rex integration output\\n'; sleep 2; false");
+      const after = await view();
+      const window = after.windows.find(
+        (window: any) => window.window_id === callerWindow.window_id,
+      );
+      const layer = window.layers.find((layer: any) =>
+        layer.blocks.some((block: any) => block.block_id === first.details.paneId),
+      );
+      assert.equal(layer.kind, "floating");
+      assert.equal(layer.state, "minimized");
+      assert.equal(after.active_window_id, before.active_window_id);
+      assert.equal(window.focused_block_id, callerWindow.focused_block_id);
       const result = await runner.tools.get("command_status").execute("status", { waitMs: 10000 });
       assert.equal(result.details.state, "completed", result.content[0].text);
       assert.equal(result.details.exitCode, 1);
@@ -77,6 +109,15 @@ test(
       assert.equal(recovered.details.exitCode, 0);
       assert.equal(recovered.details.paneId, first.details.paneId);
       assert.match(recovered.content[0].text, /reused pane/);
+      await replacement.handlers.get("session_shutdown")({ reason: "quit" });
+      const closed = await view();
+      assert.ok(
+        !closed.windows.some((window: any) =>
+          window.layers.some((layer: any) =>
+            layer.blocks.some((block: any) => block.block_id === first.details.paneId),
+          ),
+        ),
+      );
     } finally {
       const prefix = ["--server", process.env.REX_SERVER!, "--autostart=false"];
       for (const file of await readdir(directory)) {
