@@ -39,6 +39,7 @@ test(
             };
           }
         },
+        registerMessageRenderer() {},
         registerTool: (tool: any) => tools.set(tool.name, tool),
         on: (name: string, handler: any) => handlers.set(name, handler),
         appendEntry() {},

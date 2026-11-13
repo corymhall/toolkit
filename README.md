@@ -242,9 +242,12 @@ directory, without copying the transcript. See
 
 When Pi runs inside Herdr or Rex, `start_command` starts an ordinary
 long-running command in one reusable, non-focused pane and returns immediately.
-`command_status` reports completion, exit status, foreground processes, and
-recent output, with an optional bounded wait. The backend is selected from the
-terminal environment and reported by the tools. Both tools share Pi UI cards.
+In interactive and RPC sessions, completion arrives automatically as a follow-up
+with the exit code and a short output tail. Continue other work or end the turn
+until notified. `command_status` provides immediate process and output diagnostics,
+with an optional explicit bounded wait. Notification receipts survive reloads.
+The backend is selected from the terminal environment and reported by the tools.
+Both tools share Pi UI cards.
 New Pi sessions in the same terminal can adopt its existing command pane.
 Rex command panes float in the caller's tab and start minimized. Orderly Pi quit
 closes completed idle Rex panes while preserving running or uncertain work.

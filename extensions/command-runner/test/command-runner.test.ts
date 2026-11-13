@@ -130,6 +130,7 @@ function loadExtension(
   const handlers = new Map<string, (...args: any[]) => any>();
   const entries: Array<{ customType: string; data: unknown }> = [];
   const pi = {
+    registerMessageRenderer() {},
     registerTool(tool: {
       name: string;
       description?: string;
@@ -278,7 +279,7 @@ test("renders compact start and status cards with expandable output", () => {
     const statusOutput = statusRow.render(120).join("\n");
     assert.match(statusOutput, /➔ Command Status ✗/u);
     assert.match(statusOutput, /Command: \$ mise run validate/u);
-    assert.match(statusOutput, /exit 2 · 14s/u);
+    assert.match(statusOutput, /exit 2.*observed after 14s/u);
     assert.doesNotMatch(statusOutput, /wait 2.0s/u);
     assert.doesNotMatch(statusOutput, /\bone\b|\btwo\b/u);
     assert.match(statusOutput, /three/u);
@@ -313,7 +314,7 @@ test("renders compact start and status cards with expandable output", () => {
     );
     const successfulOutput = statusRow.render(120).join("\n");
     assert.match(successfulOutput, /➔ Command Status ✓/u);
-    assert.match(successfulOutput, /exit 0 · 15s/u);
+    assert.match(successfulOutput, /exit 0.*observed after 15s/u);
     assert.match(successfulOutput, /first line/u);
     assert.match(successfulOutput, /last line/u);
   });
@@ -453,9 +454,8 @@ test("starts one visible command and returns without waiting or reading output",
     assert.match(startTool.promptGuidelines?.join("\n") ?? "", /continue useful independent work/);
     assert.match(statusTool.description ?? "", /bounded wait of at most 30 minutes/);
     const statusGuidelines = statusTool.promptGuidelines?.join("\n") ?? "";
-    assert.match(statusGuidelines, /instead of fixed bash sleeps/);
-    assert.match(statusGuidelines, /1–2 minute wait/);
-    assert.match(statusGuidelines, /at most 1–2 read-only diagnostics/);
+    assert.match(statusGuidelines, /end your turn/);
+    assert.match(statusGuidelines, /Completion notifications/);
     assert.match(statusGuidelines, /Never restart or terminate/);
     assert.equal(statusTool.parameters?.properties?.waitMs?.maximum, 30 * 60_000);
     const result = await startTool.execute(

@@ -1,8 +1,11 @@
 # Command runner
 
 `start_command` starts a long-running shell command in a visible reusable pane
-without blocking Pi. `command_status` reports its state, numeric exit code,
-foreground processes, and recent output. Use Bash for short synchronous work.
+without blocking Pi. In interactive and RPC sessions, completion arrives
+automatically as a follow-up with the exit code and a short output tail. The
+follow-up resumes an idle agent without interrupting ongoing work.
+`command_status` provides immediate state, process, and output diagnostics.
+Use Bash for short synchronous work.
 
 The extension selects Herdr when `HERDR_ENV=1`, otherwise Rex when both
 `REX_SESSION` and `REX_BLOCK` are set. Tools report the selected backend and pane
@@ -97,15 +100,41 @@ and `lines`, from 1 through 2,000 with a default of 120. Results are capped at
 50KB. Waits return early on completion. Full output remains in pane scrollback
 until the terminal discards it.
 
-Continue independent work after starting. When a result becomes relevant, use
-short waits while progress is uncertain, then longer waits after observing a
-stable phase. If progress stops, inspect processes or dependencies before
-intervening. Never restart or terminate work solely because output is quiet.
-Check status before relying on artifacts or reporting success.
+Continue independent work after starting. If nothing independent remains, end
+the turn and let the completion follow-up resume work. Do not poll or use long
+status waits for routine completion. Use `command_status` without `waitMs` when
+output or process diagnostics are needed. Explicit bounded waits remain available
+for callers that require them, including print and JSON modes, which have no
+automatic notifications.
+
+The extension checks tracked commands in the background every two seconds,
+without overlapping inspections or holding a model tool call open. Each terminal
+outcome sends at most one follow-up with the last 20 output lines, capped at
+50KB. Missing markers, vanished panes, and backend errors report unavailable
+tracking, never success. A backend error ends that watcher; inspect with
+`command_status` rather than automatically resubmitting the command.
+
+Notification receipts survive reload and resume. Receipts record dispatch to
+Pi's follow-up queue, not that the agent has processed the message. Only runs
+recorded in the active conversation branch are watched. Adopting a pane in a new conversation
+does not subscribe to the previous conversation's command. Session shutdown and
+tree navigation cancel stale monitoring without stopping shell commands.
+An explicit terminal `command_status` result acknowledges the outcome without a
+duplicate follow-up. Starting another command delivers any pending previous
+outcome before reusing the pane.
+
+Never restart or terminate work solely because output is quiet. Confirm a
+successful completion notification or status result before relying on artifacts
+or reporting success.
 
 Both tools use shared Pi UI cards. Running status stays compact. Completed
-status shows the command and a short output preview. Pi's expansion key reveals
-the full bounded result.
+status and automatic completion notifications show the command, outcome, exit
+code, elapsed time to observation, and a short output preview. Elapsed time
+includes any time Pi was closed or monitoring was paused, so it is not an exact
+execution duration. Notifications render as separate Command Result cards, even
+when a saved session is reopened outside Herdr or Rex. Pi's expansion key reveals
+the full bounded result, including truncation and recovery notices. Lost tracking
+uses a warning card.
 
 ## Checks
 

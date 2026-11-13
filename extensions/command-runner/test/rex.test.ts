@@ -237,6 +237,7 @@ function load(remote: ReturnType<typeof server>, directory: string, caller = "bl
   const handlers = new Map<string, any>();
   const pi = {
     exec: remote.exec,
+    registerMessageRenderer() {},
     registerTool: (tool: any) => tools.set(tool.name, tool),
     on: (name: string, handler: any) => handlers.set(name, handler),
     appendEntry() {},

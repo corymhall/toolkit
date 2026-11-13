@@ -50,6 +50,8 @@ import {
 const DEFAULT_STATUS_LINES = 120;
 const MAX_STATUS_WAIT_MS = 30 * 60_000;
 const SUBMISSION_GRACE_MS = 2_000;
+const NOTIFICATION_ENTRY = "toolkit-command-notification";
+const MONITOR_INTERVAL_MS = 2_000;
 
 const START_PARAMETERS = Type.Object({
   command: Type.String({
@@ -105,6 +107,7 @@ interface Dependencies {
   now?: () => number;
   randomUUID?: () => string;
   stateDirectory?: string;
+  schedule?: (callback: () => Promise<void>) => () => void;
 }
 
 function recentOutput(
@@ -155,7 +158,7 @@ function commandResultSummary(
       parts.push(`exit ${details.exitCode ?? "?"}`);
       if (details.durationMs !== undefined) {
         const duration = formatDuration(details.durationMs);
-        if (duration) parts.push(duration);
+        if (duration) parts.push(`observed after ${duration}`);
       }
       break;
     case "busy":
@@ -294,17 +297,59 @@ function processSummary(
 }
 
 export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: Dependencies = {}) {
-  const backend = createBackend(pi, { ...process.env }, dependencies.stateDirectory);
-  if (!backend) return;
-
   const now = dependencies.now ?? Date.now;
   const makeRunId = dependencies.randomUUID ?? randomUUID;
   const expandHint = `${keyText("app.tools.expand")} to expand`;
+  pi.registerMessageRenderer<CommandDetails>("command-result", (message, { expanded }, theme) => {
+    if (!message.details) return undefined;
+    const result: AgentToolResult<CommandDetails> = {
+      content:
+        typeof message.content === "string"
+          ? [{ type: "text", text: message.content }]
+          : message.content,
+      details: message.details,
+    };
+    return updateCommandCard(
+      {},
+      undefined,
+      "Command Result",
+      `Command: ${message.details.command ?? message.details.runId ?? "…"}`,
+      commandResultVisual(message.details, expanded),
+      commandResultSummary(message.details),
+      theme,
+      expanded ? renderExpandedResult(result, theme) : undefined,
+      { words: countToolResultWords(result) },
+      { compact: false, preview: previewCommandResult(result, expandHint) },
+    );
+  });
+  // Saved completion messages remain renderable outside the originating terminal backend.
+  const backend = createBackend(pi, { ...process.env }, dependencies.stateDirectory);
+  if (!backend) return;
   const callerPaneId = backend.callerPaneId;
   const callerWorkspaceId = backend.callerWorkspaceId;
   let managedPane: ManagedPane | undefined;
   let latestRun: ManagedRun | undefined;
   let launchQueue = Promise.resolve();
+  let monitor: { run: ManagedRun; controller: AbortController } | undefined;
+  let cancelTick: (() => void) | undefined;
+  const notified = new Set<string>();
+  const schedule =
+    dependencies.schedule ??
+    ((callback: () => Promise<void>) => {
+      const timer = setTimeout(() => void callback(), MONITOR_INTERVAL_MS);
+      timer.unref();
+      return () => clearTimeout(timer);
+    });
+  // Launches, manual checks, and monitoring share mutable pane/run state.
+  // Serializing them also preserves the previous outcome before pane reuse.
+  const exclusive = <T>(action: () => Promise<T>): Promise<T> => {
+    const result = launchQueue.then(action);
+    launchQueue = result.then(
+      () => {},
+      () => {},
+    );
+    return result;
+  };
   const startedAt = new Map<string, number>();
   const finishedAt = new Map<string, number>();
   const cardMetadata = (
@@ -520,6 +565,8 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
       }
     }
 
+    // Deliver the previous run's result before its scrollback can be replaced.
+    await inspectMonitor();
     const runId = makeRunId();
     const markers = buildRunMarkers(runId);
     const paneCommand = buildPaneCommand(command, cwd, markers);
@@ -541,13 +588,18 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
     // Retain tracking even if submission succeeds but its response is lost.
     latestRun = run;
     pi.appendEntry(HERDR_COMMAND_RUN_ENTRY, run);
-    await backend.submit(current, paneCommand, signal);
+    try {
+      await backend.submit(current, paneCommand, signal);
+    } finally {
+      // Submission cancellation does not cancel the command or its watcher.
+      watchRun(run, ctx);
+    }
 
     return {
       content: [
         {
           type: "text" as const,
-          text: `Started command ${runId} in ${backend.name} pane ${current.paneId}. It is running independently; continue other work and use ${COMMAND_STATUS_TOOL_NAME} when its result is needed.`,
+          text: `Started command ${runId} in ${backend.name} pane ${current.paneId}. It is running independently. ${ctx.mode === "tui" || ctx.mode === "rpc" ? "Completion will arrive automatically as a follow-up. Continue other work or end your turn; do not poll." : `Automatic notifications are unavailable in this mode; use ${COMMAND_STATUS_TOOL_NAME} to confirm completion.`}`,
         },
       ],
       details: {
@@ -613,6 +665,11 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
       info = await paneProcessInfo(pane, signal);
     }
 
+    // The shell can finish between the transcript read and process inspection.
+    if (exitCode === undefined && info.idle) {
+      text = await readPane(pane, signal);
+      exitCode = exitCodeFromTranscript(text, markers);
+    }
     const transcript = extractTranscript(text, markers);
     const durationMs = now() - latestRun.startedAt;
     const state: RunState =
@@ -638,8 +695,8 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
     const status =
       state === "completed"
         ? exitCode === 0
-          ? `Command ${latestRun.runId} completed successfully in ${(durationMs / 1000).toFixed(1)}s`
-          : `Command ${latestRun.runId} failed with exit code ${exitCode} after ${(durationMs / 1000).toFixed(1)}s`
+          ? `Command ${latestRun.runId} completed successfully, observed ${(durationMs / 1000).toFixed(1)}s after submission`
+          : `Command ${latestRun.runId} failed with exit code ${exitCode}, observed ${(durationMs / 1000).toFixed(1)}s after submission`
         : state === "running"
           ? `Command ${latestRun.runId} is still running after ${(durationMs / 1000).toFixed(1)}s`
           : state === "submitted"
@@ -672,19 +729,103 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
     };
   };
 
+  const stopMonitor = () => {
+    cancelTick?.();
+    cancelTick = undefined;
+    monitor?.controller.abort();
+    monitor = undefined;
+  };
+
+  const inspectMonitor = async () => {
+    const active = monitor;
+    if (!active || notified.has(active.run.runId)) return;
+    let result: AgentToolResult<CommandDetails>;
+    try {
+      result =
+        latestRun?.runId === active.run.runId
+          ? await commandStatus({ lines: 20 }, active.controller.signal)
+          : {
+              content: [
+                {
+                  type: "text",
+                  text: `Tracking for command ${active.run.runId} was replaced by another session. Its result is unavailable.`,
+                },
+              ],
+              details: { state: "lost", runId: active.run.runId },
+            };
+    } catch (error) {
+      result = {
+        content: [
+          {
+            type: "text",
+            text: `Unable to monitor command ${active.run.runId}: ${error instanceof Error ? error.message : String(error)}. The command may still be running. Use command_status to inspect it; do not resubmit automatically.`,
+          },
+        ],
+        details: { state: "lost", runId: active.run.runId },
+      };
+    }
+    if (monitor !== active || active.controller.signal.aborted) return;
+    if (result.details.state !== "completed" && result.details.state !== "lost") return;
+    pi.sendMessage(
+      {
+        customType: "command-result",
+        display: true,
+        content: `Command: ${active.run.command ?? active.run.runId}\n${commandResultText(result)}`,
+        details: { ...result.details, command: active.run.command, cwd: active.run.cwd },
+      },
+      { deliverAs: "followUp", triggerTurn: true },
+    );
+    // This receipt records dispatch into Pi's follow-up queue, not agent processing.
+    notified.add(active.run.runId);
+    pi.appendEntry(NOTIFICATION_ENTRY, { runId: active.run.runId });
+    stopMonitor();
+  };
+
+  const watchRun = (run: ManagedRun, ctx: ExtensionContext) => {
+    stopMonitor();
+    if (!["tui", "rpc"].includes(ctx.mode) || notified.has(run.runId)) return;
+    const active = { run, controller: new AbortController() };
+    monitor = active;
+    const tick = async () => {
+      try {
+        await exclusive(async () => {
+          if (monitor === active) await inspectMonitor();
+        });
+      } catch (error) {
+        if (monitor !== active) return;
+        stopMonitor();
+        ctx.ui.notify(
+          `Automatic command notification failed: ${error instanceof Error ? error.message : String(error)}. Use command_status to inspect the command.`,
+          "error",
+        );
+      }
+      if (monitor === active) cancelTick = schedule(tick);
+    };
+    cancelTick = schedule(tick);
+  };
+
   pi.on("session_shutdown", async (event) => {
+    stopMonitor();
+    await launchQueue;
+    stopMonitor();
     // Reloads and conversation switches keep the caller's reusable pane.
     if (event.reason !== "quit") return;
-    await launchQueue;
     await backend.shutdown?.();
   });
 
-  pi.on("session_start", async (_event, ctx) => {
+  const restore = async (ctx: ExtensionContext) => {
+    stopMonitor();
+    await launchQueue;
+    notified.clear();
     managedPane = undefined;
     latestRun = undefined;
     for (const entry of ctx.sessionManager.getBranch()) {
       const candidate = entry as { type?: string; customType?: string; data?: unknown };
       if (candidate.type !== "custom") continue;
+      if (candidate.customType === NOTIFICATION_ENTRY) {
+        const receipt = candidate.data as { runId?: unknown } | undefined;
+        if (typeof receipt?.runId === "string") notified.add(receipt.runId);
+      }
       if (candidate.customType === HERDR_COMMAND_PANE_ENTRY && isManagedPane(candidate.data)) {
         managedPane = candidate.data;
       }
@@ -693,22 +834,27 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
       }
     }
 
+    // Pane adoption does not subscribe a new conversation to another session's run.
+    const ownRun = latestRun;
     const panes = await listPanes();
     const pane = await recoverManagedPane(panes, callingPane(panes));
     recoverManagedRun(panes, pane);
-  });
+    if (ownRun) watchRun(ownRun, ctx);
+  };
+  pi.on("session_start", (_event, ctx) => restore(ctx));
+  pi.on("session_tree", (_event, ctx) => restore(ctx));
 
   pi.registerTool({
     name: START_COMMAND_TOOL_NAME,
     label: "Start Command",
     description:
       `Backend: ${backend.name}. ` +
-      "Start one ordinary long-running shell command in a visible reusable terminal pane and return immediately after submission. Use for builds, long test suites, code generation, or other work that can continue while the agent does independent tasks. Use bash instead for short commands or when the result is required before the next action. Only one command can occupy the managed pane at a time.",
+      "Start one ordinary long-running shell command in a visible reusable terminal pane and return immediately after submission. Use for builds, long test suites, code generation, or other work that can continue while the agent does independent tasks. Use bash instead for short commands or when the result is required before the next action. Only one command can occupy the managed pane at a time. In interactive and RPC sessions, completion or lost tracking arrives automatically as a follow-up with an exit code and bounded output; continue independent work or end your turn instead of polling.",
     promptSnippet:
       "Start a long-running command in a visible terminal pane without waiting for completion",
     promptGuidelines: [
       "Use start_command for long-running builds, test suites, generation, or similar commands that should remain visible while independent work continues; use bash for short commands or results needed immediately.",
-      "After start_command returns, continue useful independent work instead of polling. Use command_status when its result becomes relevant, with short waits while the command is new or uncertain and longer waits only after stable progress is observed.",
+      "After start_command returns, continue useful independent work or end your turn. Completion arrives automatically as a follow-up in interactive and RPC sessions; do not poll or block waiting for it.",
     ],
     parameters: START_PARAMETERS,
     renderShell: "self",
@@ -744,17 +890,10 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
     },
     async execute(toolCallId, params, signal, _onUpdate, ctx) {
       startedAt.set(toolCallId, now());
-      let release!: () => void;
-      const previous = launchQueue;
-      launchQueue = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      await previous;
       try {
-        return await startCommand(params, signal, ctx);
+        return await exclusive(() => startCommand(params, signal, ctx));
       } finally {
         finishedAt.set(toolCallId, now());
-        release();
       }
     },
   });
@@ -764,13 +903,13 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
     label: "Command Status",
     description:
       `Backend: ${backend.name}. ` +
-      "Inspect the latest command started by start_command. Returns its running or completed state, exit code, foreground processes, and recent pane output. Returns immediately unless waitMs requests a bounded wait of at most 30 minutes, and returns early when the command finishes. Check status before relying on command artifacts or reporting success.",
-    promptSnippet: "Inspect or wait for the latest command in the managed terminal pane",
+      "Inspect the latest command started by start_command. Returns its running or completed state, exit code, foreground processes, and recent pane output. Completion arrives automatically as a follow-up in interactive and RPC sessions. Use this tool for immediate diagnostics, not routine polling. Returns immediately unless waitMs explicitly requests a bounded wait of at most 30 minutes. Confirm a successful completion notification or status result before relying on artifacts or reporting success.",
+    promptSnippet:
+      "Inspect the latest command in the managed terminal pane when diagnostics are needed",
     promptGuidelines: [
-      "Use command_status to inspect a previously started command when its result becomes relevant; omit waitMs for an immediate check.",
-      "For a new or uncertain command, use command_status with a 1–2 minute wait and then a 5 minute wait instead of fixed bash sleeps. When expected progress remains absent, keep the command running and use at most 1–2 read-only diagnostics for its foreground processes, logs, dependencies, disk, or resource pressure.",
-      "After command_status shows stable output, dependencies, and resource use, use 10–30 minute waits or wait for completion. Return to short waits when the command changes phase, progress stops, an error appears, or resource pressure changes.",
-      "Never restart or terminate a command solely because command_status shows no new output; confirm completion with command_status before relying on artifacts or reporting success.",
+      "Use command_status for immediate output and process diagnostics; omit waitMs. Completion notifications make routine polling and blocking waits unnecessary in interactive and RPC sessions.",
+      "If start_command is still running and no independent work remains, end your turn and let its completion follow-up resume work. Use command_status with waitMs only when an explicit bounded wait is required or automatic notifications are unavailable.",
+      "Never restart or terminate a command solely because command_status shows no new output. A lost tracking notification is not proof of failure or permission to resubmit. Confirm successful completion through a notification or command_status before relying on artifacts or reporting success.",
     ],
     parameters: STATUS_PARAMETERS,
     renderShell: "self",
@@ -824,8 +963,20 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
     async execute(toolCallId, params, signal) {
       startedAt.set(toolCallId, now());
       try {
-        await launchQueue;
-        return await commandStatus(params, signal);
+        return await exclusive(async () => {
+          const result = await commandStatus(params, signal);
+          // An explicit check also acknowledges terminal outcomes, without a duplicate follow-up.
+          if (
+            monitor &&
+            result.details.runId === monitor.run.runId &&
+            (result.details.state === "completed" || result.details.state === "lost")
+          ) {
+            notified.add(monitor.run.runId);
+            pi.appendEntry(NOTIFICATION_ENTRY, { runId: monitor.run.runId });
+            stopMonitor();
+          }
+          return result;
+        });
       } finally {
         finishedAt.set(toolCallId, now());
       }
