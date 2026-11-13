@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# These tests exercise their own proxy, even when validation itself is guarded.
+unset MEMGUARD_DISABLE CODEX_MEMGUARD_DISABLE PI_MEMGUARD_DISABLE MEMRUN_ACTIVE CODEX_MEMRUN_ACTIVE
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 skill_dir="${repo_root}/skills/memory-guard"
 proxy="${skill_dir}/scripts/make"
@@ -62,5 +65,7 @@ kill_log=$(find "${tmp_dir}/kill-state/toolkit/memrun" -name '*.jsonl' -print -q
 python3 "${summarizer}" "${kill_log}" >"${tmp_dir}/kill-summary.out"
 grep -q '^outcome: killed$' "${tmp_dir}/kill-summary.out"
 grep -q 'memrun: killing' "${tmp_dir}/kill.err"
+
+python3 "${skill_dir}/scripts/test_memrun.py"
 
 echo "Memory guard tests passed."

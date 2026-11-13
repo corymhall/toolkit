@@ -15,8 +15,8 @@ JSONL log, RSS limit, exit `137`, or memory guard. The `make` proxy installed at
 Do not immediately rerun the failed command. First inspect the log and explain:
 
 - the original command and cwd;
-- the hard RSS limit and sample threshold;
-- the peak total RSS;
+- the configured memory limit, measurement metric, and sample threshold;
+- the peak total memory and RSS;
 - the largest process at peak or kill time;
 - whether a macOS `sample` file was captured;
 - the exact log path and any sample path.
@@ -35,6 +35,15 @@ valid:
 python3 skills/memory-guard/scripts/summarize_memrun_log.py <memrun-log>.jsonl
 ```
 
+On macOS, `memrun` enforces the greater of RSS and physical footprint for each
+process, including compressed memory that Activity Monitor counts but RSS
+misses. Linux and unavailable native measurements fall back to RSS. The
+`--rss-limit` and `MEMRUN_RSS_LIMIT` names remain for compatibility. New logs
+retain RSS and record `physical_footprint`, `memory`, and `total_memory`
+separately. Logs without an exit, kill, or interrupt record are incomplete, not
+successful runs. Interruptions terminate the command group and are logged
+explicitly.
+
 ## Recovery Rules
 
 - Treat exit `137` from `memrun` as an intentional guard kill, not a normal test
@@ -42,7 +51,7 @@ python3 skills/memory-guard/scripts/summarize_memrun_log.py <memrun-log>.jsonl
 - Never rerun the original command unguarded.
 - If rerunning is needed, keep `memrun` enabled and lower scope first: a
   narrower make target, one package, one test, or the direct generator command.
-- If one child process dominates RSS, focus on that binary, language host,
+- If one child process dominates memory, focus on that binary, language host,
   compiler, or test process rather than the parent shell.
 - If a sample exists, inspect the top stack frames before proposing code
   changes.
