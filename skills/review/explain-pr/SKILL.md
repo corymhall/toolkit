@@ -13,9 +13,6 @@ review. It helps a human reviewer understand the problem, the chosen solution
 shape, the tradeoffs, and the behavioral or compatibility risks before deciding
 whether deeper code review is needed.
 
-Use `review-pr` when the user wants draft or posted GitHub review comments. Use
-`request-review` when the user wants findings-first technical review.
-
 ## Inputs
 
 Accept:
@@ -150,9 +147,10 @@ Default to a single HTML file under `/tmp`, such as
 the page can be opened directly.
 
 If the page benefits from local serving, use Herdr when `HERDR_ENV=1` or Rex
-when `REX_SESSION` and `REX_BLOCK` are set. Load the matching skill, start the
-server in a non-focused sibling pane, verify readiness, and report the pane and
-URL. Re-list terminal resources before later operations.
+when `REX_SESSION` and `REX_BLOCK` are set. For manual terminal management, load
+Rex's skill or inspect the installed Herdr CLI's help. Start the server in a
+non-focused sibling pane, verify readiness, and report the pane and URL.
+Re-list terminal resources before later operations.
 
 Outside Herdr and Rex, use a detached tmux session:
 

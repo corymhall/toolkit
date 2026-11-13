@@ -79,10 +79,9 @@ and `mise run validate` at pre-push. Install Git 2.54+ global hooks once with
   be isolated.
 - When upgrading Pi, align the repository's `@earendil-works/pi-*` development
   dependencies and `typebox` with the new runtime, run `mise run validate`, and
-  review newly public extension APIs that can replace local workarounds. In
-  particular, check whether Pi now supports registering a renderer for an
-  existing tool without replacing its implementation; if it does, reconsider
-  adding Pi UI tool-card rendering for built-in `codemode` and its nested calls.
+  review newly public extension APIs that can replace local workarounds.
+  Pi UI uses renderer middleware for built-in tools and `codemode`; preserve
+  their implementations and tool loadout when changing card rendering.
 - Expose a new packaged extension in `package.json` under `pi.extensions`, add
   its test script when applicable, and update the expected extension list in
   `scripts/test-pi-package.sh`. Document user-facing commands or tools in the
@@ -106,8 +105,8 @@ and `mise run validate` at pre-push. Install Git 2.54+ global hooks once with
 
 ## Process Management
 
-- When `HERDR_ENV=1`, use Herdr and load its skill before managing long-running
-  or interactive processes.
+- When `HERDR_ENV=1`, use Herdr for long-running or interactive processes.
+  For manual operations, inspect the installed CLI's help before acting.
 - Otherwise, when `REX_SESSION` and `REX_BLOCK` are set, use Rex and load its
   skill. Scope operations to that session and block rather than the user's focus.
 - Use `start_command` and `command_status` when available for ordinary

@@ -154,7 +154,8 @@ The packaged extension entry is `extensions/command-runner/index.ts`. Existing
 Pi settings that list `extensions/herdr-command/index.ts` individually must be
 updated to the new entry, then Pi reloaded or restarted.
 
-The delegate extension and Herdr Neovim file-link integration have been removed.
-Remove their individual extension entries from old Pi configurations. This
-repository change does not uninstall a previously installed macOS URL-handler
-app or Neovim package, or delete saved delegation context.
+The former Herdr delegation workflow and Herdr Neovim file-link integration
+have been removed. The current [delegate extension](../delegate/README.md) uses
+Rex instead. Remove obsolete Herdr file-link entries from old Pi configurations.
+This repository change does not uninstall a previously installed macOS
+URL-handler app or Neovim package, or delete saved delegation context.

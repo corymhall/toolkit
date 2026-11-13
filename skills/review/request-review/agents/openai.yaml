@@ -1,6 +1,0 @@
-interface:
-  display_name: "Request Review"
-  short_description: "Run a focused manual review"
-  default_prompt: "Use $request-review to run one independent general review by default, add another focused lens only for a distinct unresolved question, verify findings against our conversation, and stop after reporting."
-policy:
-  allow_implicit_invocation: false

@@ -1,6 +1,0 @@
-interface:
-  display_name: "High-Signal Docs"
-  short_description: "Write concise docs with causal, scoped guidance"
-  default_prompt: "Use $high-signal-docs to draft or revise this document for high information density, clear reasons, coherent lists, and properly scoped examples."
-policy:
-  allow_implicit_invocation: false

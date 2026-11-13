@@ -10,10 +10,6 @@ skills:
         display_name: Browser tools
         short_description: Tools for interacting with the chrome web browser
         default_prompt: Use $browser-tools to interact with the chrome browser.
-  capture-decision-context:
-    model_invocable: false
-  claude-review:
-    model_invocable: false
   collaborate:
     model_invocable: false
   commit:
@@ -24,15 +20,9 @@ skills:
     model_invocable: false
   worktrunk-stack-prs:
     model_invocable: false
-  github-search-cli:
-    model_invocable: true
   go-development:
     model_invocable: true
   harness-evaluation:
-    model_invocable: false
-  herdr:
-    model_invocable: true
-  high-signal-docs:
     model_invocable: false
   investigate-converted-provider-docs:
     model_invocable: true
@@ -46,14 +36,8 @@ skills:
     model_invocable: false
   pulumi-rpc-lifecycle-investigation:
     model_invocable: true
-  pulumi-test-rationalization-audit:
-    model_invocable: false
   pulumi-upgrade-provider:
     model_invocable: true
-  request-review:
-    model_invocable: false
-  review-pr:
-    model_invocable: false
   skill-authoring:
     model_invocable: false
   stage-pulumi-provider-repro:
@@ -65,8 +49,6 @@ skills:
   upstream-patches:
     model_invocable: true
   zsh-command-hygiene:
-    model_invocable: true
-  bro:
     model_invocable: true
   nvim-mcp:
     model_invocable: false

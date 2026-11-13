@@ -69,7 +69,6 @@ run = "hk install --global --mise"
 [tasks."test:integration"]
 description = "Test skill helpers, local installation, memory guard, and the Pi package"
 run = '''
-scripts/test-claude-review.sh
 scripts/test-local-installer.sh
 scripts/test-sync-skill-invocation.sh
 scripts/test-memory-guard.sh

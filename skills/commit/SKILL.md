@@ -35,8 +35,9 @@ description:
    for confirmation.
 6. Identify the issue associated with the work from reliable context such as the
    user's request, branch name, or linked task. If the issue is unknown, ask the
-   user for it; do not guess. If the user confirms there is no issue, proceed
-   without a reference.
+   user only when the repository is under `~/work`. Outside `~/work`, proceed
+   without a reference unless an issue is already known. Never guess an issue.
+   If the user confirms there is no issue, proceed without a reference.
 7. Inspect recent repository history and documented conventions. Use their
    established issue syntax and relationship keyword. Use a closing keyword
    such as `Fixes #123` or `Closes #123` only when the change resolves the issue;
@@ -69,7 +70,7 @@ description:
 
 ## Message Shapes
 
-When the user confirms there is no associated issue, use a subject alone if it records all useful context:
+When no issue reference is needed, use a subject alone if it records all useful context:
 
 ```
 Fix typo in installation guide

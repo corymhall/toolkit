@@ -1,6 +1,6 @@
 ---
 name: neovim-plugin-development
-description: Implement, refactor, modernize, and debug Neovim plugins in Lua using official runtimepath/module-loading, startup/lazy-loading, keymap/autocmd, health, documentation, and release practices. For review-only work, prefer request-review and load the Neovim reviewer reference when needed.
+description: Implement, refactor, modernize, and debug Neovim plugins in Lua using official runtimepath/module-loading, startup/lazy-loading, keymap/autocmd, health, documentation, and release practices. For review-only work, load the Neovim reviewer reference when needed.
 ---
 
 # Neovim Plugin Development
@@ -9,9 +9,9 @@ Use this skill for writing and changing Neovim plugin code. Keep the main
 session focused on the implementation outcome, and load only the Neovim rules
 that match the plugin surface being touched.
 
-For review-only work, prefer `request-review`. There is no dedicated Neovim
-reviewer lane yet; use [references/reviewer-deep.md](references/reviewer-deep.md)
-when a deep Neovim-specific review pass is actually needed.
+For review-only work, use
+[references/reviewer-deep.md](references/reviewer-deep.md) when a deep
+Neovim-specific review pass is needed.
 
 ## Implementer Profile
 

@@ -112,6 +112,6 @@ its purpose.
 
 - Perform one focused pass; do not create a new plan or checklist artifact.
 - Make clear local improvements, but ask before changing agreed product scope.
-- Do not commit, post review comments, or invoke `request-review` automatically.
+- Do not commit, post review comments, or start independent review automatically.
 - Finish by summarizing edits made, validation run, accepted limitations, and
   anything that still needs user judgment.

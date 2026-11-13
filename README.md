@@ -282,9 +282,6 @@ brings in `core` and `package-maintenance` transitively, so their source remains
 in the provider-agent-skills and pulumi/agent-skills repositories rather than
 this repository.
 
-Herdr is managed from its upstream `skills/herdr` directory like the other APM
-dependencies.
-
 Refresh all APM dependencies with:
 
 ```bash
@@ -299,22 +296,18 @@ checkout.
 
 | Area                 | Skills                                                                                                                                                                                               |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Review               | `prepare-for-review`, `request-review`, `review-pr`, `explain-pr`, `claude-review`                                                                                                                   |
+| Review               | `prepare-for-review`, `explain-pr`                                                                                                                                                                   |
 | AI harness           | `ai-contribution-readiness-audit`, `ai-harness-bootstrap`, `skill-authoring`, `harness-evaluation`                                                                                                   |
 | Development          | `go-development`, `neovim-plugin-development`                                                                                                                                                        |
-| General workflows    | `collaborate`, `capture-decision-context`, `multi-model-evaluate`, `worktrunk-stack-prs`                                                                                                             |
-| GitHub               | `create-pr`, `github-search-cli`                                                                                                                                                                     |
-| Documentation        | `high-signal-docs`, `notion-docs`                                                                                                                                                                    |
+| General workflows    | `collaborate`, `multi-model-evaluate`, `worktrunk-stack-prs`                                                                                                                                         |
+| GitHub               | `create-pr`                                                                                                                                                                                          |
+| Documentation        | `notion-docs`                                                                                                                                                                                        |
 | Operations           | `memory-guard`                                                                                                                                                                                       |
 | Provider work        | `triage-provider-issue`, `pulumi-rpc-lifecycle-investigation`, `bridge-parity-investigation`, `stage-pulumi-provider-repro`, `stage-terraform-provider-repro`, `investigate-converted-provider-docs` |
 | Provider maintenance | `pulumi-upgrade-provider`, `upstream-patches`                                                                                                                                                        |
-| Pulumi audit         | `pulumi-test-rationalization-audit`                                                                                                                                                                  |
 
-`capture-decision-context` is a manually invoked way to preserve the motivation,
-evidence, rationale, tradeoffs, accepted limitations, and open questions from a
-conversation. It produces either an implementation-light context note or a
-compact GitHub issue draft with supporting evidence in an expandable section,
-rather than an authoritative specification or autonomous implementation plan.
+Archived skills live under `archive/skills/`. They are preserved for reference,
+excluded from the Pi package, and not linked by the local installer.
 
 ## Review Coordination
 
@@ -322,19 +315,6 @@ rather than an authoritative specification or autonomous implementation plan.
 It uses the conversation as the source of truth to simplify the implementation,
 apply relevant development guidance, document non-obvious code, and run focused
 verification before independent review.
-
-`request-review` starts with one independent general reviewer. It adds a test,
-Go, error-handling, contract-alignment, or focused domain lane only when that
-lane answers a distinct unresolved question. Contract alignment is reserved for
-an explicitly authoritative document or external contract, not an ordinary
-implementation plan. Intent alignment, repository compliance, and author-side
-documentation remain with the main session; context notes are not treated as
-complete specifications. When running inside Herdr, each selected sidecar gets
-its own non-focused, semantically named tab that the user can inspect or steer.
-The main session owns tab lifecycle, synthesis, and all implementation. Sidecar
-tabs remain through synthesis and are then closed unless the user asks to retain
-them. Outside Herdr, the skill applies the selected lenses in the main session
-and reports the reduced context isolation.
 
 The toolkit intentionally does not provide a generic subagent extension.
 Sidecars are for bounded research and independent review, not parallel ownership

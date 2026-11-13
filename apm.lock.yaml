@@ -71,20 +71,6 @@ dependencies:
     .agents/skills/browser-tools/package-lock.json: sha256:24e6b9120bc3ae975e3a3f81400f1d0a87dc4f191166ff4f96aac86ab752f2a6
     .agents/skills/browser-tools/package.json: sha256:70e10b3ed27ad993d5491c91b7326d18cce5035c443590d99230d77cd6feffa7
   content_hash: sha256:2eef6bbe215b522a1f9691f9a88e9abddd7e9a590d9c76f90c17e2315b215c55
-- repo_url: herdrdev/herdr
-  name: herdr
-  host: github.com
-  resolved_commit: b431a063e2cfdbfc3ca41bcd0dcbc329f92d217f
-  version: 1.0.0
-  virtual_path: skills/herdr
-  is_virtual: true
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/herdr
-  - .agents/skills/herdr/SKILL.md
-  deployed_file_hashes:
-    .agents/skills/herdr/SKILL.md: sha256:fbd9d502767f7dff29c211505a0bd9ba34e980ed4cc456247e2adc1642883984
-  content_hash: sha256:72177e911f55467de8737174072ec6bb08e30bbf62bceabcb69678e944398b18
 - repo_url: _local/core
   name: pulumi-provider-core
   version: 0.1.0
@@ -305,24 +291,6 @@ deployments:
   - badlogic/pi-skills/browser-tools
   active_owner: badlogic/pi-skills/browser-tools
   content_hash: sha256:70e10b3ed27ad993d5491c91b7326d18cce5035c443590d99230d77cd6feffa7
-- kind: project-relative
-  target: agents
-  value: .agents/skills/herdr
-  runtime: null
-  scope: project
-  owners:
-  - herdrdev/herdr/skills/herdr
-  active_owner: herdrdev/herdr/skills/herdr
-  content_hash: null
-- kind: project-relative
-  target: agents
-  value: .agents/skills/herdr/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - herdrdev/herdr/skills/herdr
-  active_owner: herdrdev/herdr/skills/herdr
-  content_hash: sha256:fbd9d502767f7dff29c211505a0bd9ba34e980ed4cc456247e2adc1642883984
 - kind: project-relative
   target: agents
   value: .agents/skills/investigate-converted-provider-docs

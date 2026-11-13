@@ -44,8 +44,9 @@ shared_expected=$(
 shared_actual=$(find "${home}/.agents/skills" -mindepth 1 -maxdepth 1 -type l | wc -l | tr -d ' ')
 
 [[ "${shared_actual}" == "${shared_expected}" ]]
+[[ ! -e "${home}/.agents/skills/pulumi-test-rationalization-audit" ]]
+[[ ! -L "${home}/.agents/skills/pulumi-test-rationalization-audit" ]]
 [[ ! -d "${codex_home}/skills" ]]
-[[ "$(readlink "${home}/.agents/skills/herdr")" == "${repo_root}/.agents/skills/herdr" ]]
 [[ "$(readlink "${home}/.agents/skills/triage-provider-issue")" == "${repo_root}/.agents/skills/triage-provider-issue" ]]
 [[ "$(readlink "${home}/.agents/skills/pulumi-upgrade-provider")" == "${repo_root}/.agents/skills/pulumi-upgrade-provider" ]]
 [[ "$(readlink "${home}/.agents/skills/upstream-patches")" == "${repo_root}/.agents/skills/upstream-patches" ]]

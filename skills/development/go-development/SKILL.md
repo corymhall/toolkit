@@ -1,6 +1,6 @@
 ---
 name: go-development
-description: Implement and refactor Go where package design, abstractions, ownership, errors, concurrency, or Go-specific test seams require manual judgment. Use repository tooling and the bundled modernize helper for mechanical modernization. For independent review, use request-review with its Go lens.
+description: Implement and refactor Go where package design, abstractions, ownership, errors, concurrency, or Go-specific test seams require manual judgment. Use repository tooling and the bundled modernize helper for mechanical modernization.
 ---
 
 # Go Development

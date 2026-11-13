@@ -3,8 +3,7 @@
 Use this reference for deep Neovim-specific review passes. For implementation
 work, use the main `neovim-plugin-development` skill instead.
 
-There is no dedicated Neovim reviewer lane yet. Use this reference from
-`request-review` only when a generic review would likely miss Neovim runtime,
+Use this reference when a generic review would likely miss Neovim runtime,
 startup, or plugin UX issues.
 
 ## Review Goals

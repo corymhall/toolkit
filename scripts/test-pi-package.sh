@@ -50,6 +50,11 @@ for entry in entries:
 if not selected:
     raise SystemExit("Pi skill manifest resolves to no skills")
 
+# Archived skills remain readable in Git but must never become active resources.
+archive = (root / "archive").resolve()
+if any(archive in skill.parents for skill in selected):
+    raise SystemExit("Pi skill manifest exposes archived skills")
+
 extensions = manifest.get("pi", {}).get("extensions")
 expected_extensions = [
     "extensions/web-access/index.ts",
@@ -140,8 +145,6 @@ loaded = {
 missing = expected - loaded
 if missing:
     raise SystemExit(f"Pi did not load expected skills: {sorted(missing)}")
-if "herdr" not in loaded:
-    raise SystemExit("Pi did not load the managed Herdr skill")
 
 # Explicit loading exercises runtime compatibility, not just manifest spelling.
 result = subprocess.run(

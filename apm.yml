@@ -9,4 +9,3 @@ dependencies:
   apm:
     - badlogic/pi-skills/browser-tools
     - path: ../../work/provider-agent-skills/packages/bridged
-    - herdrdev/herdr/skills/herdr
