@@ -113,8 +113,8 @@ pi install git:github.com/corymhall/toolkit
 The Pi manifest exposes the recursive first-party `skills/` tree, managed
 third-party `.agents/skills/*`, and the focused `extensions/web-access`,
 `extensions/codex-fast-mode`, `extensions/pi-ui`, `extensions/system-prompt`,
-`extensions/command-runner`, `extensions/copy-session`, `extensions/review-pane`,
-and `extensions/delegate` extensions.
+`extensions/command-runner`, `extensions/copy-session`, `extensions/github-pr`,
+`extensions/review-pane`, and `extensions/delegate` extensions.
 The package does not add hidden background-process or generic subagent tools.
 Git package installation installs the web-access extension's local parsing
 dependencies automatically.
@@ -207,6 +207,21 @@ worktree branch, and starts a new Pi conversation after Worktrunk setup succeeds
 The new agent receives your instructions and the current session reference for
 Evaler. This reuses the local Rex picker rather than duplicating its worktree or
 session grouping logic. See [extensions/delegate/README.md](extensions/delegate/README.md).
+
+### GitHub PR status and CI watches
+
+`extensions/github-pr` shows PR status above the input and automatically watches
+the current branch PR across new commits and CI reruns. `/pr` toggles inline
+details without taking focus. `/pr unwatch` disables automatic watching until
+`/pr watch`, including across reloads and resumes. Saved delivery receipts keep
+unchanged failures and green results from repeating. The codemode tool
+`github_ci_watch` also supports bounded, commit-pinned waits for other PRs and
+workflow runs. Results arrive as follow-ups without model-driven polling.
+Nothing reruns jobs, edits PRs, or intercepts shell commands. Explicit unfinished
+waits restore paused. On Pi 1.4+, watched CI also feeds Rex's OSC 7501 status.
+Pending is working, green is done, and red is blocked while Pi rests. Active
+agent work and native dialogs take precedence. See
+[extensions/github-pr/README.md](extensions/github-pr/README.md).
 
 ### Copy Session extension
 

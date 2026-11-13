@@ -58,6 +58,7 @@ expected_extensions = [
     "extensions/system-prompt/index.ts",
     "extensions/command-runner/index.ts",
     "extensions/copy-session/index.ts",
+    "extensions/github-pr/index.ts",
     "extensions/review-pane/index.ts",
     "extensions/delegate/index.ts",
 ]
@@ -141,6 +142,24 @@ if missing:
     raise SystemExit(f"Pi did not load expected skills: {sorted(missing)}")
 if "herdr" not in loaded:
     raise SystemExit("Pi did not load the managed Herdr skill")
+
+# Explicit loading exercises runtime compatibility, not just manifest spelling.
+result = subprocess.run(
+    [
+        "pi", "--mode", "rpc", "--no-session", "--no-extensions", "--no-skills",
+        "--no-prompt-templates", "--no-context-files",
+        "--extension", str(root / "extensions/github-pr/index.ts"),
+    ],
+    cwd=os.environ["HOME"], env=os.environ.copy(),
+    input=json.dumps(command) + "\n", text=True,
+    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30,
+)
+responses = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+response = next((event for event in responses if event.get("id") == "commands"), None)
+if result.returncode != 0 or not response or not response.get("success"):
+    raise SystemExit(f"PR extension RPC startup failed: {response!r}\n{result.stderr}")
+if not any(item["name"] == "pr" for item in response["data"]["commands"]):
+    raise SystemExit(f"Pi did not load the PR command:\n{result.stderr}")
 PY
 
 echo "Pi skill package smoke test passed."
