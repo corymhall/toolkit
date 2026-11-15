@@ -1,0 +1,155 @@
+#!/bin/bash
+# Script to checkout a GitHub PR branch from a fork and push it to a new branch in target repo
+# This is useful for testing PRs from forks in the main repository.
+
+set -euo pipefail
+
+# Check if PR URL is provided
+if [ $# -eq 0 ]; then
+  echo "Usage: $0 <github-pr-url>"
+  echo "Example: $0 https://github.com/owner/repo/pull/123"
+  exit 1
+fi
+
+PR_URL="$1"
+
+# Extract owner, repo, and PR number from URL
+if [[ ! "$PR_URL" =~ github\.com/([^/]+)/([^/]+)/pull/([0-9]+) ]]; then
+  echo "Error: Invalid GitHub PR URL format"
+  echo "Expected format: https://github.com/owner/repo/pull/NUMBER"
+  exit 1
+fi
+
+OWNER="${BASH_REMATCH[1]}"
+REPO="${BASH_REMATCH[2]}"
+PR_NUMBER="${BASH_REMATCH[3]}"
+
+echo "Fetching PR information for $OWNER/$REPO#$PR_NUMBER..."
+
+# Get PR information using gh CLI
+PR_INFO=$(gh pr view "$PR_NUMBER" --repo "$OWNER/$REPO" --json headRefName,headRepository,headRepositoryOwner,baseRefName,isCrossRepository,title,body)
+
+# Extract branch name, repository information, and PR metadata
+HEAD_BRANCH=$(echo "$PR_INFO" | jq -r '.headRefName')
+HEAD_REPO_NAME=$(echo "$PR_INFO" | jq -r '.headRepository.name')
+HEAD_REPO_OWNER=$(echo "$PR_INFO" | jq -r '.headRepositoryOwner.login')
+IS_CROSS_REPO=$(echo "$PR_INFO" | jq -r '.isCrossRepository')
+BASE_BRANCH=$(echo "$PR_INFO" | jq -r '.baseRefName')
+PR_TITLE=$(echo "$PR_INFO" | jq -r '.title')
+PR_BODY=$(echo "$PR_INFO" | jq -r '.body // ""')
+BASE_REPO="$OWNER/$REPO" # The base repo is the one we're querying
+DEFAULT_BRANCH=$(gh repo view "$BASE_REPO" --json defaultBranchRef --jq '.defaultBranchRef.name')
+
+# Construct head repository name
+if [ "$IS_CROSS_REPO" = "true" ]; then
+  HEAD_REPO="$HEAD_REPO_OWNER/$HEAD_REPO_NAME"
+else
+  HEAD_REPO="$BASE_REPO"
+fi
+
+echo "Source branch: $HEAD_BRANCH"
+echo "Source repo: $HEAD_REPO"
+echo "Target repo: $BASE_REPO"
+
+NEW_BRANCH_NAME="pr-$PR_NUMBER-$HEAD_BRANCH"
+echo "New branch name: $NEW_BRANCH_NAME"
+
+# Check if we need to clone the target repository
+if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+  # Create temp directory and clone target repository
+  TEMP_DIR=$(mktemp -d)
+  echo "Creating temporary directory: $TEMP_DIR"
+  cd "$TEMP_DIR"
+
+  echo "Cloning target repository..."
+  git clone "https://github.com/$OWNER/$REPO.git"
+  cd "$REPO"
+
+  # Set cleanup trap
+  trap 'rm -rf "$TEMP_DIR"' EXIT
+fi
+
+# Add the source repository as a remote if it's different from the base repo
+if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+  REMOTE_NAME="pr-source-$PR_NUMBER"
+  echo "Adding remote for source repository..."
+  echo "DEBUG: Adding remote $REMOTE_NAME with URL https://github.com/$HEAD_REPO.git"
+
+  # Remove existing remote if it exists
+  git remote remove "$REMOTE_NAME" 2>/dev/null || true
+
+  git remote add "$REMOTE_NAME" "https://github.com/$HEAD_REPO.git"
+  git fetch "$REMOTE_NAME"
+  SOURCE_REF="$REMOTE_NAME/$HEAD_BRANCH"
+else
+  git fetch origin
+  SOURCE_REF="origin/$HEAD_BRANCH"
+fi
+
+# Check if branch already exists (locally or remotely)
+BRANCH_EXISTS=false
+if git rev-parse --verify "$NEW_BRANCH_NAME" &>/dev/null; then
+  BRANCH_EXISTS=true
+elif git ls-remote --exit-code --heads origin "$NEW_BRANCH_NAME" &>/dev/null; then
+  BRANCH_EXISTS=true
+fi
+
+if [ "$BRANCH_EXISTS" = "true" ]; then
+  echo "Branch $NEW_BRANCH_NAME already exists, syncing..."
+
+  # Checkout the existing branch
+  git checkout "$NEW_BRANCH_NAME" 2>/dev/null || git checkout -b "$NEW_BRANCH_NAME" "origin/$NEW_BRANCH_NAME"
+
+  # Reset to the source ref
+  git reset --hard "$SOURCE_REF"
+
+  # Force push to update the remote branch
+  echo "Force pushing updates to $NEW_BRANCH_NAME..."
+  git push --force-with-lease origin "$NEW_BRANCH_NAME"
+
+  echo "Successfully synced branch: $NEW_BRANCH_NAME"
+else
+  # Checkout the PR branch
+  echo "Checking out branch $HEAD_BRANCH..."
+  git checkout -b "$NEW_BRANCH_NAME" "$SOURCE_REF"
+
+  # Push the new branch to origin
+  echo "Pushing new branch $NEW_BRANCH_NAME to origin..."
+  git push -u origin "$NEW_BRANCH_NAME"
+
+  echo "Successfully created and pushed branch: $NEW_BRANCH_NAME"
+fi
+
+echo "Branch is now available in the target repository"
+
+# Clean up remote if we added one
+if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+  git remote remove "$REMOTE_NAME"
+  echo "Cleaned up temporary remote: $REMOTE_NAME"
+fi
+
+# Create a PR whenever the mirrored branch has no open PR. This permits a new
+# PR after an earlier one for the same branch was closed.
+OPEN_PR_NUMBER=$(gh pr list \
+  --repo "$BASE_REPO" \
+  --head "$NEW_BRANCH_NAME" \
+  --base "$BASE_BRANCH" \
+  --state open \
+  --json number \
+  --jq '.[0].number // empty')
+
+if [ -n "$OPEN_PR_NUMBER" ]; then
+  echo "Open PR already exists: https://github.com/$BASE_REPO/pull/$OPEN_PR_NUMBER"
+else
+  echo "Creating draft PR from $NEW_BRANCH_NAME into $BASE_BRANCH..."
+  gh pr create \
+    --repo "$BASE_REPO" \
+    --head "$NEW_BRANCH_NAME" \
+    --base "$BASE_BRANCH" \
+    --title "$PR_TITLE" \
+    --body "$PR_BODY" \
+    --draft
+fi
+
+echo "Switching back to default branch: $DEFAULT_BRANCH"
+git checkout "$DEFAULT_BRANCH" 2>/dev/null || git checkout -b "$DEFAULT_BRANCH" "origin/$DEFAULT_BRANCH"

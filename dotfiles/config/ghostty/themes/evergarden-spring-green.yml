@@ -1,0 +1,29 @@
+## name: evergarden spring green
+## author: comfysage
+## license: GPL-3.0
+## blurb: a comfy colorscheme for cozy morning coding
+
+palette = 0=#2b3538
+palette = 1=#e67e80
+palette = 2=#bcd19c
+palette = 3=#e1c182
+palette = 4=#9bb5cf
+palette = 5=#ebb9dd
+palette = 6=#a1cfad
+palette = 7=#dddecf
+# palette = 8=#313b40
+palette = 8=#50616a
+palette = 9=#e67e80
+palette = 10=bcd19c
+palette = 11=e1c182
+palette = 12=9bb5cf
+palette = 13=ebb9dd
+palette = 14=a1cfad
+palette = 15=#96b4aa
+background = 2b3538
+foreground = dddecf
+cursor-color = bcd19c
+cursor-text = 1c2225
+selection-background = 526168
+selection-foreground = dddecf
+##selection-background = 3d494d

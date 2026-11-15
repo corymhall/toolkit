@@ -28,6 +28,8 @@ skills:
     model_invocable: true
   memory-guard:
     model_invocable: true
+  macos-storage-cleanup:
+    model_invocable: true
   neovim-plugin-development:
     model_invocable: true
   notion-docs:

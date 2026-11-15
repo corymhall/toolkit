@@ -1,0 +1,32 @@
+[hooks]
+enter = "mise i"
+
+[tools]
+terraform = "1"
+esc = "latest"
+node = "26"
+dotnet = "10"
+"npm:npm-check-updates" = "latest"
+"npm:tree-sitter-cli" = "latest"
+python = "3.14"
+aws-cli = "2"
+yarn = "4.18.0"
+"github:pulumi/pulumi" = "3"
+"github:abhinav/git-spice" = "latest"
+gcloud = "latest"
+golangci-lint = "2"
+"aqua:earendil-works/pi" = "latest"
+"github:pranshuparmar/witr" = "latest"
+
+[settings]
+# config files with these prefixes will be trusted by default
+trusted_config_paths = [
+    '~/work',
+    '~/personal/config-private',
+    '~/.config/gh/',
+    '~/gt',
+    '~/malaz',
+]
+experimental = true
+idiomatic_version_file_enable_tools = []
+activate_shims = false

@@ -1,0 +1,13 @@
+amazonaws
+openid
+sts
+StringEquals
+ForAnyValue
+CfnJson
+CDK
+aws
+cdk
+stackset
+CloudFormation
+CloudFront
+M/!

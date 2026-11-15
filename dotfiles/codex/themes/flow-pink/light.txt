@@ -1,0 +1,1 @@
+codex-theme-v1:{"codeThemeId":"one","theme":{"accent":"#ff007b","contrast":50,"fonts":{"code":"Monaspace Argon","ui":null},"ink":"#728fa1","opaqueWindows":true,"semanticColors":{"diffAdded":"#66ba5e","diffRemoved":"#ba5e66","skill":"#ff007b"},"surface":"#d7dfe4"},"variant":"light"}

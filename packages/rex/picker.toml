@@ -1,0 +1,9 @@
+roots = [
+  "~/personal",
+  "~/plugins",
+  "~/playground",
+  "~/github",
+  "~/testing-apps",
+  "~/work",
+]
+scratch_roots = ["~/playground/scratch"]

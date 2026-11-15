@@ -1,0 +1,106 @@
+tap "depot/tap"
+tap "peonping/tap"
+tap "sst/tap"
+tap "stripe/stripe-cli"
+tap "withgraphite/tap"
+# Improved shell history for zsh, bash, fish and nushell
+brew "atuin"
+# Securely store and access AWS credentials in development environments
+brew "aws-vault"
+# Mozilla CA certificate store
+brew "ca-certificates"
+# Microsoft Azure CLI 2.0
+brew "azure-cli"
+# Bourne-Again SHell, a UNIX command interpreter
+brew "bash"
+# Clone of cat(1) with syntax highlighting and Git integration
+brew "bat"
+# Core application library for C
+brew "glib"
+# Automated changelog tool for preparing releases
+brew "changie"
+# Cross-platform make
+brew "cmake"
+# Get a file from an HTTP, HTTPS or FTP server
+brew "curl"
+# Compiler for writing C extensions for the Python language
+brew "cython"
+# Modern, maintained replacement for ls
+brew "eza"
+# Simple, fast and user-friendly alternative to find
+brew "fd"
+# Cloud build and cache tooling
+brew "depot/tap/depot"
+# Command-line fuzzy finder written in Go
+brew "fzf"
+# GitHub command-line tool
+brew "gh"
+# Distributed revision control system
+brew "git"
+# GNU Transport Layer Security (TLS) Library
+brew "gnutls"
+# Passphrase entry dialog utilizing the Assuan protocol
+brew "pinentry"
+# GNU Pretty Good Privacy (PGP) package
+brew "gnupg"
+# Lightweight and flexible command-line JSON processor
+brew "jq"
+# Postgres C API library
+brew "libpq"
+# Lua package manager
+brew "luarocks"
+# Vim-fork focused on extensibility and usability
+brew "neovim"
+# Local notification / hook helper
+brew "peonping/tap/peon-ping"
+# Pinentry for GPG on Mac
+brew "pinentry-mac"
+# PDF rendering and text extraction tools
+brew "poppler"
+# Search tool like grep and The Silver Searcher
+brew "ripgrep"
+# Easily detect and prevent bugs and anti-patterns in your codebase
+brew "semgrep"
+# Static analysis and lint tool, for (ba)sh scripts
+brew "shellcheck"
+# Fancy shell prompts and terminal UIs
+brew "gum"
+# Official tldr client written in Rust
+brew "tlrc"
+# Fast terminal file browser
+brew "television"
+# Terminal multiplexer
+# Display directories as trees (with optional color/HTML output)
+brew "tree"
+# Record terminal demos
+brew "vhs"
+# Internet file retriever
+brew "wget"
+# Git-aware stacked branch workflow helper
+brew "worktrunk"
+# Little beautifier tool for xcodebuild
+brew "xcbeautify"
+# Build server protocol implementation for integrating Xcode with sourcekit-lsp
+brew "xcode-build-server"
+# Stripe CLI utility
+brew "stripe/stripe-cli/stripe"
+# Command-line interface for 1Password
+cask "1password-cli"
+cask "codex"
+cask "font-monaspace"
+# Terminal emulator that uses platform-native UI and GPU acceleration
+cask "ghostty"
+vscode "amazonwebservices.aws-toolkit-vscode"
+vscode "github.copilot"
+vscode "github.copilot-chat"
+vscode "golang.go"
+vscode "ms-dotnettools.csdevkit"
+vscode "ms-dotnettools.csharp"
+vscode "ms-dotnettools.vscode-dotnet-runtime"
+vscode "ms-python.debugpy"
+vscode "ms-python.python"
+vscode "ms-python.vscode-pylance"
+vscode "ms-python.vscode-python-envs"
+vscode "pulumi.pulumi-lsp-client"
+vscode "pulumi.pulumi-vscode-copilot"
+vscode "pulumi.pulumi-vscode-tools"

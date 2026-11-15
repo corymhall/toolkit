@@ -1,0 +1,16 @@
+[tasks."format:check"]
+description = "Check extension formatting"
+run = "npm run format:check"
+sources = ["extensions/**/*", "package.json", "../../package.json", "../../package-lock.json", "../../.oxfmtrc.json", "../../mise.lock"]
+
+[tasks.lint]
+description = "Lint extension TypeScript"
+run = "npm run lint"
+sources = ["extensions/**/*.ts", "package.json", "../../package.json", "../../package-lock.json", "../../.oxlintrc.json", "../../tsconfig.json", "../../mise.lock"]
+
+[tasks.check]
+depends = ["format:check", "lint"]
+
+[tasks.test]
+description = "Run extension behavioral tests"
+run = "npm test"

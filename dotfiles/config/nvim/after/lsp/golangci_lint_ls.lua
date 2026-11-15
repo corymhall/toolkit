@@ -1,0 +1,30 @@
+---@type vim.lsp.Config
+return {
+  -- before_init = function(_, config)
+  --   local lint_root = vim.fs.root(0, { '.golangci.yml' })
+  --   local lint_path = vim.fn.exepath 'golangci-lint'
+  --   if lint_path == '' then lint_path = 'golangci-lint' end
+  --   if lint_root ~= nil then
+  --     config.init_options = {
+  --       command = {
+  --         lint_path,
+  --         'run',
+  --         '--out-format',
+  --         'json',
+  --         '--issues-exit-code=1',
+  --         '--config',
+  --         lint_root .. '/.golangci.yml',
+  --       },
+  --     }
+  --   end
+  -- end,
+  -- init_options = {
+  --   command = {
+  --     'golangci-lint',
+  --     'run',
+  --     '--out-format',
+  --     'json',
+  --     '--issues-exit-code=1',
+  --   },
+  -- },
+}

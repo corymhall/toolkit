@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+  echo "Usage: $(basename "$0") [--dry-run] [--verbose] [--show-skipped] [--include <path-or-name[,path-or-name...]>] [--exclude <path-or-name[,path-or-name...]>] <folder>" >&2
+  exit 1
+}
+
+dry_run=false
+verbose=false
+show_skipped=false
+includes=()
+excludes=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run)
+      dry_run=true
+      shift
+      ;;
+    --verbose)
+      verbose=true
+      shift
+      ;;
+    --show-skipped)
+      show_skipped=true
+      shift
+      ;;
+    --include)
+      if [[ ${2:-} == "" ]]; then
+        usage
+      fi
+      IFS=',' read -r -a include_list <<< "$2"
+      for entry in "${include_list[@]}"; do
+        if [[ -n "$entry" ]]; then
+          includes+=("$entry")
+        fi
+      done
+      shift 2
+      ;;
+    --exclude)
+      if [[ ${2:-} == "" ]]; then
+        usage
+      fi
+      IFS=',' read -r -a exclude_list <<< "$2"
+      for entry in "${exclude_list[@]}"; do
+        if [[ -n "$entry" ]]; then
+          excludes+=("$entry")
+        fi
+      done
+      shift 2
+      ;;
+    -*)
+      usage
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if [[ ${1:-} == "" ]]; then
+  usage
+fi
+
+root=$1
+
+if [[ ! -d "$root" ]]; then
+  echo "Error: '$root' is not a directory." >&2
+  exit 1
+fi
+
+root=$(cd "$root" && pwd -P)
+
+matches_filter() {
+  local repo_dir=$1
+  local pattern=$2
+  local match_path
+
+  if [[ "$pattern" == /* ]]; then
+    match_path="$pattern"
+  elif [[ "$pattern" == */* ]]; then
+    match_path="$root/$pattern"
+  else
+    match_path=""
+  fi
+
+  if [[ -n "$match_path" ]]; then
+    [[ "$repo_dir" == "$match_path" || "$repo_dir" == "$match_path/"* ]]
+    return $?
+  fi
+
+  [[ "$repo_dir" == *"/$pattern" || "$repo_dir" == *"/$pattern/"* ]]
+}
+
+repo_roots=()
+while IFS= read -r -d '' git_entry; do
+  repo_dir=$(dirname "$git_entry")
+  if git -C "$repo_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    toplevel=$(git -C "$repo_dir" rev-parse --show-toplevel 2>/dev/null || true)
+    if [[ -n "$toplevel" ]]; then
+      repo_roots+=("$toplevel")
+    fi
+  fi
+done < <(find "$root" -name .git -print0)
+
+declare -A seen=()
+unique_roots=()
+for repo_root in "${repo_roots[@]}"; do
+  if [[ -z "${seen[$repo_root]+x}" ]]; then
+    seen[$repo_root]=1
+    unique_roots+=("$repo_root")
+  fi
+done
+
+mapfile -t sorted_roots < <(printf '%s\n' "${unique_roots[@]}" | awk '{ print length($0), $0 }' | sort -n | cut -d' ' -f2-)
+
+top_level_roots=()
+for repo_root in "${sorted_roots[@]}"; do
+  skip=false
+  for accepted in "${top_level_roots[@]}"; do
+    if [[ "$repo_root" == "$accepted" || "$repo_root" == "$accepted/"* ]]; then
+      skip=true
+      break
+    fi
+  done
+  if ! $skip; then
+    top_level_roots+=("$repo_root")
+  fi
+done
+
+for repo_dir in "${top_level_roots[@]}"; do
+  if [[ ${#includes[@]} -gt 0 ]]; then
+    include_match=false
+    for include in "${includes[@]}"; do
+      if matches_filter "$repo_dir" "$include"; then
+        include_match=true
+        break
+      fi
+    done
+    if ! $include_match; then
+      if $show_skipped; then
+        echo "Skipping non-included path $repo_dir"
+      fi
+      continue
+    fi
+  fi
+
+  for exclude in "${excludes[@]}"; do
+    if matches_filter "$repo_dir" "$exclude"; then
+      if $show_skipped; then
+        echo "Skipping excluded path $repo_dir"
+      fi
+      continue 2
+    fi
+  done
+
+  if $dry_run; then
+    echo "Would clean $repo_dir"
+    if $verbose; then
+      git -C "$repo_dir" clean -ndx .
+    else
+      git -C "$repo_dir" clean -ndx . >/dev/null
+    fi
+  else
+    echo "Cleaning $repo_dir"
+    git -C "$repo_dir" clean -fqdx .
+  fi
+done

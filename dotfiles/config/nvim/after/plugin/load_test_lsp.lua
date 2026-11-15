@@ -1,0 +1,17 @@
+-- local client = vim.lsp.start_client {
+--   name = 'pulumilsp',
+--   cmd = { '/Users/chall/personal/pulumilsp/pulumilsp' },
+--   handlers = {
+--     { 'textDocument/diagnostic', vim.lsp.diagnostic.on_diagnostic },
+--   },
+-- }
+--
+-- if not client then
+--   vim.notify 'pulumilsp not available'
+--   return
+-- end
+--
+-- vim.api.nvim_create_autocmd('FileType', {
+--   pattern = 'markdown',
+--   callback = function() vim.lsp.buf_attach_client(0, client) end,
+-- })

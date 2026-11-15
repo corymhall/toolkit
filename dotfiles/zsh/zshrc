@@ -1,0 +1,153 @@
+# -----------------------------------------------------
+# --------------------Configure env--------------------
+# -----------------------------------------------------
+export PATH=$HOME/.luarocks/bin:$PATH
+export PATH=/opt/homebrew/bin:$PATH
+export PATH=/opt/homebrew/sbin:$PATH
+export PATH=$HOME/.opencode/bin:$PATH
+export PATH=$HOME/go/bin:$PATH
+export PATH=$HOME/neovim/bin:$PATH
+export PATH=$HOME/.local/bin:$PATH
+export XDG_CONFIG_HOME="$HOME/.config"
+export JAVA_HOME="/opt/homebrew/opt/openjdk@11"
+export NVM_DIR="$HOME/.nvm"
+export GOPROXY="https://proxy.golang.org,direct"
+export GOBIN="$HOME/go/bin"
+export GOPATH="$HOME/go"
+export GOPRIVATE="github.com/corymhall"
+export SHELL="/bin/zsh"
+# export NODE_OPTIONS="--max-old-space-size=8196 --experimental-worker ${NODE_OPTIONS:-}"
+export PULUMI_PROVIDER_BUILD_PARALLELISM="-p 4"
+export KEYTIMEOUT="1"
+export ENHANCD_COMPLETION_BEHAVIOR="list"
+export ENHANCD_FILTER="fzf"
+export EDITOR=nvim
+export XDG_CONFIG_HOME="$HOME/.config"
+export PULUMI_ENABLE_JOURNALING=true
+export GIT_SPICE_NO_GS_WARNING=1
+export PULUMI_CREDENTIAL_STORE=os
+export RestoreIgnoreFailedSources=true
+# -----------------------------------------------------
+# ------------Configure zinit and zsh plugins----------
+# -----------------------------------------------------
+source $HOME/.zinit/zinit.zsh
+zinit ice
+zinit light "zsh-users/zsh-autosuggestions"
+
+zinit ice
+zinit light "zsh-users/zsh-completions"
+
+zinit ice wait lucid
+zinit light "changyuheng/fz"
+
+#zinit ice
+zinit load "atuinsh/atuin"
+
+zinit ice pick"z.sh"
+zinit light "rupa/z"
+
+zinit ice wait lucid blockf
+zinit light "changyuheng/zsh-interactive-cd"
+
+zinit ice pick"init.sh" wait lucid blockf
+zinit light "b4b4r07/enhancd"
+
+zinit ice if'[[ -o interactive ]]'
+zinit light "zpm-zsh/ls"
+
+zinit ice depth"1"
+zinit light "romkatv/powerlevel10k"
+
+zinit ice
+zinit light "zdharma-continuum/fast-syntax-highlighting"
+
+zinit ice
+zinit light "zsh-users/zsh-history-substring-search"
+
+# -----------------------------------------------------
+# ----------Aliases and Functions Configuration--------
+# -----------------------------------------------------
+[[ ! -f $HOME/functions.zsh ]] || source $HOME/functions.zsh
+alias ga='git add'
+alias gcam='git commit -a -m'
+alias gcb='git checkout -b'
+alias gcl='git clone'
+alias gcm='git checkout main'
+alias gcmsg='git commit -m'
+alias gco='git checkout'
+alias gl='git pull'
+alias gp='git push'
+alias gst='git status'
+alias killgpg='gpgconf --kill gpg-agent && gpg-connect-agent reloadagent /bye'
+alias nb='npm run build'
+alias nv='nvim'
+alias pn='pnpm'
+alias np='npx projen'
+alias npp='npx projen p'
+alias npd='npx projen pd'
+alias PATH='echo $PATH | tr ":" "\n"'
+# -----------------------------------------------------
+# ----------------Standard Configuration---------------
+# -----------------------------------------------------
+source /Users/chall/.config/op/plugins.sh
+
+# Load secrets
+[ -f $HOME/.localrc ] && . $HOME/.localrc
+
+# To customize prompt, run "p10k configure" or edit $HOME/p10k.zsh.
+[[ ! -f $HOME/p10k.zsh ]] || source $HOME/p10k.zsh
+
+HISTSIZE="10000"
+SAVEHIST="10000"
+export AWS_PAGER=""""
+
+HISTFILE="$HOME/.zsh_history"
+mkdir -p "$(dirname "$HISTFILE")"
+setopt HIST_FCNTL_LOCK
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_SPACE
+unsetopt HIST_EXPIRE_DUPS_FIRST
+setopt SHARE_HISTORY
+setopt EXTENDED_HISTORY
+# vim mode
+# Change cursor shape for different vi modes
+function zle-keymap-select {
+  if [[ $KEYMAP == vicmd ]] || [[ $1 = 'block' ]]; then
+    echo -ne '\e[2 q'
+  elif [[ $KEYMAP == main ]] || [[ $KEYMAP == viins ]] || [[ $KEYMAP = '' ]] || [[ $1 = 'beam' ]]; then
+    echo -ne '\e[6 q'
+  fi
+}
+zle -N zle-keymap-select
+zle-line-init() { zle-keymap-select 'beam'} # Start with beam shape cursor on zsh startup and after every command.
+zle-line-init
+bindkey -v
+bindkey '^ ' autosuggest-accept
+bindkey '^[[A' history-substring-search-up
+bindkey '^[[B' history-substring-search-down
+bindkey "$terminfo[kcuu1]" history-substring-search-up
+bindkey "$terminfo[kcud1]" history-substring-search-down
+
+# `v` is already mapped to visual mode, so we need to use a different key to
+# # open Vim
+bindkey -M vicmd "^V" edit-command-line
+
+autoload bashcompinit && bashcompinit
+autoload -Uz compinit && compinit
+
+complete -C 'aws_completer' aws
+if [[ ${ZSH_ARGZERO#-} != */* ]]; then
+  ZSH_ARGZERO=$(command -v -- "${ZSH_ARGZERO#-}")
+fi
+#. "$HOME/.atuin/bin/env"
+eval "$(atuin init zsh)"
+
+
+eval "$(~/.local/bin/mise activate zsh)"
+# eval "$(gs shell completion zsh)"
+eval "$(luarocks path --no-bin --lua-version 5.1)"
+# -----------------------------------------------------
+# ----------------Component Configuration--------------
+# -----------------------------------------------------
+
+if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)"; fi

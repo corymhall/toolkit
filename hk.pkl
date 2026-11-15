@@ -6,7 +6,7 @@ local pre_commit_checks = new Mapping<String, Step> {
   ["format"] {
     glob = List(
       ".oxfmtrc.json",
-      "extensions/**/*.ts",
+      "packages/pi/extensions/**/*.ts",
       "package-lock.json",
       "package.json"
     )
@@ -15,7 +15,7 @@ local pre_commit_checks = new Mapping<String, Step> {
   ["typescript"] {
     glob = List(
       ".oxlintrc.json",
-      "extensions/**/*.ts",
+      "packages/pi/extensions/**/*.ts",
       "package-lock.json",
       "package.json",
       "tsconfig.json"

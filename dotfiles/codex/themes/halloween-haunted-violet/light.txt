@@ -1,0 +1,1 @@
+codex-theme-v1:{"codeThemeId":"absolutely","theme":{"accent":"#cc7d5e","contrast":40,"ink":"#2d2d2b","opaqueWindows":true,"surface":"#f9f9f7","fonts":{"code":"\"Geist Mono\", ui-monospace, \"SFMono-Regular\"","ui":"Geist, Inter"},"semanticColors":{"diffAdded":"#00c853","diffRemoved":"#ff5f38","skill":"#cc7d5e"}},"variant":"light"}

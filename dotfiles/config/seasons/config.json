@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "selected": {
+    "theme": "autumn",
+    "variant": "dark-bark"
+  },
+  "targets": {
+    "ghostty": {
+      "config": "/Users/chall/.config/ghostty/config",
+      "themes": "/Users/chall/.config/ghostty/themes"
+    },
+    "pi": {
+      "config": "/Users/chall/.pi/agent/settings.json",
+      "themes": "/Users/chall/.pi/agent/themes"
+    },
+    "codex": {
+      "config": "/Users/chall/.codex/config.toml",
+      "themes": "/Users/chall/.codex/themes"
+    },
+    "rex": {
+      "themes": "/Users/chall/.config/seasons/rex/themes"
+    }
+  }
+}

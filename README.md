@@ -1,12 +1,15 @@
 # Toolkit
 
+Public workstation configuration now lives in `dotfiles/`, with Rex helpers in
+`packages/rex/` and shared instruction inputs in `agent-config/`.
+See [workstation configuration](docs/workstation.md) for preview, installation,
+private additions, and the single-writer ownership rules.
+
 Shared Agent Skills and focused Pi extensions for AI-assisted software
 engineering workflows. The same skill sources work in Pi, Codex CLI, and other
 Agent-Skills-compatible harnesses.
 
-- `extensions/` contains first-party Pi extensions.
-- `herdr/` owns the personal Herdr-app workbench layout, sidebar mod, GitHub
-  collector, and explicit installation and service procedures.
+- `packages/pi/extensions/` contains first-party Pi extensions.
 - `skills/` contains runtime-neutral skills, optionally grouped in nested
   directories.
 - `.agents/skills/` contains reviewed third-party skills managed by APM or a
@@ -15,8 +18,8 @@ Agent-Skills-compatible harnesses.
   metadata.
 
 The repository does not use a Codex CLI plugin marketplace. Long-running
-processes use Herdr or Rex when available, while review sidecars use Herdr rather
-than hidden background-process or generic subagent abstractions.
+processes use Rex when available. Explicit Pi delegation uses inspectable
+Rex panes rather than hidden background agents.
 
 ## Local Installation
 
@@ -27,16 +30,16 @@ direct skill links:
 git clone https://github.com/corymhall/toolkit.git
 cd toolkit
 mise install
-mise run build
+mise run validate
 ```
 
-`mise run build` synchronizes generated skill invocation metadata, installs and
-checks all local links, and runs the complete repository validation graph. The
-local-install check is non-mutating and verifies every expected shared skill
-link plus the memory guard's `make` proxy against this checkout.
+`mise run validate` runs the complete repository validation graph without installing
+into your home. Run `mise run skills:sync-invocation` explicitly after policy changes.
+Use `mise bootstrap --dry-run` to preview setup, `mise bootstrap --yes` to apply it,
+and `mise dotfiles status` to inspect the declared links.
 
 List available tasks with `mise tasks`. Common entry points include
-`mise run build`, `mise run validate`, `mise run test`, `mise run lint:typescript`,
+`mise run check`, `mise run validate`, `mise run test`, `mise run lint:typescript`,
 `mise run format:check`, and `mise run skills:update`. The TypeScript lint task
 uses Oxlint and its TypeScript 7 type checker. Mise's npm
 dependency provider runs `npm ci` automatically before `mise run` or `mise x`
@@ -50,7 +53,7 @@ Codex-specific exception. An optional `openai` mapping supplies the complete
 `agents/openai.yaml` when an explicit-only upstream skill omits one. Enabled
 skills use each harness's default and are left unmodified. The normal validation
 graph rejects missing policy entries and stale rendered metadata. `mise run
-skills:update` reapplies this policy after APM and Herdr updates.
+skills:update` reapplies this policy after APM updates.
 
 ### Git lifecycle
 
@@ -66,41 +69,17 @@ The global hooks run through `mise x` and are a no-op in repositories without an
 policy at pre-commit, then the complete `mise run validate` graph at pre-push.
 Mise tasks remain the source of truth; hk only connects them to Git events.
 
-The installer maps:
+The root mise dotfile declarations map:
 
 ```text
 skills/**/<skill>       -> ~/.agents/skills/<skill>
 .agents/skills/*        -> ~/.agents/skills/*
 ```
 
-It also links the memory guard's `make` proxy to `~/.local/bin/make` and removes
-legacy toolkit reviewer-role symlinks left by the former plugin installer. The
-script is idempotent and refuses to replace non-symlink destinations. Restart
-the agent or reload its resources after installation.
+They also link the memory guard's `make` proxy to `~/.local/bin/make`.
+Reload the agent's resources after installing changed skills.
 
 Pi and Codex CLI discover the same shared skills from `~/.agents/skills`.
-
-## Herdr-app workbench
-
-The native workbench uses one repository tree for tracked work and auxiliary
-tabs, with persistent Activity membership, main-tab-only agent state, manual
-ordering, and separate Dismiss and confirmed Close controls. A shared collector
-publishes cached Git/GitHub metadata without participating in agent status.
-Native work and project pickers provide search, terminal/Git previews, scratch
-folders, and the Worktrunk creation/removal lifecycle without Television.
-
-```bash
-mise run herdr:build
-mise run herdr:test
-mise run herdr:check
-# Explicitly install assets, without switching layouts or starting a service:
-mise run herdr:install
-mise run herdr:check-install
-```
-
-Herdr installation is separate from skill installation. See
-[`herdr/README.md`](herdr/README.md) for activation, optional collector service
-commands, state ownership, and first-version limits.
 
 ## Install for Pi
 
@@ -110,18 +89,21 @@ Install the shared skills as a Pi Git package:
 pi install git:github.com/corymhall/toolkit
 ```
 
-The Pi manifest exposes the recursive first-party `skills/` tree, managed
-third-party `.agents/skills/*`, and the focused `extensions/web-access`,
-`extensions/codex-fast-mode`, `extensions/pi-ui`, `extensions/system-prompt`,
-`extensions/command-runner`, `extensions/copy-session`, `extensions/github-pr`,
-`extensions/review-pane`, and `extensions/delegate` extensions.
-The package does not add hidden background-process or generic subagent tools.
-Git package installation installs the web-access extension's local parsing
-dependencies automatically.
+The root manifest exposes public skills. Extensions are a separate package at
+`packages/pi`, requiring Pi 1.5+. From a local checkout:
+
+```bash
+npm ci
+pi install ./packages/pi
+```
+
+Workstation installation registers this package automatically. Its manifest
+includes the web, UI, model, terminal, delegation, review, PR, and Rex-session
+extensions. npm workspaces install their runtime dependencies.
 
 ### Web Access extension
 
-`extensions/web-access` registers `web_search`, `github_search`, `github_issue`,
+`packages/pi/extensions/web-access` registers `web_search`, `github_search`, `github_issue`,
 `github_pull_request`, `github_actions`, and `fetch_content`:
 
 - `web_search` uses Pi's ChatGPT subscription login and the selected OpenAI Responses model; legacy OpenAI Codex logins remain supported.
@@ -147,19 +129,25 @@ dependencies automatically.
 
 The extension does not bundle an extension-owned skill or use Jina, Gemini,
 Parallel, Brave, Exa, Tavily, or Perplexity. See
-[extensions/web-access/README.md](extensions/web-access/README.md) for details.
+[packages/pi/extensions/web-access/README.md](packages/pi/extensions/web-access/README.md) for details.
 
 ### Codex Fast Mode extension
 
 `/codex-fast on|off|status` toggles OpenAI Codex's `priority` service tier for
 models that advertise Fast mode. The extension leaves reasoning and verbosity
 unchanged, defaults to off, and ignores unsupported models. See
-[extensions/codex-fast-mode/README.md](extensions/codex-fast-mode/README.md) for
+[packages/pi/extensions/codex-fast-mode/README.md](packages/pi/extensions/codex-fast-mode/README.md) for
 the current capability allowlist and validation behavior.
+
+### Model Modes extension
+
+`/mode implement`, `/mode discuss`, and `/mode investigate` switch model and
+reasoning effort only. `/mode` opens a picker and `/mode status` reports the
+current preset. See [packages/pi/extensions/model-modes/README.md](packages/pi/extensions/model-modes/README.md).
 
 ### Pi UI extension
 
-`extensions/pi-ui` provides one entry point for the toolkit's interactive UI:
+`packages/pi/extensions/pi-ui` provides one entry point for the toolkit's interactive UI:
 
 - Tool Cards uses Pi 1.0.1+ renderer registration for bordered cards with Bash
   output previews, compact informational calls, and execution metadata.
@@ -173,7 +161,7 @@ the current capability allowlist and validation behavior.
 `Ctrl+O` uses Pi's global tool expansion state and native expanded result
 renderers. Local file links use their normal `file://` targets.
 
-See [extensions/pi-ui/README.md](extensions/pi-ui/README.md) for links to each
+See [packages/pi/extensions/pi-ui/README.md](packages/pi/extensions/pi-ui/README.md) for links to each
 feature's behavior, requirements, and limitations.
 
 ### Model defaults
@@ -189,7 +177,7 @@ multiline viewer; `/system-prompt current` reads the currently assembled string
 instead. The extension does not inject the prompt into model context or persist
 another session copy. Provider payload rewrites and host-level instructions are
 outside Pi's prompt API. See
-[extensions/system-prompt/README.md](extensions/system-prompt/README.md) for the
+[packages/pi/extensions/system-prompt/README.md](packages/pi/extensions/system-prompt/README.md) for the
 exact boundary and sensitivity warning.
 
 ### Review pane extension
@@ -198,7 +186,7 @@ exact boundary and sensitivity warning.
 Commentry to this Pi agent. Use `/review <revision>` for a diff base, or ask the
 agent to call `open_review` when its work is ready. No additional confirmation
 is shown. Commentry attachment can deliver pending comments. See
-[extensions/review-pane/README.md](extensions/review-pane/README.md).
+[packages/pi/extensions/review-pane/README.md](packages/pi/extensions/review-pane/README.md).
 
 ### Delegate extension
 
@@ -206,11 +194,28 @@ is shown. Commentry attachment can deliver pending comments. See
 worktree branch, and starts a new Pi conversation after Worktrunk setup succeeds.
 The new agent receives your instructions and the current session reference for
 Evaler. This reuses the local Rex picker rather than duplicating its worktree or
-session grouping logic. See [extensions/delegate/README.md](extensions/delegate/README.md).
+session grouping logic. See [packages/pi/extensions/delegate/README.md](packages/pi/extensions/delegate/README.md).
+
+### Rex Subagents extension
+
+`rex_subagent` spawns named Pi children in minimized floating panes in the calling
+Rex tab without a confirmation prompt. Optional `model` and `effort` spawn fields
+override the parent's defaults. Results arrive as follow-ups.
+`/subagents open <name>` opens a child for inspection. Rex can promote it to a
+normal pane or tab without restarting it. Children retain working and blocked
+status, but settled work becomes idle without Rex completion notifications.
+The parent keeps its normal notifications.
+
+Children have the full built-in tool set and share the working tree. Review-only
+assignments must explicitly prohibit edits. They use normal Pi configuration and
+project instructions, with MCP disabled. This is not a sandbox. See
+[packages/pi/extensions/rex-subagents/README.md](packages/pi/extensions/rex-subagents/README.md) for
+controls, recovery, and limits. Existing configurations that list individual
+extension files need separate activation.
 
 ### GitHub PR status and CI watches
 
-`extensions/github-pr` shows PR status above the input and automatically watches
+`packages/pi/extensions/github-pr` shows PR status above the input and automatically watches
 the current branch PR across new commits and CI reruns. `/pr` toggles inline
 details without taking focus. `/pr unwatch` disables automatic watching until
 `/pr watch`, including across reloads and resumes. Saved delivery receipts keep
@@ -221,7 +226,7 @@ Nothing reruns jobs, edits PRs, or intercepts shell commands. Explicit unfinishe
 waits restore paused. On Pi 1.4+, watched CI also feeds Rex's OSC 7501 status.
 Pending is working, green is done, and red is blocked while Pi rests. Active
 agent work and native dialogs take precedence. See
-[extensions/github-pr/README.md](extensions/github-pr/README.md).
+[packages/pi/extensions/github-pr/README.md](packages/pi/extensions/github-pr/README.md).
 
 ### Copy Session extension
 
@@ -236,7 +241,7 @@ prompt asking another session to use
 Evaler to inspect this saved session. Use `/copy-session <question>` to focus
 the lookup. The prompt includes the exact session path, ID, and working
 directory, without copying the transcript. See
-[extensions/copy-session/README.md](extensions/copy-session/README.md).
+[packages/pi/extensions/copy-session/README.md](packages/pi/extensions/copy-session/README.md).
 
 ### Command runner extension
 
@@ -251,14 +256,13 @@ Both tools share Pi UI cards.
 New Pi sessions in the same terminal can adopt its existing command pane.
 Rex command panes float in the caller's tab and start minimized. Orderly Pi quit
 closes completed idle Rex panes while preserving running or uncertain work.
-Outside Herdr and Rex, use tmux manually for long-lived processes.
 
-See [extensions/command-runner/README.md](extensions/command-runner/README.md)
+See [packages/pi/extensions/command-runner/README.md](packages/pi/extensions/command-runner/README.md)
 for recovery, requirements, and backend differences.
 
 Package installation loads the `memory-guard` guidance but cannot create the
-`~/.local/bin/make` proxy. Run `scripts/install-local-skills.sh` from a local
-checkout when automatic make guarding is desired, or invoke `memrun` explicitly.
+`~/.local/bin/make` proxy. Run `mise bootstrap` from a local checkout when
+automatic make guarding is desired, or invoke `memrun` explicitly.
 
 Update an unpinned Git installation with:
 
@@ -354,8 +358,7 @@ The proxy only covers `make` resolved through `PATH`; an explicit path such as
 Pi supports global instructions at `~/.pi/agent/AGENTS.md` or
 `$PI_CODING_AGENT_DIR/AGENTS.md`. See
 [docs/global-agent-guidance.md](docs/global-agent-guidance.md) for the suggested
-Herdr and sidecar policy. Merge it into existing global guidance manually; the
-installer does not edit agent settings.
+terminal process policy. Public instructions are composed by the agent-config package.
 
 ## Validation
 
@@ -394,9 +397,8 @@ done
 codex plugin marketplace remove toolkit
 ```
 
-After updating the checkout, run `scripts/install-local-skills.sh` to install
-the skill links and repoint the existing `~/.local/bin/make` symlink to the new
-skill path.
+After updating the checkout, run `mise bootstrap` to apply the declared skill
+links and memory guard proxy.
 
 ## Acknowledgements
 

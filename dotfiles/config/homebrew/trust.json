@@ -1,0 +1,15 @@
+{
+  "trustedformulae": [
+    "depot/tap/depot",
+    "peonping/tap/peon-ping",
+    "plannotator/tap/plannotator-tui",
+    "stripe/stripe-cli/stripe"
+  ],
+  "trustedcasks": [
+    "anomalyco/tap/hex",
+    "docker/tap/sbx"
+  ],
+  "trustedtaps": [
+    "plannotator/tap"
+  ]
+}

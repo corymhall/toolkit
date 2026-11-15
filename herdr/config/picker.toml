@@ -1,3 +1,0 @@
-# Default repository search roots. Override with HERDR_APP_HOME/config/toolkit-picker.toml.
-roots = ["~/personal", "~/plugins", "~/playground", "~/github", "~/testing-apps", "~/work"]
-scratch_roots = ["~/playground/scratch"]

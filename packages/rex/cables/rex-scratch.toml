@@ -1,0 +1,35 @@
+[metadata]
+name = "rex-scratch"
+description = "Browse plain scratch sessions"
+
+[source]
+command = '''python3 "$REX_PICKER_ROOT/picker.py" scratch'''
+display = "{split:\t:0}"
+output = "{split:\t:1}"
+watch = 1.0
+no_sort = false
+frecency = false
+
+[preview]
+command = '''python3 "$REX_PICKER_ROOT/picker.py" scratch-preview {split:\t:1}'''
+header = "{split:\t:0}"
+
+[ui]
+input_header = "Scratch sessions"
+
+[ui.preview_panel]
+size = 60
+
+[keybindings]
+enter = "actions:workspace"
+ctrl-g = "actions:create_session"
+
+[actions.workspace]
+description = "Create or focus Rex session"
+command = '''python3 "$REX_PICKER_ROOT/picker.py" open-project {split:\t:1} {split:\t:2} scratch'''
+mode = "execute"
+
+[actions.create_session]
+description = "Create a scratch directory and Rex session"
+command = '''python3 "$REX_PICKER_ROOT/picker.py" create-session {split:\t:3}'''
+mode = "execute"

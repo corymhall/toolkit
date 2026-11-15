@@ -1,0 +1,19 @@
+# Header - #
+# <type>(<scope>): <subject>
+# No more than 80 chars. #### 80 chars is ############################## here: #
+
+# Remember blank line between title and body.
+
+# Body
+# The body should include the motivation for the change and contrast this with previous behavior.
+# Wrap at 72 chars. ################################## which is here: #
+#
+
+# Footer
+# The footer should contain any information about Breaking Changes and is also the place
+# to reference GitHub issues that this commit closes.
+# BREAKING CHANGE: ...
+# Closes #123, #124
+# re #123, #124
+
+#

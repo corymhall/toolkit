@@ -1,5 +1,29 @@
 # Agent Instructions
 
+## Workstation Configuration
+
+Read `docs/workstation.md` before editing installation or configuration composition.
+Public settings live under `dotfiles/`; instruction and MCP inputs live under `agent-config/`.
+`packages/agent-config` is the sole writer for composed files. Never declare those outputs
+as mise dotfile links. Private inputs are explicitly selected external paths and must never
+be copied into this checkout. Keep validation and preview separate from home installation.
+The terminal integration lives under `packages/rex`.
+Pi extensions and their package manifest live under `packages/pi`.
+
+## Monorepo Tasks
+
+Each component owns its tasks in `packages/<name>/mise.toml`. The root aggregates
+checks and tests through `//packages/...:<task>` dependencies. Do not add nested
+`mise run` commands for task orchestration. Register non-Node components in the
+root workspace graph, and declare runtime dependencies between components.
+See `docs/workstation.md` for caching and dependency rules.
+
+## Repository Scripts
+
+Verify local configuration generators and installers by running their real preview/install
+workflow and inspecting the output. Do not add mock-filesystem unit-test suites around this
+glue. Reserve behavioral tests for reusable extensions and components.
+
 ## Skill Management
 
 This repository is organized around self-contained Agent Skills:
@@ -18,20 +42,9 @@ CLI or externally managed process provides the same capability. Skill-owned CLI
 helpers are appropriate when they provide repeatable context collection,
 validation, or output handling beyond a direct invocation.
 
-Local installs use:
-
-```bash
-scripts/install-local-skills.sh
-mise run check:local-install
-```
-
-The check is non-mutating and verifies the live links against the current
-checkout. The installer links first-party and managed third-party shared skills
-into `~/.agents/skills` and the memory guard's `make` proxy into `~/.local/bin`.
-It may remove only legacy toolkit-owned reviewer symlinks from the former plugin
-layout. It must not edit
-agent settings or package caches, and it must refuse to replace non-symlink
-destinations.
+Installation uses `mise bootstrap`, and `mise dotfiles status` reports link state.
+Declare public skill links in the root `mise.toml`; private skills belong in the private
+checkout's `mise.toml`. Do not add parallel installers or check-install scripts.
 
 Repository tool versions, npm dependency freshness, and common tasks are
 managed by `mise.toml`. Run `mise install` before using them; `mise run` and
@@ -52,9 +65,8 @@ than editing the rendered Pi or Codex policy fields by hand. Review managed
 skill and lockfile diffs before committing them.
 
 The root `package.json` exposes the recursive `skills/` tree and
-`.agents/skills/*` to Pi. The local installer discovers nested skill directories
-recursively but links each skill flat into `~/.agents/skills` for cross-harness
-compatibility.
+`.agents/skills/*` to Pi. Root mise dotfiles declarations link individual skills
+flat into `~/.agents/skills` for cross-harness compatibility.
 
 After changing skills, extensions, installers, or package metadata, run the
 complete local validation graph:
@@ -74,7 +86,7 @@ and `mise run validate` at pre-push. Install Git 2.54+ global hooks once with
 
 ## Pi Extension Management
 
-- First-party Pi extensions live under `extensions/<name>/`, with `index.ts` as
+- First-party Pi extensions live under `packages/pi/extensions/<name>/`, with `index.ts` as
   the entry point, a focused README, and tests under `test/` when behavior can
   be isolated.
 - When upgrading Pi, align the repository's `@earendil-works/pi-*` development
@@ -82,10 +94,9 @@ and `mise run validate` at pre-push. Install Git 2.54+ global hooks once with
   review newly public extension APIs that can replace local workarounds.
   Pi UI uses renderer middleware for built-in tools and `codemode`; preserve
   their implementations and tool loadout when changing card rendering.
-- Expose a new packaged extension in `package.json` under `pi.extensions`, add
-  its test script when applicable, and update the expected extension list in
-  `scripts/test-pi-package.sh`. Document user-facing commands or tools in the
-  root README.
+- Expose a new packaged extension in `packages/pi/package.json` under `pi.extensions`.
+  Add focused behavioral tests only when warranted. Verify package loading with Pi itself
+  and document user-facing commands or tools in the root README.
 - A package-manifest change does not install an extension into an existing Pi
   configuration that lists individual extension files. Distinguish package
   development from local activation: inspect `~/.pi/agent/settings.json` or
@@ -101,19 +112,16 @@ and `mise run validate` at pre-push. Install Git 2.54+ global hooks once with
 - Extensions run with full user permissions. Validate paths and structured
   subprocess arguments, quote any command text sent through a terminal, and
   require confirmation before creating worktrees, running repository hooks, or
-  starting external sessions.
+  starting external sessions, except the explicitly authorized Rex subagent launcher.
 
 ## Process Management
 
-- When `HERDR_ENV=1`, use Herdr for long-running or interactive processes.
-  For manual operations, inspect the installed CLI's help before acting.
-- Otherwise, when `REX_SESSION` and `REX_BLOCK` are set, use Rex and load its
+- When `REX_SESSION` and `REX_BLOCK` are set, use Rex and load its
   skill. Scope operations to that session and block rather than the user's focus.
 - Use `start_command` and `command_status` when available for ordinary
-  long-running commands. They select Herdr or Rex from the environment.
+  long-running commands. They use the current terminal backend.
 - Re-list terminal resources before acting on saved IDs. Preserve unrelated
   panes and running commands.
-- Outside Herdr and Rex, use tmux for long-lived interactive processes.
 
 ## Evaluation Lens
 

@@ -1,0 +1,116 @@
+sandbox_mode = "danger-full-access"
+model = "gpt-6.1-sol"
+approval_policy = "never"
+model_reasoning_effort = "medium"
+plan_mode_reasoning_effort = "xhigh"
+web_search = "live"
+suppress_unstable_features_warning = true
+service_tier = "priority"
+notify = [ "/Users/chall/.codex/computer-use/Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient", "turn-ended" ]
+
+[shell_environment_policy]
+inherit = "all"
+ignore_default_excludes = false
+
+[shell_environment_policy.filters]
+"AWS_*" = "exclude"
+"AZURE_*" = "exclude"
+"GOOGLE_*" = "exclude"
+"PULUMI_*" = "exclude"
+"*_TOKEN" = "exclude"
+"*_KEY" = "exclude"
+"*_SECRET" = "exclude"
+
+[shell_environment_policy.set]
+NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "9230e2bd8b24b7ac7a0ba6774c64bf0d78ecdabbdd91d0ed627b02a587bae2df"
+
+[permissions.allow-all.network]
+enabled = true
+mode = "full"
+
+[permissions.triage-net.network]
+enabled = true
+mode = "limited"
+
+[permissions.triage-net.network.domains]
+"**.github.com" = "allow"
+"**.githubusercontent.com" = "allow"
+
+[tui]
+status_line = [ "model-with-reasoning", "git-branch", "five-hour-limit", "weekly-limit", "codex-version", "context-remaining", "pull-request-number", "branch-changes", "thread-id" ]
+theme = "dark-bark"
+vim_mode_default = true
+status_line_use_colors = true
+screen_reader_detection_done = true
+
+[tui.model_availability_nux]
+"gpt-5.5" = 4
+"gpt-5.6-sol" = 4
+"gpt-6.1-sol" = 4
+
+[tui.keymap.chat]
+toggle_voice_mute = "ctrl-x"
+
+[features]
+code_mode = true
+hooks = true
+prevent_idle_sleep = true
+memories = false
+default_mode_request_user_input = true
+apps = true
+
+[features.multi_agent_v2]
+enabled = true
+max_concurrent_threads_per_session = 6
+
+[desktop]
+appearanceLightCodeThemeId = "absolutely"
+appearanceDarkCodeThemeId = "catppuccin"
+dictationDictionary = []
+followUpQueueMode = "steer"
+preventSleepWhileRunning = true
+keepRemoteControlAwakeWhilePluggedIn = true
+git-branch-prefix = "corymhall-codex/"
+git-show-sidebar-pr-icons = true
+git-create-pull-request-as-draft = false
+conversationDetailMode = "STEPS_PROSE"
+dock-icon-preference = "space-system"
+realtimeVoiceScreenContextEnabled = true
+enabled-reasoning-efforts = [ "low", "medium", "high", "xhigh" ]
+selected-avatar-id = "codex"
+show-context-window-usage = true
+composerPlainTextMode = true
+
+[desktop.appearanceLightChromeTheme]
+accent = "#cc7d5e"
+contrast = 40
+ink = "#2d2d2b"
+opaqueWindows = true
+surface = "#f9f9f7"
+
+[desktop.appearanceLightChromeTheme.fonts]
+code = "\"Geist Mono\", ui-monospace, \"SFMono-Regular\""
+ui = "Geist, Inter"
+
+[desktop.appearanceLightChromeTheme.semanticColors]
+diffAdded = "#00c853"
+diffRemoved = "#ff5f38"
+skill = "#cc7d5e"
+
+[desktop.appearanceDarkChromeTheme]
+accent = "#efad59"
+contrast = 50
+ink = "#a6a39e"
+opaqueWindows = true
+surface = "#100e14"
+
+[desktop.appearanceDarkChromeTheme.fonts]
+code = "Monaspace Argon"
+
+[desktop.appearanceDarkChromeTheme.semanticColors]
+diffAdded = "#91ad68"
+diffRemoved = "#df858d"
+skill = "#b293d0"
+
+[desktop.open-in-target-preferences]
+global = "ghostty"

@@ -1,0 +1,11 @@
+{
+  "name": "@corymhall/agent-config",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node src/index.ts"
+  },
+  "dependencies": {
+    "smol-toml": "^1.6.0"
+  }
+}

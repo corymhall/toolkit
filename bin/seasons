@@ -1,0 +1,3 @@
+#!/bin/sh
+# Seasons owns the CLI and palette generation. This repo owns workstation linking.
+exec "$HOME/plugins/seasons-theme.nvim/bin/seasons" "$@"

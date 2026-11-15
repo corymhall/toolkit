@@ -1,0 +1,73 @@
+[core]
+  editor = "nvim"
+	excludesFile = ~/.config/git/gitignore
+  ; fsmonitor = true
+  ; untrackedCache = true
+
+[credential]
+
+[fetch]
+  prune = true
+  pruneTags = true
+  all = true
+
+[github]
+  user = "corymhall"
+
+[init]
+  defaultBranch = "main"
+
+[pull]
+  rebase = true
+
+[push]
+  default = "simple"
+  autoSetupRemote = true
+
+[commit]
+  template = "~/.config/git/gitmessage"
+  gpgsign = true
+
+[status]
+  ; submoduleSummary = true
+
+[diff]
+  submodule = log
+  algorithm = histogram
+  colorMoved = plain
+  mnemonicPrefix = true
+
+[user]
+  email = "43035978+corymhall@users.noreply.github.com"
+  name = "corymhall"
+  signingkey = "10E0136E71568E18"
+
+[url "https://github.com/"]
+  insteadOf = git@github.com:
+
+[url "https://github.com/"]
+  insteadOf = ssh://git@github.com/
+[branch]
+	sort = -committerdate
+[tag]
+	sort = version:refname
+[rerere]
+	enabled = true
+	autoupdate = true
+[rebase]
+	autoSquash = true
+	updateRefs = true
+[spice "branchCreate"]
+	commit = false
+[credential "https://github.com"]
+	helper =
+	helper = !/opt/homebrew/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper =
+	helper = !/opt/homebrew/bin/gh auth git-credential
+[hook "hk-pre-commit"]
+	command = test \"${HK:-1}\" = \"0\" || ~/.local/bin/mise x hk -- hk run pre-commit --from-hook --staged
+	event = pre-commit
+[hook "hk-pre-push"]
+	command = test \"${HK:-1}\" = \"0\" || ~/.local/bin/mise x hk -- hk run pre-push --from-hook
+	event = pre-push

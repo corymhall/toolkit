@@ -1,0 +1,110 @@
+{
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "command": "if [ -f '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -r '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -x '/Users/chall/.orca/agent-hooks/codex-hook.sh' ]; then /bin/sh '/Users/chall/.orca/agent-hooks/codex-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "if [ -f '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -r '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -x '/Users/chall/.orca/agent-hooks/codex-hook.sh' ]; then /bin/sh '/Users/chall/.orca/agent-hooks/codex-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "if [ -f '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -r '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -x '/Users/chall/.orca/agent-hooks/codex-hook.sh' ]; then /bin/sh '/Users/chall/.orca/agent-hooks/codex-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "if [ -f '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -r '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -x '/Users/chall/.orca/agent-hooks/codex-hook.sh' ]; then /bin/sh '/Users/chall/.orca/agent-hooks/codex-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh -c 'rex __internal session-start --agent codex 2>/dev/null || true'",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh -c 'export PATH=\"$HOME/.local/bin:$HOME/.local/share/mise/shims:/opt/homebrew/bin:$PATH\"; exec python3 \"$HOME/.config/rex/agent-state.py\" codex'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "if [ -f '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -r '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -x '/Users/chall/.orca/agent-hooks/codex-hook.sh' ]; then /bin/sh '/Users/chall/.orca/agent-hooks/codex-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "command": "if [ -f '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -r '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -x '/Users/chall/.orca/agent-hooks/codex-hook.sh' ]; then /bin/sh '/Users/chall/.orca/agent-hooks/codex-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "command": "if [ -f '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -r '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -x '/Users/chall/.orca/agent-hooks/codex-hook.sh' ]; then /bin/sh '/Users/chall/.orca/agent-hooks/codex-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "if [ -f '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -r '/Users/chall/.orca/agent-hooks/codex-hook.sh' ] && [ -x '/Users/chall/.orca/agent-hooks/codex-hook.sh' ]; then /bin/sh '/Users/chall/.orca/agent-hooks/codex-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}

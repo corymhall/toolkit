@@ -1,0 +1,54 @@
+[metadata]
+name = "rex-worktrees"
+description = "Browse worktrees for the selected repository"
+
+[source]
+command = '''python3 "$REX_PICKER_ROOT/picker.py" worktrees'''
+display = "{split:\t:0}  [{split:\t:1}]  {split:\t:2}"
+output = "{split:\t:3}"
+watch = 1.0
+no_sort = false
+frecency = false
+
+[preview]
+command = '''python3 "$REX_PICKER_ROOT/picker.py" worktree-preview {split:\t:3}'''
+header = "{split:\t:0}"
+footer = "{split:\t:0} [{split:\t:1}]"
+
+[ui]
+input_header = "Worktrees"
+
+[ui.preview_panel]
+size = 60
+
+[keybindings]
+enter = "actions:workspace"
+ctrl-g = "actions:create_worktree"
+ctrl-d = "actions:remove_worktree"
+ctrl-k = "actions:remove_keep_branch"
+ctrl-x = "actions:force_remove"
+
+[actions.workspace]
+description = "Open checkout tab in repository session"
+command = '''python3 "$REX_PICKER_ROOT/picker.py" open-worktree {split:\t:3} {split:\t:4}'''
+mode = "execute"
+
+[actions.create_worktree]
+description = "Create a Worktrunk worktree"
+command = '''python3 "$REX_PICKER_ROOT/picker.py" create-worktree {split:\t:6}'''
+mode = "execute"
+
+[actions.remove_worktree]
+description = "Remove worktree and delete its branch when safely integrated"
+command = '''python3 "$REX_PICKER_ROOT/picker.py" remove-worktree {split:\t:6} {split:\t:3} {split:\t:5} normal'''
+mode = "execute"
+
+[actions.remove_keep_branch]
+description = "Remove worktree but keep its branch"
+command = '''python3 "$REX_PICKER_ROOT/picker.py" remove-worktree {split:\t:6} {split:\t:3} {split:\t:5} keep'''
+mode = "execute"
+
+[actions.force_remove]
+description = "Force-remove worktree and unmerged branch"
+command = '''python3 "$REX_PICKER_ROOT/picker.py" remove-worktree {split:\t:6} {split:\t:3} {split:\t:5} force'''
+mode = "execute"

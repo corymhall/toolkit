@@ -1,0 +1,9 @@
+model = "gpt-5.5"
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+model_reasoning_effort = "medium"
+service_tier = "fast"
+allow_login_shell = false
+
+[features]
+memories = false

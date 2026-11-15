@@ -1,0 +1,210 @@
+#!/usr/bin/env bash
+
+HIDDEN_FOLDER=".p"
+
+function display_help() {
+  local msg
+  msg="usage: p [ $1 ]
+
+
+  "
+  echo "$msg"
+}
+
+function main() {
+  declare -A -x command_table=(
+    ['test']="go_test"
+    ['c']="command"
+    ['delete']="delete_resources"
+    ['state']="state"
+  )
+  local commands="${!command_table[*]}"
+  if [[ $# -lt 1 ]]; then exit_with_help "$(display_help "$commands")"; fi
+
+  local command=${1}
+  shift
+  local fn_name=${command_table[$command]}
+
+  if [[ $fn_name == '' ]]; then exit_with_help "$msg"; fi
+
+  if $fn_name "$@"; then return 0; else return 1; fi
+}
+
+function state() {
+  local file="$HIDDEN_FOLDER/.stack-export.json"
+  local filter=true
+  while getopts "f" opt; do
+    case ${opt} in
+    f)
+      filter=true
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" 1>&2
+      exit 1
+      ;;
+    :)
+      echo "Invalid option: -$OPTARG requires an argument" 1>&2
+      exit 1
+      ;;
+    esac
+  done
+  pulumi stack export >$file
+  pulumi stack export >"$HIDDEN_FOLDER/.stack-export.bkp.json"
+  if [ $filter == true ]; then
+    urn=$(jq '.deployment.resources[].urn' -r $file | fzf --preview="bat $file | jq '.deployment.resources[] | select(.urn==\"{}\")'")
+    echo "jq --arg URN $urn '.deployment.resources[] | select(.urn==\$URN)' $file > new-stack.json"
+    jq --arg URN "$urn" '.deployment.resources[] | select(.urn==$URN)' $file | bat
+  fi
+
+}
+
+function delete_resources() {
+  local filter=false
+  local file="$HIDDEN_FOLDER/.stack-export.json"
+  while getopts "f" opt; do
+    case ${opt} in
+    f)
+      filter=true
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" 1>&2
+      exit 1
+      ;;
+    :)
+      echo "Invalid option: -$OPTARG requires an argument" 1>&2
+      exit 1
+      ;;
+    esac
+  done
+  pulumi stack export >$file
+  pulumi stack export >"$HIDDEN_FOLDER/.stack-export.bkp.json"
+  if [ $filter == true ]; then
+    urn=$(jq '.deployment.resources[].urn' -r $file | fzf --preview="bat $file | jq '.deployment.resources[] | select(.urn==\"{}\")'")
+    echo "jq --arg URN $urn 'del(.deployment.resources[] | select(.urn==\$URN))' $file > $HIDDEN_FOLDER/new-stack.json"
+    jq --arg URN "$urn" 'del(.deployment.resources[] | select(.urn==$URN))' $file >"$HIDDEN_FOLDER/new-stack.json"
+    pulumi stack import --file new-stack.json
+    return
+  fi
+  pulumi stack export | jq 'del(.deployment.resources)' >$file && pulumi stack import --file $file
+}
+
+function command() {
+  local grpc_file
+  local grpc=false
+  local profile="dev-admin"
+  local folder=$(git rev-parse --show-toplevel)
+  local base_folder=$(dirname $folder)
+  local bin="$folder/bin"
+  local path="PATH=$bin:$PATH"
+  local grpc_env="PULUMI_DEBUG_GRPC="
+  local export_path=true
+  local cwd=$(pwd)
+  while getopts "g:np:r:l:" opt; do
+    case ${opt} in
+    l)
+      export_path=true
+      path="PATH=$HOME/work/$OPTARG/master/bin:$PATH"
+      ;;
+    n)
+      export_path=false
+      ;;
+    p)
+      export_path=true
+      path="PATH=$base_folder/$OPTARG/bin:$PATH"
+      ;;
+    r)
+      profile=$OPTARG
+      ;;
+    g)
+      grpc=true
+      if [[ $OPTARG =~ ^- ]]; then
+        # If the argument starts with a '-', treat it as a new option
+        ((OPTIND--))
+      else
+        grpc_file=$OPTARG
+      fi
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" 1>&2
+      exit 1
+      ;;
+    :)
+      echo "Invalid option: -$OPTARG requires an argument" 1>&2
+      exit 1
+      ;;
+    esac
+  done
+  shift $((OPTIND - 1))
+  if [ $export_path == true ]; then
+    export $path
+  fi
+  export PULUMI_GO_DEP_ROOT=$folder/..
+  if [ $grpc == true ]; then
+    if [ -z "$grpc_file" ]; then
+      grpc_file="$HIDDEN_FOLDER/grpc.json"
+      rm -rf "$cwd/$grpc_file"
+    fi
+    export $grpc_env"$grpc_file"
+  fi
+  echo "aws-vault exec $profile -- $@"
+  aws-vault exec "$profile" -- "$@"
+}
+
+function go_test() {
+  local folder cwd
+  local grpc_file
+  local grpc=false
+  local tests
+  local profile="dev-admin"
+  folder=$(git rev-parse --show-toplevel)
+  local bin="$folder/bin"
+  local path="PATH=$bin:$PATH"
+  local grpc_env="PULUMI_DEBUG_GRPC="
+  cwd=$(pwd)
+
+  while getopts "g:t:r:" opt; do
+    case ${opt} in
+    t)
+      tests=$OPTARG
+      ;;
+    g)
+      if [[ $OPTARG =~ ^- ]]; then
+        # If the argument starts with a '-', treat it as a new option
+        ((OPTIND--))
+      else
+        grpc_file=$OPTARG
+      fi
+      ;;
+    r)
+      profile=$OPTARG
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" 1>&2
+      exit 1
+      ;;
+    :)
+      echo "Invalid option: -$OPTARG requires an argument" 1>&2
+      exit 1
+      ;;
+    esac
+  done
+  shift $((OPTIND - 1))
+
+  export $path
+  if [ $grpc == true ]; then
+    if [ -z "$grpc_file" ]; then
+      grpc_file="$HIDDEN_FOLDER/grpc.json"
+      rm -rf "$cwd/$grpc_file"
+    fi
+    export $grpc_env"$grpc_file"
+  fi
+  if [ -n "$tests" ]; then
+    echo "aws-vault exec $profile -- go test -count=1 -tags=all -v -timeout 30m -test.run="$tests" ./..."
+    aws-vault exec "$profile" -- go test -count=1 -tags=all -timeout 30m -v -test.run="$tests" ./...
+  else
+    echo "aws-vault exec $profile -- go test -count=1 -tags=all -v -timeout 30m ./..."
+    aws-vault exec "$profile" -- go test -count=1 -tags=all -timeout 30m -v ./...
+  fi
+}
+
+main "$@"

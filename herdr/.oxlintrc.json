@@ -1,7 +1,0 @@
-{
-  "$schema": "../node_modules/oxlint/configuration_schema.json",
-  "options": {
-    "typeAware": false,
-    "typeCheck": false
-  }
-}

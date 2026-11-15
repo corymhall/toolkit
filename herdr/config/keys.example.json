@@ -1,8 +1,0 @@
-{
-  "layout:toolkit-workbench": {
-    "ctrl-shift-b": "layout.toggle:sidebar",
-    "ctrl-shift-o": "toolkit-workbench.projects",
-    "ctrl-shift-u": "toolkit-workbench.work",
-    "ctrl-shift-l": "toolkit-workbench.previous"
-  }
-}

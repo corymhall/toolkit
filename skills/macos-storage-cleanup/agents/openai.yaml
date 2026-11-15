@@ -1,0 +1,4 @@
+interface:
+  display_name: "macOS Storage Cleanup"
+  short_description: "Analyze disk use and reclaim space"
+  default_prompt: "Use $macos-storage-cleanup to investigate disk usage on this Mac and safely reclaim space without deleting active work."

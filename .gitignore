@@ -8,6 +8,3 @@ __pycache__/
 node_modules/
 apm_modules/
 .build/
-herdr/mods/**/gpui-kit.d.ts
-herdr/mods/**/herdr.d.ts
-herdr/mods/**/jsconfig.json

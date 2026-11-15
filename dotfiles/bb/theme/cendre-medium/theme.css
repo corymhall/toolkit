@@ -1,0 +1,76 @@
+/* Cendre Medium: warm ash surfaces with ember, brass, sap, and frost accents. */
+:root, .light {
+  --canvas: #e9e3e0;
+  --ink: #382b1c;
+  --primary: #9c5130;
+  --primary-foreground: #fff8f4;
+
+  --muted-foreground: color-mix(in oklch, var(--ink) 70%, var(--canvas));
+  --subtle-foreground: color-mix(in oklch, var(--ink) 58%, var(--canvas));
+  --readback-foreground: color-mix(in oklch, var(--ink) 64%, var(--canvas));
+
+  --destructive: #a72f5c;
+  --destructive-foreground: #fff8f4;
+  --destructive-text: #a72f5c;
+  --warning: #c27600;
+  --warning-text: #8c5100;
+  --attention: #c27600;
+  --success: #007330;
+  --diff-added: #007330;
+  --diff-removed: #a72f5c;
+  --pr-merged: #75549b;
+  --file-accent: #2e6f8e;
+
+  --ansi-0: #4e4641;
+  --ansi-1: #a72f5c;
+  --ansi-2: #007330;
+  --ansi-3: #9a6100;
+  --ansi-4: #2e6f8e;
+  --ansi-5: #9c5130;
+  --ansi-6: #167d7f;
+  --ansi-7: #e9e3e0;
+  --ansi-8: #73665b;
+  --ansi-9: #d25780;
+  --ansi-10: #43b16a;
+  --ansi-11: #f4a21c;
+  --ansi-12: #4e89a2;
+  --ansi-13: #d1766e;
+  --ansi-14: #20a0a2;
+  --ansi-15: #382b1c;
+
+  --ansi-bg-fg-0: #fff8f4;
+  --ansi-bg-fg-1: #fff8f4;
+  --ansi-bg-fg-2: #fff8f4;
+  --ansi-bg-fg-3: #382b1c;
+  --ansi-bg-fg-4: #fff8f4;
+  --ansi-bg-fg-5: #fff8f4;
+  --ansi-bg-fg-6: #fff8f4;
+  --ansi-bg-fg-7: #382b1c;
+  --ansi-bg-fg-8: #fff8f4;
+  --ansi-bg-fg-9: #382b1c;
+  --ansi-bg-fg-10: #382b1c;
+  --ansi-bg-fg-11: #382b1c;
+  --ansi-bg-fg-12: #fff8f4;
+  --ansi-bg-fg-13: #382b1c;
+  --ansi-bg-fg-14: #382b1c;
+  --ansi-bg-fg-15: #fff8f4;
+}
+
+.dark {
+  --canvas: #1d1917;
+  --ink: #e6d5c2;
+  --primary: #ea9875;
+  --primary-foreground: #1d1917;
+
+  --destructive: #d25780;
+  --destructive-foreground: #1d1917;
+  --destructive-text: #e28ca8;
+  --warning: #f4a21c;
+  --warning-text: #fcba81;
+  --attention: #f4a21c;
+  --success: #43b16a;
+  --diff-added: #43b16a;
+  --diff-removed: #d25780;
+  --pr-merged: #b394d0;
+  --file-accent: #75acc3;
+}
