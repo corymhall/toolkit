@@ -316,7 +316,7 @@ export function createRexBackend(
       registration.tokens["pi-command-floating"] = pane.paneId;
       await save();
     },
-    shutdown: async () => {
+    shutdown: async (reason) => {
       const panes = await backend.list();
       const paneId = registration.paneId;
       const record = panes.find((pane) => pane.pane_id === paneId);
@@ -324,15 +324,33 @@ export function createRexBackend(
         return;
       const pane = paneRecordToManagedPane(record);
       if (!pane) return;
+      if (reason === "new") {
+        const view = await inspect();
+        const layer = view.windows
+          .flatMap((window: any) => window.layers ?? [])
+          .find((layer: any) => layer.blocks?.some((block: any) => block.block_id === paneId));
+        if (layer?.kind !== "floating" || layer.blocks.length !== 1) {
+          // A promoted pane belongs to the user now. Do not re-adopt and float
+          // it when the replacement conversation starts.
+          registration = { tokens: {} };
+          await save();
+          throw new Error(`${paneId} is no longer an exclusive managed floating pane`);
+        }
+      }
       const runId = registration.tokens[HERDR_COMMAND_RUN_TOKEN];
       // A queued or uncertain submission can still look like an idle shell.
       // Require its completion marker as well as a current idle process check.
       if (
         runId &&
         exitCodeFromTranscript(await backend.read(pane), buildRunMarkers(runId)) === undefined
-      )
+      ) {
+        if (reason === "new") throw new Error(`${paneId} has an unfinished or uncertain command`);
         return;
-      if (!(await backend.process(pane)).idle) return;
+      }
+      if (!(await backend.process(pane)).idle) {
+        if (reason === "new") throw new Error(`${paneId} is busy`);
+        return;
+      }
       await call([
         "api",
         "call",

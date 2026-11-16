@@ -1,5 +1,4 @@
 [hooks]
-enter = "mise i"
 
 [tools]
 terraform = "1"
@@ -7,6 +6,7 @@ esc = "latest"
 node = "26"
 dotnet = "10"
 "npm:npm-check-updates" = "latest"
+"npm:@opencode/browse" = "0.1.0"
 "npm:tree-sitter-cli" = "latest"
 python = "3.14"
 aws-cli = "2"

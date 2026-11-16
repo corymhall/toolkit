@@ -3,147 +3,13 @@
     "defaultMode": "bypassPermissions"
   },
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/chall/.claude/hooks/peon-ping/peon.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "AskUserQuestion",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "afplay /System/Library/Sounds/Glass.aiff"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "afplay /System/Library/Sounds/Submarine.aiff"
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/chall/.claude/hooks/peon-ping/peon.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ],
     "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/chall/.claude/hooks/peon-ping/peon.sh",
-            "timeout": 10
-          }
-        ]
-      },
       {
         "hooks": [
           {
             "type": "command",
             "command": "/bin/sh -c 'rex __internal session-start --agent claude 2>/dev/null || true'",
             "timeout": 5
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/chall/.claude/hooks/peon-ping/peon.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/chall/.claude/hooks/peon-ping/peon.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/chall/.claude/hooks/peon-ping/peon.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/chall/.claude/hooks/peon-ping/peon.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/chall/.claude/hooks/peon-ping/peon.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/chall/.claude/hooks/peon-ping/peon.sh",
-            "timeout": 10,
-            "async": true
           }
         ]
       }
@@ -166,10 +32,5 @@
     }
   },
   "effortLevel": "high",
-  "skipDangerousModePermissionPrompt": true,
-  "mcpServers": {
-    "notion": {
-      "url": "https://mcp.notion.com/mcp"
-    }
-  }
+  "skipDangerousModePermissionPrompt": true
 }

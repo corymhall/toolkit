@@ -34,6 +34,12 @@ function rex() {
     if (method === "session.view") return current;
     if (method === "session.list_blocks")
       return { blocks: current.windows.flatMap((w) => w.layers.flatMap((l) => l.blocks)) };
+    if (method === "block.close") {
+      for (const window of current.windows)
+        for (const layer of window.layers)
+          layer.blocks = layer.blocks.filter((block) => block.block_id !== args.block_id);
+      return {};
+    }
     if (method === "session.new_layer") {
       const layout = args.layout as { block: { label: string } };
       current.windows[0]!.layers.push({
@@ -249,6 +255,53 @@ test("parent and child preserve accepted delivery and stop after an uncertain su
   }
 });
 
+test("cleanup closes only confirmed idle exclusive floating children and retains reports", async () => {
+  const f = await fixture();
+  const r = rex();
+  const manager = new SubagentManager(
+    r.call,
+    { server: f.config.server, session: "rex-session", block: "parent" },
+    "parent",
+    f.root,
+  );
+  let child: ReturnType<typeof harness> | undefined;
+  let socketDirectory: string | undefined;
+  try {
+    const launched = await manager.spawn(
+      "launch",
+      "worker",
+      "Inspect",
+      process.cwd(),
+      harness().ctx,
+    );
+    socketDirectory = launched.config.socketDirectory;
+    assert.equal((await manager.cleanup()).length, 1, "unreachable receiver stays open");
+    child = harness(launched.config.session);
+    installChild(child.pi, launched.file, { call: r.call, env: { ...f.env, REX_BLOCK: "child" } });
+    await child.emit("session_start");
+    assert.equal((await manager.cleanup()).length, 1, "active assignment stays open");
+    await child.emit("agent_start");
+    await child.emit("message_end", assistant("Done"));
+    await child.emit("agent_settled", { aborted: false });
+    assert.equal(typeof (await manager.find("worker")).status?.idleSince, "number");
+    const layer = r.current.windows[0]!.layers[1]!;
+    layer.kind = "tiled";
+    assert.equal((await manager.cleanup()).length, 1, "promoted pane stays open");
+    layer.kind = "floating";
+    layer.blocks.push({ block_id: "unrelated", label: "Other", host_id: "host" });
+    assert.equal((await manager.cleanup()).length, 1, "shared layer stays open");
+    layer.blocks.pop();
+    assert.deepEqual(await manager.cleanup(), []);
+    assert.equal((await manager.find("worker")).placement, "closed");
+    assert.equal((await manager.completed()).length, 1);
+    assert.equal(r.calls.filter((call) => call.method === "block.close").length, 1);
+  } finally {
+    await child?.emit("session_shutdown");
+    if (socketDirectory) await rm(socketDirectory, { recursive: true, force: true });
+    await f.clean();
+  }
+});
+
 test("the registered spawn tool launches without a UI prompt and inherits the live effort", async () => {
   const f = await fixture();
   const r = rex();
@@ -289,6 +342,101 @@ test("the registered spawn tool launches without a UI prompt and inherits the li
     await rm(config.socketDirectory, { recursive: true, force: true });
   } finally {
     await h.emit("session_shutdown");
+    await f.clean();
+  }
+});
+
+test("idle reminders reset on new work and new-session cleanup closes the settled child", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: 1_000_000 });
+  const f = await fixture();
+  const r = rex();
+  const parent = harness("parent");
+  let tool: { execute: (...args: unknown[]) => Promise<any> } | undefined;
+  Object.assign(parent.pi, {
+    registerTool(definition: typeof tool) {
+      tool = definition;
+    },
+    registerCommand() {},
+    getThinkingLevel: () => "low",
+  });
+  let tick: (() => Promise<void>) | undefined;
+  let ready!: () => void;
+  const scheduled = new Promise<void>((resolve) => {
+    ready = resolve;
+  });
+  rexSubagents(parent.pi, {
+    env: { REX_SERVER: f.config.server, REX_SESSION: "rex-session", REX_BLOCK: "parent" },
+    call: r.call,
+    stateDirectory: f.root,
+    schedule(next) {
+      tick = next;
+      ready();
+      return () => {
+        tick = undefined;
+      };
+    },
+  });
+  let child: ReturnType<typeof harness> | undefined;
+  let socketDirectory: string | undefined;
+  try {
+    await parent.emit("session_start");
+    await tool!.execute(
+      "spawn",
+      { action: "spawn", name: "worker", task: "Inspect" },
+      undefined,
+      undefined,
+      parent.ctx,
+    );
+    await scheduled;
+    const { configurations } = await import("../storage.ts");
+    const manager = new SubagentManager(
+      r.call,
+      { server: f.config.server, session: "rex-session", block: "parent" },
+      "parent",
+      f.root,
+    );
+    await manager.initialize();
+    const [launched] = await configurations(manager.root);
+    assert.ok(launched);
+    socketDirectory = launched.config.socketDirectory;
+    child = harness(launched.config.session);
+    installChild(child.pi, launched.file, { call: r.call, env: { ...f.env, REX_BLOCK: "child" } });
+    await child.emit("session_start");
+    await child.emit("agent_start");
+    await child.emit("agent_settled", { aborted: false });
+    const reminders = () =>
+      parent.messages.filter((message: any) => message.customType === "subagent-cleanup-reminder");
+    t.mock.timers.setTime(1_000_000 + 14 * 60_000);
+    await tick!();
+    assert.equal(reminders().length, 0);
+    t.mock.timers.setTime(1_000_000 + 15 * 60_000);
+    await tick!();
+    assert.equal(reminders().length, 1);
+    t.mock.timers.setTime(1_000_000 + 16 * 60_000);
+    await tick!();
+    assert.equal(reminders().length, 1, "same idle period is not repeated");
+    await tool!.execute(
+      "send",
+      { action: "send", name: "worker", task: "More work" },
+      undefined,
+      undefined,
+      parent.ctx,
+    );
+    await child.emit("agent_start");
+    t.mock.timers.setTime(1_000_000 + 32 * 60_000);
+    await tick!();
+    assert.equal(reminders().length, 1, "quiet working children are not idle");
+    await child.emit("agent_settled", { aborted: false });
+    t.mock.timers.setTime(1_000_000 + 47 * 60_000);
+    await tick!();
+    assert.equal(reminders().length, 2);
+    await parent.emit("session_shutdown", { reason: "new" });
+    assert.equal((await manager.find("worker")).placement, "closed");
+    assert.equal(tick, undefined);
+  } finally {
+    await parent.emit("session_shutdown");
+    await child?.emit("session_shutdown");
+    if (socketDirectory) await rm(socketDirectory, { recursive: true, force: true });
     await f.clean();
   }
 });

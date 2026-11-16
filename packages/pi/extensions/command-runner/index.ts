@@ -804,13 +804,17 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
     cancelTick = schedule(tick);
   };
 
-  pi.on("session_shutdown", async (event) => {
+  pi.on("session_shutdown", async (event, ctx) => {
     stopMonitor();
     await launchQueue;
     stopMonitor();
-    // Reloads and conversation switches keep the caller's reusable pane.
-    if (event.reason !== "quit") return;
-    await backend.shutdown?.();
+    // Reload and resume preserve the reusable pane and any running command.
+    if (event.reason !== "quit" && event.reason !== "new") return;
+    try {
+      await backend.shutdown?.(event.reason);
+    } catch (error) {
+      ctx.ui.notify(`Command pane retained: ${String(error)}`, "warning");
+    }
   });
 
   const restore = async (ctx: ExtensionContext) => {

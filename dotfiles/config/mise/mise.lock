@@ -183,6 +183,12 @@ url = "https://nodejs.org/dist/v26.13.0/node-v26.13.0-darwin-arm64.tar.gz"
 checksum = "sha256:525c9b29bb0263d687de60a4cec0e2a6db876a8eb032369e5795eca71e7c358e"
 url = "https://nodejs.org/dist/v26.13.0/node-v26.13.0-darwin-x64.tar.gz"
 
+[[tools."npm:@opencode/browse"]]
+version = "0.1.0"
+aube = { path = "locks/npm-opencode-browse/0.1.0", digest = "sha256:00a12557c97666f34098a52296914fa5c06c11ad7174f2e3b3d634a062994663" }
+backend = "npm:@opencode/browse"
+specifiers = ["0.1.0"]
+
 [[tools."npm:npm-check-updates"]]
 version = "23.1.1"
 aube = { path = "locks/npm-npm-check-updates/23.1.1", digest = "sha256:f2e78ecfd1bbcc92c3701f887eafe01d8fd95c3a65c845a112c95b2497acf4ac" }

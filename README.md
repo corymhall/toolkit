@@ -209,7 +209,11 @@ is shown. Commentry attachment can deliver pending comments. See
 `rex_subagent` spawns named Pi children in minimized floating panes in the calling
 Rex tab without a confirmation prompt. Optional `model` and `effort` spawn fields
 override the parent's defaults. Results arrive as follow-ups.
-`/subagents open <name>` opens a child for inspection. Rex can promote it to a
+`/subagents open <name>` opens a child for inspection. `/subagents cleanup` or
+`rex_subagent` action `close` closes confirmed idle floating children. Idle
+children prompt a cleanup reminder after 15 minutes. `/new` cleans up eligible
+children and completed idle managed Rex command panes, preserving active,
+uncertain, promoted, and unrelated work. Rex can promote it to a
 normal pane or tab without restarting it. Children retain working and blocked
 status, but settled work becomes idle without Rex completion notifications.
 The parent keeps its normal notifications.
@@ -280,6 +284,23 @@ pi update --extensions
 
 Do not also install local links for the same skills unless you intentionally
 want both resource sources configured.
+
+## Browser automation
+
+[Browse](https://github.com/anomalyco/browse) replaces the retired `browser-tools`
+skill. Its MCP server is declared in `agent-config/mcp-servers.json` and composed
+for Pi, Codex, and Claude. The executable is pinned in the workstation mise
+configuration; MCP launches it through `mise exec`. Browse's self-updater is
+disabled for that server so mise remains the version owner.
+
+Install the Browse Chromium extension from the upstream README, then run
+`mise exec npm:@opencode/browse@0.1.0 -- browse pair` and enter its one-time code
+in the extension's options. Reload Pi after configuration changes. No browser
+skill or remote-debugging Chrome profile is required.
+
+To preview or apply just Pi's MCP configuration without rewriting other composed
+files, pass `--only .pi/agent/mcp.json` to the agent-config generate or apply task.
+This preserves existing Pi MCP entries.
 
 ## Managed Third-Party Skills
 

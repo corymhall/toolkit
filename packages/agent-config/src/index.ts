@@ -54,6 +54,7 @@ export interface Options {
   home: string;
   output: string;
   privateRoot?: string;
+  only?: string[];
 }
 
 export function render(options: Options): Map<string, string> {
@@ -106,16 +107,30 @@ export function render(options: Options): Map<string, string> {
           : {}),
       };
     } else {
-      codexMcp[name] = { command: server.command, args: server.args ?? [] };
-      claudeMcp[name] = { command: server.command, args: server.args ?? [] };
+      const stdio = {
+        command: server.command,
+        args: server.args ?? [],
+        ...(server.env ? { env: server.env } : {}),
+      };
+      codexMcp[name] = stdio;
+      claudeMcp[name] = stdio;
     }
   }
+  outputs.set(
+    ".pi/agent/mcp.json",
+    JSON.stringify(
+      merge(json(resolve(home, ".pi/agent/mcp.json")), { mcpServers: claudeMcp }),
+      null,
+      2,
+    ) + "\n",
+  );
   for (const [source, destination, harness] of [
     ["codex/config.toml", ".codex/config.toml", "codex"],
     ["claude/settings.json", ".claude/settings.json", "claude"],
     ["gemini/settings.json", ".gemini/settings.json", "gemini"],
     ["pi/settings.json", ".pi/agent/settings.json", "pi"],
   ]) {
+    if (options.only?.length && !options.only.includes(destination)) continue;
     const value = merge(
       config(resolve(home, destination)),
       config(resolve(defaults, source)),
@@ -151,6 +166,11 @@ export function generate(options: Options): string[] {
     throw new Error("Generated configuration must be outside the public checkout");
   }
   const outputs = render(options);
+  if (options.only?.length) {
+    for (const name of options.only)
+      if (!outputs.has(name)) throw new Error(`Unknown composed output: ${name}`);
+    for (const name of outputs.keys()) if (!options.only.includes(name)) outputs.delete(name);
+  }
   // Preflight every path before changing any output. Refuse unrelated links, even broken ones.
   for (const name of outputs.keys()) {
     const path = resolve(output, name);
@@ -195,12 +215,20 @@ if (import.meta.main) {
   const options: Options = {
     home: homedir(),
     output: "",
-    privateRoot: process.env.TOOLKIT_PRIVATE_ROOT ? resolve(process.env.TOOLKIT_PRIVATE_ROOT) : undefined,
+    privateRoot: process.env.TOOLKIT_PRIVATE_ROOT
+      ? resolve(process.env.TOOLKIT_PRIVATE_ROOT)
+      : undefined,
   };
   for (let i = 0; i < args.length; i++) {
     const flag = args[i];
-    if (!["--home", "--output", "--private"].includes(flag) || !args[i + 1]) {
-      throw new Error("Usage: node src/index.ts --output DIR [--home DIR] [--private DIR]");
+    if (!["--home", "--output", "--private", "--only"].includes(flag) || !args[i + 1]) {
+      throw new Error(
+        "Usage: node src/index.ts --output DIR [--home DIR] [--private DIR] [--only OUTPUT]...",
+      );
+    }
+    if (flag === "--only") {
+      (options.only ??= []).push(args[++i]);
+      continue;
     }
     const value = resolve(args[++i]);
     if (flag === "--home") options.home = value;

@@ -256,7 +256,8 @@ function load(remote: ReturnType<typeof server>, directory: string, caller = "bl
   }
   return {
     tools,
-    shutdown: (reason = "quit") => handlers.get("session_shutdown")({ reason }),
+    shutdown: (reason = "quit") =>
+      handlers.get("session_shutdown")({ reason }, { ui: { notify() {} } }),
     restore: (entries: unknown[] = []) =>
       handlers.get("session_start")({}, { sessionManager: { getBranch: () => entries } }),
     start: () =>
@@ -337,6 +338,26 @@ test("Rex minimizes new panes, migrates tiled panes, and respects a user-restore
     assert.equal(remote.submissions, 1);
   }));
 
+test("new-session cleanup preserves busy, uncertain and tiled panes", async () =>
+  fixture(async (remote, directory) => {
+    const runner = load(remote, directory);
+    await runner.start();
+    await runner.shutdown("new");
+    assert.equal(remote.closes, 0);
+    remote.idleWithoutCompletion();
+    await runner.shutdown("new");
+    assert.equal(remote.closes, 0);
+    remote.finishOnRead();
+    await runner.status();
+    remote.makeTiled();
+    await runner.shutdown("new");
+    assert.equal(remote.closes, 0);
+    await load(remote, directory).restore();
+    await runner.shutdown("new");
+    assert.equal(remote.closes, 0);
+    assert.equal(remote.minimized, false);
+  }));
+
 test("Rex retries failed minimization without duplicating the pane or submitting work", async () =>
   fixture(async (remote, directory) => {
     remote.loseMinimize();
@@ -346,6 +367,18 @@ test("Rex retries failed minimization without duplicating the pane or submitting
     assert.equal(remote.minimized, true);
     assert.equal(remote.splits, 1);
     assert.equal(remote.submissions, 1);
+  }));
+
+test("new-session cleanup closes completed idle floating work panes", async () =>
+  fixture(async (remote, directory) => {
+    const runner = load(remote, directory);
+    await runner.start();
+    remote.finishOnRead();
+    await runner.status();
+    await runner.shutdown("new");
+    assert.equal(remote.closes, 1);
+    await load(remote, directory).start();
+    assert.equal(remote.splits, 2);
   }));
 
 test("Rex shutdown preserves running and uncertain work and closes only completed idle panes", async () =>
@@ -359,7 +392,7 @@ test("Rex shutdown preserves running and uncertain work and closes only complete
     assert.equal(remote.closes, 0);
     remote.finishOnRead();
     await runner.status();
-    for (const reason of ["reload", "new", "resume", "fork"]) await runner.shutdown(reason);
+    for (const reason of ["reload", "resume", "fork"]) await runner.shutdown(reason);
     assert.equal(remote.closes, 0);
     await runner.shutdown();
     await runner.shutdown();

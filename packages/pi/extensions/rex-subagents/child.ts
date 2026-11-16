@@ -44,24 +44,29 @@ export function installChild(
   let queue: Promise<unknown> = Promise.resolve();
   const resultFile = (task: string) => join(folder, "results", `${key(task)}.json`);
   const pendingFile = join(folder, "assignment.json");
-  const status = (): ChildStatus => ({
-    child: config.id,
-    session: ctx.sessionManager.getSessionId(),
-    pid: process.pid,
-    block: env.REX_BLOCK || "",
-    file: ctx.sessionManager.getSessionFile(),
-    state:
-      ctx.sessionManager.getSessionId() !== config.session
-        ? "session-changed"
-        : uncertain
-          ? "uncertain"
-          : blocked
-            ? "blocked"
-            : active || !ctx.isIdle()
-              ? "working"
-              : "idle",
-    task: active?.id,
-  });
+  let idleSince: number | undefined;
+  const status = (): ChildStatus => {
+    const value: ChildStatus = {
+      child: config.id,
+      session: ctx.sessionManager.getSessionId(),
+      pid: process.pid,
+      block: env.REX_BLOCK || "",
+      file: ctx.sessionManager.getSessionFile(),
+      state:
+        ctx.sessionManager.getSessionId() !== config.session
+          ? "session-changed"
+          : uncertain
+            ? "uncertain"
+            : blocked
+              ? "blocked"
+              : active || !ctx.isIdle()
+                ? "working"
+                : "idle",
+      task: active?.id,
+    };
+    idleSince = value.state === "idle" ? (idleSince ?? Date.now()) : undefined;
+    return { ...value, idleSince };
+  };
   const publish = () => saveJSON(join(folder, "live.json"), status());
 
   const handle = async (input: unknown) => {

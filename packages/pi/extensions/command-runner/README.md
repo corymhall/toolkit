@@ -22,8 +22,11 @@ manual fallback, not a command-runner backend.
   survive tool cancellation, Pi reload, and Pi exit. Rex closes its registered
   pane on orderly Pi quit only when the shell is idle and any tracked command
   has a completion marker. Running, uncertain, and unrecognized work is retained.
-  Reloads and conversation switches retain the pane. Herdr never closes panes
-  automatically. Forceful exits may leave panes for later reuse.
+  `/new` applies the same idle and completion checks to exclusive managed Rex
+  floating panes, warning when work is retained. Tiled or shared-layer panes are
+  preserved and released from automatic adoption. Unrelated floating panes are
+  never touched. Reload, resume, and fork retain the pane. Herdr never closes
+  panes automatically. Forceful exits may leave panes for later reuse.
 - Only one command may occupy the pane. A busy or unrecognized foreground
   process prevents another submission.
 - Commands must occupy one physical line, without tabs or newlines. Use shell

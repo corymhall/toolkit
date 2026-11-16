@@ -183,7 +183,6 @@ node scripts/sync-skill-invocation.ts
 "~/.agents/skills/zsh-command-hygiene" = "skills/shell/zsh-command-hygiene"
 "~/.agents/skills/worktrunk-stack-prs" = "skills/worktrunk-stack-prs"
 "~/.agents/skills/bridge-parity-investigation" = ".agents/skills/bridge-parity-investigation"
-"~/.agents/skills/browser-tools" = ".agents/skills/browser-tools"
 "~/.agents/skills/cobra-viper" = ".agents/skills/cobra-viper"
 "~/.agents/skills/investigate-converted-provider-docs" = ".agents/skills/investigate-converted-provider-docs"
 "~/.agents/skills/pulumi-rpc-lifecycle-investigation" = ".agents/skills/pulumi-rpc-lifecycle-investigation"

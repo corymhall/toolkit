@@ -29,7 +29,7 @@ export interface CommandBackend {
   tag(pane: ManagedPane, tokens: Record<string, string>, signal?: AbortSignal): Promise<void>;
   create(cwd: string, owner: string, signal?: AbortSignal): Promise<ManagedPane>;
   prepare?(pane: ManagedPane, signal?: AbortSignal): Promise<void>;
-  shutdown?(): Promise<void>;
+  shutdown?(reason?: "quit" | "new"): Promise<void>;
   rename(pane: ManagedPane, label: string, signal?: AbortSignal): Promise<void>;
   read(pane: ManagedPane, signal?: AbortSignal): Promise<string>;
   process(pane: ManagedPane, signal?: AbortSignal): Promise<PaneProcessInfo>;

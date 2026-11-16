@@ -104,29 +104,41 @@ The native picker remains on Ctrl+A then Shift+U.
 ## Projects
 
 Ctrl+A then Shift+O opens a preview-free fzf list of repositories under the roots
-in `projects.sh`. Enter opens or focuses that project's session. Escape cancels.
+in `projects.sh`. Escape cancels. With a project highlighted:
+
+- Enter opens or focuses its session.
+- Ctrl+W opens Worktrunk's picker with its preview hidden.
+- Ctrl+G prompts for a new branch name with Gum, then creates its worktree through Worktrunk.
+
+Worktree selection or creation opens a new branch-named tab in the project's
+session, creating the session if needed. Detached checkouts use `HEAD` as the tab
+label. Selecting the same checkout again creates another tab. There is no tab
+deduplication or ownership registry. Worktrunk runs configured setup hooks and
+handles approval prompts. Rex opens the tab only after the switch succeeds.
+Failures remain visible in the popup and are never automatically retried.
 
 `projects.sh` discovers directories and calls `rex do open_project path=...`.
 `projects.lua` looks for an exact session-label match, or creates a session with
 one shell in the project's canonical directory.
 
-The label is the canonical project path, shortened under your home directory,
-for example `~/personal/toolkit`. Different roots with the same project name
-remain distinct. Duplicate labels report an error instead of choosing a session.
-Renaming a session breaks the match. Existing sessions can be renamed to their
-project path to participate. Paths exceeding Rex's label limit are rejected.
+The label is the project directory name, for example `toolkit` or `pulumi-awsx`.
+Existing sessions labeled with the canonical path or home-shortened path are
+recognized and renamed when selected. Duplicate matching sessions report an error
+instead of choosing one. Projects with the same directory name share the label
+identity, even under different roots. Renaming a session breaks the match.
+Names exceeding Rex's label limit are rejected.
 
-There is no registry, checkout/tab ownership, terminal inspection, or automatic
-worktree grouping. Inside the project terminal, run `wt switch` for Worktrunk's
-picker or `wt switch --create branch` to create a worktree. Worktrunk owns paths,
-setup hooks, and directory changes. The global selector does not launch agents.
+There is no checkout/tab ownership or terminal inspection. You can also run
+`wt list`, `wt switch`, or `wt switch --create branch` inside a project terminal.
+Worktrunk owns worktree paths, creation, and setup hooks. The picker does not
+launch agents or change directories in existing terminals.
 
 Both fzf pickers target the originating app through `REX_CLIENT`; CLI-triggered
 navigation requires Remote Control. Floating scratch terminals remain available
 through Ctrl+A then /. The native session picker remains independent.
 
-Project and session selection use Bash, jq, fzf, Git, and Rex, with no Python. Worktrunk is only needed
-when you use it inside the terminal.
+Project and session selection use Bash, jq, fzf, Git, and Rex, with no Python.
+Ctrl+W and Ctrl+G also require Worktrunk. Ctrl+G requires Gum for the branch prompt.
 
 ## Apply and validate
 

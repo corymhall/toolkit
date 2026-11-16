@@ -7,6 +7,5 @@ targets:
 
 dependencies:
   apm:
-    - badlogic/pi-skills/browser-tools
     - path: ../../work/provider-agent-skills/packages/bridged
     - spf13/go-skills/cobra-viper#e67851cfcca008592c7c4965b8220c7cb37e2f1c

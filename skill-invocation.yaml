@@ -2,14 +2,6 @@ version: 1
 skills:
   bridge-parity-investigation:
     model_invocable: true
-  browser-tools:
-    model_invocable: true
-    codex_model_invocable: false
-    openai:
-      interface:
-        display_name: Browser tools
-        short_description: Tools for interacting with the chrome web browser
-        default_prompt: Use $browser-tools to interact with the chrome browser.
   collaborate:
     model_invocable: false
   commit:

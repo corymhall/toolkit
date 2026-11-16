@@ -252,6 +252,7 @@ export class SubagentManager {
       effort,
       initial: { id: randomUUID(), text },
       request: key(request),
+      createdAt: Date.now(),
     };
     await saveJSON(file, config);
     const launch: Launch = { label: `pi-subagent-${config.id}`, state: "creating" };
@@ -384,6 +385,40 @@ export class SubagentManager {
       op: "cancel",
       id: randomUUID(),
     });
+  }
+
+  /** Close only a positively identified, idle child in an owned floating pane. */
+  async close(name: string): Promise<void> {
+    const child = await this.find(name);
+    if (child.placement === "closed") return;
+    if (child.status?.state !== "idle" || child.status.session !== child.config.session)
+      throw new Error(`${name}: child is not confirmed idle`);
+    const where = child.launch.block && placement(await this.current(), child.launch.block);
+    if (
+      !where ||
+      where.layer.kind !== "floating" ||
+      where.block.host_id !== this.host!.host ||
+      where.layer.blocks.length !== 1 ||
+      where.block.block_id === this.origin.block
+    )
+      throw new Error(`${name}: pane is not an exclusive managed floating pane`);
+    await this.call("block.close", {
+      session_id: this.origin.session,
+      block_id: child.launch.block,
+    });
+  }
+
+  async cleanup(): Promise<string[]> {
+    const retained: string[] = [];
+    for (const child of await this.list()) {
+      if (child.placement === "closed") continue;
+      try {
+        await this.close(child.name);
+      } catch (error) {
+        retained.push(String(error));
+      }
+    }
+    return retained;
   }
 
   async open(name: string): Promise<void> {

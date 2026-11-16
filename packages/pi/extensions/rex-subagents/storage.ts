@@ -28,6 +28,7 @@ export interface ChildConfig {
   effort?: ModelThinkingLevel;
   initial: Assignment;
   request: string;
+  createdAt?: number;
 }
 
 export interface Launch {
@@ -44,6 +45,7 @@ export interface ChildStatus {
   file?: string;
   state: "idle" | "working" | "blocked" | "uncertain" | "session-changed";
   task?: string;
+  idleSince?: number;
 }
 
 export interface Report {

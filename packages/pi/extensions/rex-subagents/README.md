@@ -50,6 +50,15 @@ Other actions:
 `send` requires an idle child. `steer` modifies an active parent assignment and
 keeps its result correlation. Neither action types into the terminal editor.
 `cancel` aborts parent-assigned work without closing Pi or its pane.
+`close` closes a confirmed idle child in an exclusive managed floating pane.
+Use `/subagents cleanup` to close all eligible children. Working, unreachable,
+uncertain, session-changed, tiled, and shared-layer children are retained.
+
+After 15 minutes idle, the parent receives one cleanup reminder per idle period.
+New work resets the idle period. Creation and idle timestamps appear in `list`.
+On `/new`, eligible children of the outgoing conversation are closed automatically,
+with warnings for retained children. Saved reports and conversations remain on disk.
+Reload, resume, fork, and ordinary parent exit do not close children.
 
 ## Inspect and promote
 
@@ -100,8 +109,7 @@ There is no process supervisor. Forced termination without a settled result
 cannot synthesize a final answer. Use `list` and inspect the retained pane.
 Four open or uncertain children are allowed per parent. Closing a child's Rex
 pane frees a slot, but its name stays reserved in that conversation. There is
-no automatic pane cleanup, worktree creation, merging, or state garbage
-collection. Delete sensitive state only after the corresponding children exit.
+no automatic worktree creation, merging, or state garbage collection. Delete sensitive state only after the corresponding children exit.
 
 ## Installation and validation
 
