@@ -155,7 +155,8 @@ Pi settings that list `extensions/herdr-command/index.ts` individually must be
 updated to the new entry, then Pi reloaded or restarted.
 
 The former Herdr delegation workflow and Herdr Neovim file-link integration
-have been removed. The current [delegate extension](../delegate/README.md) uses
-Rex instead. Remove obsolete Herdr file-link entries from old Pi configurations.
+have been removed. Named Rex children are provided by the
+[rex-subagents extension](../rex-subagents/README.md). Remove obsolete Herdr
+file-link entries from old Pi configurations.
 This repository change does not uninstall a previously installed macOS
 URL-handler app or Neovim package, or delete saved delegation context.

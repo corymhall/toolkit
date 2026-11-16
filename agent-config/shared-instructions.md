@@ -69,16 +69,9 @@ It is perfectly acceptable to read these projects when researching.
 
 ## Testing
 
-Do not add tests by default. Test only a meaningful risk in reusable runtime behavior.
+No tautological tests.
 
-For repository-local scripts, configuration generation, dotfile installation, and command wiring,
-run the real command and inspect its output. Use its dry-run mode when available. Do not build
-mock filesystems, snapshot suites, or smoke-test wrappers merely to prove that this setup runs.
-If it fails, fix the script and rerun it.
-
-Keep focused behavioral tests for logic whose failure would be hard to notice or costly, such as
-memory-limit enforcement or terminal ownership. Before adding a test, identify the real failure
-it would catch. Do not test trivial helpers, implementation details, or reversible low-impact edits.
+Do not write tests for reversible, low-impact changes that mirror the implementation. If you do choose to verify your work with tests, make sure that the tests are meaningful and necessary to verify implementation.
 
 Run tests appropriate to the change and complete required checks. Once those pass, broaden or repeat testing only when new changes, failures, or unresolved concerns justify it; otherwise, continue toward completing the task.
 

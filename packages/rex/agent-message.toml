@@ -1,7 +1,0 @@
-[[favorites]]
-name = "Toolkit"
-cwd = "~/personal/toolkit"
-
-[[favorites]]
-name = "Commentry"
-cwd = "~/plugins/commentry.nvim"

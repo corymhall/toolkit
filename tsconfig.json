@@ -12,5 +12,5 @@
     "types": ["node"],
     "verbatimModuleSyntax": true
   },
-  "include": ["packages/pi/extensions/**/*.ts"]
+  "include": ["packages/pi/extensions/**/*.ts", "scripts/**/*.ts"]
 }

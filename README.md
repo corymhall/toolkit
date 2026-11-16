@@ -21,6 +21,22 @@ The repository does not use a Codex CLI plugin marketplace. Long-running
 processes use Rex when available. Explicit Pi delegation uses inspectable
 Rex panes rather than hidden background agents.
 
+## Go CLI
+
+The `toolkit` CLI uses one root `go.mod`, a minimal `main.go`, and Cobra commands
+under `cmd/`. `toolkit rex` provides Pi messaging and agent tracking/resume. Repository maintenance tooling belongs in TypeScript, while
+standalone CLI products belong in Go. Skill-owned Python is currently exempt.
+
+```sh
+mise run build
+.build/toolkit --help
+.build/toolkit rex --help
+mise run install:toolkit  # Explicitly install into ~/.local/bin
+```
+
+Go linting, modernization checks, and tests participate in `mise run validate`.
+The setup and pinned `cobra-viper` skill are adapted from Evaler.
+
 ## Local Installation
 
 The supported local-development workflow uses mise for repository tools and
@@ -187,14 +203,6 @@ Commentry to this Pi agent. Use `/review <revision>` for a diff base, or ask the
 agent to call `open_review` when its work is ready. No additional confirmation
 is shown. Commentry attachment can deliver pending comments. See
 [packages/pi/extensions/review-pane/README.md](packages/pi/extensions/review-pane/README.md).
-
-### Delegate extension
-
-`/delegate <instructions>` opens a Television project picker, asks for a new
-worktree branch, and starts a new Pi conversation after Worktrunk setup succeeds.
-The new agent receives your instructions and the current session reference for
-Evaler. This reuses the local Rex picker rather than duplicating its worktree or
-session grouping logic. See [packages/pi/extensions/delegate/README.md](packages/pi/extensions/delegate/README.md).
 
 ### Rex Subagents extension
 

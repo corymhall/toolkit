@@ -6,6 +6,8 @@ contains sensitive additions. Toolkit works without it.
 ## Layout
 
 - `mise.toml` declares tools, dotfile links, and bootstrap tasks.
+- `go.mod` is the sole Go module; `main.go` starts the `toolkit` CLI.
+- `cmd/*.go` owns CLI commands. Domain packages are added only as needed.
 - `bin/` contains small command-line helpers.
 - `dotfiles/` contains public application preferences and themes.
 - `agent-config/` contains public instructions and shared MCP declarations.
@@ -36,7 +38,7 @@ mise run --affected --affected-explain --dry-run check
 Root aggregates use task dependencies rather than nested mise invocations.
 New components should expose only meaningful tasks. `check` verifies source,
 `test` runs behavioral tests, and `build` produces real artifacts. There is no
-root build task because there is no shared artifact to build.
+package-wide build wrapper. The root `build` task builds the Go CLI into `.build/toolkit`.
 
 One root npm provider installs the workspace lockfile and tracks package manifests.
 Pi owns its npm scripts. All projects share root tool versions and npm dependencies.
@@ -46,6 +48,16 @@ Their sources include shared configs, manifests, and lockfiles. Tests, bootstrap
 configuration generation, updates, and installation always run. Add artifact caching
 only when a component has a real build with explicit outputs inside its directory.
 Private inputs and generated home configuration must never enter a public cache.
+
+Go uses Evaler's Cobra command-factory structure and golangci-lint configuration,
+including modernization checks. Run `mise run build` to lint, test, and build the
+CLI. `mise run install:toolkit` explicitly installs it into `~/.local/bin`.
+The managed `cobra-viper` skill is pinned to the same upstream revision as Evaler.
+Repository tooling under `scripts/` runs as TypeScript through Node. Product CLIs
+are Go; skill-owned Python remains exempt for now. Rex messaging, tracking,
+resume, and snapshots are implemented in the root `rex/` Go package and exposed
+through `toolkit rex`. `packages/rex` contains terminal configuration and the
+small shell pickers, with no Python runtime or Python test harness.
 
 ## Bootstrap
 

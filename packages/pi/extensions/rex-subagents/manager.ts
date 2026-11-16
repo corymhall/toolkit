@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { clampThinkingLevel, getSupportedThinkingLevels } from "@earendil-works/pi-ai/models";
 import type { ModelThinkingLevel } from "@earendil-works/pi-ai";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { piCommand } from "../delegate/index.ts";
+import { piCommand } from "./command.ts";
 import { identity, placement, view, type RexCall, type RexIdentity, type RexView } from "./rex.ts";
 import { requestChild, type ChildRequest } from "./transport.ts";
 import {

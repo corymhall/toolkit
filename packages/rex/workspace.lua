@@ -1,7 +1,6 @@
--- Manual save/preview/restore. State and resume commands live in workspace.py.
+-- Manual save/preview/restore. State and resume commands live in the Go CLI.
 -- No watcher or snapshot is started while loading this file.
-local root = os.getenv("HOME") .. "/.config/rex"
-local launch = 'export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"; "$HOME/.local/bin/mise" -C "$HOME" exec -- python3 "$@"; result=$?; printf "\nPress Enter to close. "; read -r answer; exit "$result"'
+local launch = 'export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"; toolkit rex workspace "$@"; result=$?; printf "\nPress Enter to close. "; read -r answer; exit "$result"'
 
 local function open(ctx, command)
   local view, err = rex.session.view{}
@@ -21,7 +20,7 @@ local function open(ctx, command)
       options = {
         command = { "env", "REX_WORKSPACE_ORIGIN_SESSION=" .. ctx.session_id,
           "REX_WORKSPACE_ORIGIN_WINDOW=" .. (origin or ""),
-          "/bin/sh", "-c", launch, "rex-workspace", root .. "/workspace.py", command },
+          "/bin/sh", "-c", launch, "rex-workspace", command },
         shell = "none",
       },
     },

@@ -16,7 +16,7 @@ rex.action{
 
 local picker_root = os.getenv("HOME") .. "/.config/rex"
 -- Extend the terminal's PATH, which includes Rex's injected CLI directory.
-local picker_launch = 'export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"; exec python3 "$@"'
+local picker_launch = 'export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"; source "$1"; shift; trap picker_exit EXIT; "$@"'
 
 local function source_window(ctx, view)
   -- Action context follows the app's pane, even if server focus differs.
@@ -81,7 +81,7 @@ local function remember_picker_focus(ctx)
   end
 end
 
-local function open_picker(ctx, channel)
+local function open_picker(ctx, script)
   remember_picker_focus(ctx)
   local view, view_err = rex.session.view{}
   if not view then error(view_err) end
@@ -92,13 +92,12 @@ local function open_picker(ctx, channel)
     "env", "REX_PICKER_ORIGIN=" .. ctx.session_id,
     "REX_PICKER_ORIGIN_WINDOW=" .. (source_window(ctx, view) or ""),
     "REX_CLIENT=" .. ctx.client_id,
-    "/bin/sh", "-c", picker_launch, "rex-picker",
-    picker_root .. (channel and "/picker.py" or "/agent-message.py"),
+    "/bin/bash", "-c", picker_launch, "rex-picker",
+    picker_root .. "/picker-common.sh",
+    script == "message" and "toolkit" or "bash",
+    script == "message" and "rex" or picker_root .. "/" .. script,
   }
-  if channel then
-    command[#command + 1] = "picker"
-    command[#command + 1] = channel
-  end
+  if script == "message" then command[#command + 1] = "message" end
   local layer, err = rex.session.new_layer{
     window_id = source_window(ctx, view),
     bounds = { 0.1, 0.1, 0.8, 0.8 },
@@ -117,7 +116,34 @@ end
 rex.action{
   name = "repository_picker",
   title = "Browse Repositories and Worktrees",
-  run = function(ctx) open_picker(ctx, "rex-repos") end,
+  run = function(ctx) open_picker(ctx, "projects.sh") end,
+}
+
+rex.action{
+  name = "list_session_tabs",
+  title = "List Session Tabs",
+  run = function()
+    local entries = {}
+    local sessions, err = rex.call("session.list")
+    if not sessions then error(err) end
+    for _, session in ipairs(sessions.sessions or {}) do
+      local attached, attach_err = rex.call("session.attach", { session_id = session.session_id })
+      if not attached then error(attach_err) end
+      local view, view_err = rex.session.view{ session_id = session.session_id }
+      if not view then error(view_err) end
+      for _, window in ipairs(view.windows or {}) do
+        local label = (session.label or session.session_id) .. " / " .. (window.label or window.window_id)
+        entries[#entries + 1] = { session.session_id, window.window_id, (label:gsub("%c", " ")) }
+      end
+    end
+    return entries
+  end,
+}
+
+rex.action{
+  name = "session_fzf",
+  title = "Switch Session or Tab with fzf",
+  run = function(ctx) open_picker(ctx, "sessions.sh") end,
 }
 
 rex.action{
@@ -137,7 +163,7 @@ rex.action{
 rex.action{
   name = "agent_message",
   title = "Queue Message to Pi Agent",
-  run = function(ctx) open_picker(ctx) end,
+  run = function(ctx) open_picker(ctx, "message") end,
 }
 
 rex.action{

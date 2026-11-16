@@ -35,6 +35,8 @@ uv = "0.12.10"
 "pipx:apm-cli" = "0.25.0"
 "pipx:skills-ref" = "0.1.1"
 shellcheck = "0.11.0"
+go = "1.26.5"
+golangci-lint = "2.15.0"
 
 [deps.npm]
 auto = true
@@ -43,7 +45,7 @@ sources = ["package.json", "package-lock.json", "packages/*/package.json"]
 
 [tasks.test]
 description = "Run package behavioral tests"
-depends = ["//packages/...:test"]
+depends = ["//packages/...:test", "test:go"]
 
 [tasks."format:check"]
 description = "Check package formatting"
@@ -59,15 +61,15 @@ run = "find scripts packages/pi/extensions skills -type f -name '*.sh' -print0 |
 
 [tasks."lint:skills"]
 description = "Validate skills against the Agent Skills specification"
-run = "uv run --script scripts/lint-skills.py"
+run = "node scripts/lint-skills.ts"
 
 [tasks."check:repository"]
 description = "Check repository-specific skill and source policies"
-run = "uv run --script scripts/check-repository.py"
+run = "node scripts/check-repository.ts"
 
 [tasks."check:skill-invocation"]
 description = "Check cross-harness skill invocation metadata"
-run = "uv run --script scripts/sync-skill-invocation.py --check"
+run = "node scripts/sync-skill-invocation.ts --check"
 
 [tasks."check:hooks"]
 description = "Validate the hk Git lifecycle configuration"
@@ -93,7 +95,33 @@ depends = ["check", "test", "memory-guard:test"]
 
 [tasks.check]
 description = "Run repository and package checks"
-depends = ["//packages/...:check", "lint:shell", "lint:skills", "check:repository", "check:skill-invocation", "check:hooks"]
+depends = ["//packages/...:check", "check:tooling", "lint:go", "lint:shell", "lint:skills", "check:repository", "check:skill-invocation", "check:hooks"]
+
+[tasks."check:tooling"]
+description = "Format-check and lint repository TypeScript tooling"
+run = ["npm exec -- oxfmt --check scripts", "npm exec -- oxlint scripts"]
+
+[tasks."lint:go"]
+description = "Check Go formatting, safety, and modernization"
+run = "golangci-lint run ./..."
+
+[tasks."format:go"]
+description = "Format Go source"
+run = "golangci-lint fmt ./..."
+
+[tasks."test:go"]
+description = "Run Go behavioral tests"
+run = "go test ./..."
+
+[tasks.build]
+description = "Build the toolkit CLI"
+depends = ["lint:go", "test:go"]
+run = "mkdir -p .build && go build -o .build/toolkit ."
+
+[tasks."install:toolkit"]
+description = "Install the toolkit CLI into the user bin directory"
+depends = ["build"]
+run = 'install -m 0755 .build/toolkit "$HOME/.local/bin/toolkit"'
 
 [tasks."skills:list"]
 description = "List project-managed Agent Skills"
@@ -101,14 +129,14 @@ run = "apm deps tree"
 
 [tasks."skills:sync-invocation"]
 description = "Synchronize cross-harness skill invocation metadata"
-run = "uv run --script scripts/sync-skill-invocation.py"
+run = "node scripts/sync-skill-invocation.ts"
 
 [tasks."skills:update"]
 description = "Update project-managed Agent Skills and reapply local invocation policy"
 run = '''
 set -eu
 apm update --yes
-uv run --script scripts/sync-skill-invocation.py
+node scripts/sync-skill-invocation.ts
 '''
 
 [dotfiles]
@@ -156,6 +184,7 @@ uv run --script scripts/sync-skill-invocation.py
 "~/.agents/skills/worktrunk-stack-prs" = "skills/worktrunk-stack-prs"
 "~/.agents/skills/bridge-parity-investigation" = ".agents/skills/bridge-parity-investigation"
 "~/.agents/skills/browser-tools" = ".agents/skills/browser-tools"
+"~/.agents/skills/cobra-viper" = ".agents/skills/cobra-viper"
 "~/.agents/skills/investigate-converted-provider-docs" = ".agents/skills/investigate-converted-provider-docs"
 "~/.agents/skills/pulumi-rpc-lifecycle-investigation" = ".agents/skills/pulumi-rpc-lifecycle-investigation"
 "~/.agents/skills/pulumi-upgrade-provider" = ".agents/skills/pulumi-upgrade-provider"

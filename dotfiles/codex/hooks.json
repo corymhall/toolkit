@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/sh -c 'export PATH=\"$HOME/.local/bin:$HOME/.local/share/mise/shims:/opt/homebrew/bin:$PATH\"; exec python3 \"$HOME/.config/rex/agent-state.py\" codex'",
+            "command": "/bin/sh -c 'export PATH=\"$HOME/.local/bin:$HOME/.local/share/mise/shims:/opt/homebrew/bin:$PATH\"; exec toolkit rex workspace register-codex'",
             "timeout": 10
           }
         ]

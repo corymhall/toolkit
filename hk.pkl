@@ -22,6 +22,14 @@ local pre_commit_checks = new Mapping<String, Step> {
     )
     check = "mise run lint:typescript"
   }
+  ["tooling"] {
+    glob = "scripts/**/*.ts"
+    check = "mise run check:tooling"
+  }
+  ["go"] {
+    glob = List("**/*.go", "go.mod", "go.sum", ".golangci.yml")
+    check = "mise run lint:go"
+  }
   ["shell"] {
     glob = "scripts/*.sh"
     check = "mise run lint:shell"
@@ -30,7 +38,7 @@ local pre_commit_checks = new Mapping<String, Step> {
     glob = List(
       ".agents/skills/**",
       "skills/**",
-      "scripts/lint-skills.py",
+      "scripts/lint-skills.ts",
       "mise.toml",
       "mise.lock"
     )

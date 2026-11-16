@@ -71,6 +71,26 @@ dependencies:
     .agents/skills/browser-tools/package-lock.json: sha256:24e6b9120bc3ae975e3a3f81400f1d0a87dc4f191166ff4f96aac86ab752f2a6
     .agents/skills/browser-tools/package.json: sha256:70e10b3ed27ad993d5491c91b7326d18cce5035c443590d99230d77cd6feffa7
   content_hash: sha256:2eef6bbe215b522a1f9691f9a88e9abddd7e9a590d9c76f90c17e2315b215c55
+- repo_url: spf13/go-skills
+  name: cobra-viper
+  host: github.com
+  resolved_commit: e67851cfcca008592c7c4965b8220c7cb37e2f1c
+  resolved_ref: e67851cfcca008592c7c4965b8220c7cb37e2f1c
+  version: 1.0.0
+  virtual_path: cobra-viper
+  is_virtual: true
+  package_type: marketplace_plugin
+  deployed_files:
+  - .agents/skills/cobra-viper
+  - .agents/skills/cobra-viper/.claude-plugin/plugin.json
+  - .agents/skills/cobra-viper/SKILL.md
+  - .agents/skills/cobra-viper/apm.yml
+  deployed_file_hashes:
+    .agents/skills/cobra-viper/.claude-plugin/plugin.json: sha256:456d219e95e3f92f61d76c956d3d693933034ecc3a2b45c6a81be6a056069353
+    .agents/skills/cobra-viper/SKILL.md: sha256:e215454171a072f4ab6d3e7e81b0e4b7f20f0cef33aba2be9fadcaf77910aaf2
+    .agents/skills/cobra-viper/apm.yml: sha256:2acfb4a0ac84330bc662c219a42b764186b07999dd2ef134a3d0c47d0b4125d5
+  content_hash: sha256:48469e4af768b143177f933f793a4b5c3fb63d8f600e5adca9439892e5bf4dfe
+  declared_license: MIT
 - repo_url: _local/core
   name: pulumi-provider-core
   version: 0.1.0
@@ -291,6 +311,42 @@ deployments:
   - badlogic/pi-skills/browser-tools
   active_owner: badlogic/pi-skills/browser-tools
   content_hash: sha256:70e10b3ed27ad993d5491c91b7326d18cce5035c443590d99230d77cd6feffa7
+- kind: project-relative
+  target: agents
+  value: .agents/skills/cobra-viper
+  runtime: null
+  scope: project
+  owners:
+  - spf13/go-skills/cobra-viper
+  active_owner: spf13/go-skills/cobra-viper
+  content_hash: null
+- kind: project-relative
+  target: agents
+  value: .agents/skills/cobra-viper/.claude-plugin/plugin.json
+  runtime: null
+  scope: project
+  owners:
+  - spf13/go-skills/cobra-viper
+  active_owner: spf13/go-skills/cobra-viper
+  content_hash: sha256:456d219e95e3f92f61d76c956d3d693933034ecc3a2b45c6a81be6a056069353
+- kind: project-relative
+  target: agents
+  value: .agents/skills/cobra-viper/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - spf13/go-skills/cobra-viper
+  active_owner: spf13/go-skills/cobra-viper
+  content_hash: sha256:e215454171a072f4ab6d3e7e81b0e4b7f20f0cef33aba2be9fadcaf77910aaf2
+- kind: project-relative
+  target: agents
+  value: .agents/skills/cobra-viper/apm.yml
+  runtime: null
+  scope: project
+  owners:
+  - spf13/go-skills/cobra-viper
+  active_owner: spf13/go-skills/cobra-viper
+  content_hash: sha256:2acfb4a0ac84330bc662c219a42b764186b07999dd2ef134a3d0c47d0b4125d5
 - kind: project-relative
   target: agents
   value: .agents/skills/investigate-converted-provider-docs

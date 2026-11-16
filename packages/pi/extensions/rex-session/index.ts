@@ -123,8 +123,7 @@ export default function (pi: ExtensionAPI) {
   const report = async (ctx: Context, stop = false) => {
     if (!process.env.REX_SERVER || !process.env.REX_BLOCK || !ctx.hasUI || ctx.mode !== "tui")
       return;
-    const helper =
-      process.env.REX_WORKSPACE_HELPER ?? join(homedir(), ".config/rex/agent-state.py");
+    const helper = process.env.TOOLKIT_CLI ?? join(homedir(), ".local/bin/toolkit");
     const payload = {
       pid: process.pid,
       cwd: ctx.cwd,
@@ -133,17 +132,9 @@ export default function (pi: ExtensionAPI) {
     };
     try {
       await new Promise<void>((resolve, reject) => {
-        const child = spawn(
-          "/bin/sh",
-          [
-            "-c",
-            'export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:/opt/homebrew/bin:$PATH"; exec python3 "$@"',
-            "rex-registration",
-            helper,
-            stop ? "pi-stop" : "pi",
-          ],
-          { stdio: ["pipe", "ignore", "pipe"] },
-        );
+        const child = spawn(helper, ["rex", "workspace", stop ? "unregister-pi" : "register-pi"], {
+          stdio: ["pipe", "ignore", "pipe"],
+        });
         let stderr = "";
         child.stderr.on("data", (data: Buffer) => {
           stderr = (stderr + data.toString()).slice(-1000);

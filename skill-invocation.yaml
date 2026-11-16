@@ -26,6 +26,8 @@ skills:
     model_invocable: false
   investigate-converted-provider-docs:
     model_invocable: true
+  cobra-viper:
+    model_invocable: true
   memory-guard:
     model_invocable: true
   macos-storage-cleanup:

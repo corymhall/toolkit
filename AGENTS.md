@@ -20,9 +20,58 @@ See `docs/workstation.md` for caching and dependency rules.
 
 ## Repository Scripts
 
-Verify local configuration generators and installers by running their real preview/install
-workflow and inspecting the output. Do not add mock-filesystem unit-test suites around this
-glue. Reserve behavioral tests for reusable extensions and components.
+Repository tooling must be TypeScript, run directly with Node. This includes
+repository validation, metadata generation, and maintenance automation under
+`scripts/`. Do not add Python or shell implementations of repository tooling.
+
+Standalone functionality is a product, not repository tooling. Products must
+never be written in Python. Local CLI products use Go. Harness-native extensions
+and configuration retain their native TypeScript or Lua. Small shell-native user
+workflows may use Bash; do not implement an application in shell.
+
+Skill-owned Python scripts are exempt for now. Existing Python outside skills is
+migration input, not a precedent for new code.
+
+## Go CLI
+
+- One root `go.mod` owns all Go code. Do not create nested modules or a `go.work`.
+- The executable entry point is `main.go`; command routing lives in root `cmd/*.go`.
+- Use Cobra command factories, with no package-level command globals. Keep domain
+  logic outside `cmd/` in focused packages as real commands require them.
+- Load the `go-development` and managed `cobra-viper` skills for Go CLI work.
+  Repository instructions take precedence over generic skill defaults.
+- Use `mise run lint:go`, `mise run test:go`, and `mise run build`.
+  The linter includes modernization checks. Do not add Viper or configuration
+  machinery until a command actually needs it.
+
+### Library index
+
+- Cobra owns CLI routing, arguments, flags, help, and completion.
+- Huh v2 is the default for forms, selections, multiline input, and confirmations.
+- Bubble Tea v2 owns custom interactive event loops when Huh is insufficient.
+- Lip Gloss v2 owns TUI styling and layout. Use Bubbles v2 selectively for reusable
+  components instead of implementing editors, viewports, or spinners ourselves.
+- Viper is optional for real multi-source configuration needs, not a default dependency.
+- Gum provides ready-made prompts for small shell-native user workflows. Keep fzf
+  for the simple navigation pickers. Repository maintenance tooling stays TypeScript.
+- Freeze creates static terminal/code images. VHS records scripted terminal demos.
+  Both are optional development tools, not mandatory test infrastructure.
+- Colorprofile and Ultraviolet are normally implementation details of the UI stack.
+  Use them directly only for a demonstrated lower-level terminal requirement.
+- Harmonica is optional animation polish. Do not add it without an actual animation need.
+
+Use compatible stable v2 Charm modules, not tmux-ai's older v1 dependency pins.
+Add dependencies when used, not the entire ecosystem in advance.
+
+In this repository, do not add tests by default. Test only meaningful risks in reusable
+runtime behavior, such as memory-limit enforcement or terminal ownership. Before adding
+a test, identify the real failure it would catch.
+
+Verify repository-local scripts, configuration generation, dotfile installation, and command
+wiring by running the real command and inspecting its output. Use dry-run mode when available.
+Do not build mock filesystems, snapshot suites, or smoke-test wrappers merely to prove this
+setup runs. If it fails, fix the script and rerun it. Do not test trivial helpers,
+implementation details, or reversible low-impact edits.
 
 ## Skill Management
 
