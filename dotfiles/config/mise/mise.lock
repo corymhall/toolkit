@@ -25,24 +25,24 @@ url = "https://github.com/earendil-works/pi/releases/download/v1.5.2/pi-darwin-x
 url_api = "https://api.github.com/repos/earendil-works/pi/releases/assets/731292539"
 
 [[tools.aws-cli]]
-version = "2.39.0"
+version = "2.40.3"
 backend = "aqua:aws/aws-cli"
 specifiers = ["2"]
 
 [tools.aws-cli."platforms.linux-x64"]
-checksum = "sha256:6c89ce7ed7bc0a2520e2bc3eeedfea4e2eb2e7da2836860c9471871408404036"
-url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.39.0.zip"
+checksum = "sha256:4770c06c4ecfc8ba94b60d89e6c7018ab7ea2cf5341b1ef05f6f93c5d6e8b705"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.40.3.zip"
 
 [tools.aws-cli."platforms.macos-arm64"]
-checksum = "blake3:0808c589d608eac62c5a329ab70d8403474e9e3a297afedf7b2fe7dd3ccfc84b"
-url = "https://awscli.amazonaws.com/AWSCLIV2-2.39.0.pkg"
+checksum = "blake3:4ef0dc2c2a62870b941c96107ee833ac8d6555b2bfe02174b027f616b23e1c3d"
+url = "https://awscli.amazonaws.com/AWSCLIV2-2.40.3.pkg"
 
 [tools.aws-cli."platforms.macos-x64"]
-checksum = "sha256:79808bae5c61422adc1fbd14182abacca4e6df11263753033fa69441d0745073"
-url = "https://awscli.amazonaws.com/AWSCLIV2-2.39.0.pkg"
+checksum = "sha256:be032742ff205f7f2d7c189010bbb1f3891d0a67be0b1df0fe9d3e7f5fc5ad30"
+url = "https://awscli.amazonaws.com/AWSCLIV2-2.40.3.pkg"
 
 [[tools.dotnet]]
-version = "10.0.400"
+version = "10.0.404"
 backend = "core:dotnet"
 specifiers = ["10"]
 
@@ -67,21 +67,21 @@ url = "https://github.com/pulumi/esc/releases/download/v0.26.0/esc-v0.26.0-darwi
 url_api = "https://api.github.com/repos/pulumi/esc/releases/assets/471720966"
 
 [[tools.gcloud]]
-version = "591.0.0"
+version = "593.0.0"
 backend = "vfox:jdx/vfox-gcloud"
 specifiers = ["latest"]
 
 [tools.gcloud."platforms.linux-x64"]
-checksum = "sha256:35266507b68a69ff22032af73797e57ba008230cae12b908619ad3f2bc81b925"
-url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-591.0.0-linux-x86_64.tar.gz"
+checksum = "sha256:e36f240c5d6ddeaec2d0fb348c2d3b0f98a849dd74be59ff6e0f2f534c506a58"
+url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-593.0.0-linux-x86_64.tar.gz"
 
 [tools.gcloud."platforms.macos-arm64"]
-checksum = "sha256:5552277a00e32810929aa3b727116727453c75c49fe413604d370ddb52885c26"
-url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-591.0.0-darwin-arm.tar.gz"
+checksum = "sha256:71d6aa2b2b21494ad5538d0e5104ff3bb123d55f5a2ff0da6c58f87459a6b6af"
+url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-593.0.0-darwin-arm.tar.gz"
 
 [tools.gcloud."platforms.macos-x64"]
-checksum = "sha256:7b2e4d9a986f9e66fbab93eacf1642a5df71dbf31ceb5da4ff1cfe2aea8dbe6e"
-url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-591.0.0-darwin-x86_64.tar.gz"
+checksum = "sha256:49d3325ac25bc71209104d382cdfaa2904cf52822f63a3f283825d4e988f30a8"
+url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-593.0.0-darwin-x86_64.tar.gz"
 
 [[tools."github:abhinav/git-spice"]]
 version = "0.33.0"
@@ -124,24 +124,27 @@ url = "https://github.com/pranshuparmar/witr/releases/download/v0.3.4/witr-darwi
 url_api = "https://api.github.com/repos/pranshuparmar/witr/releases/assets/610282258"
 
 [[tools."github:pulumi/pulumi"]]
-version = "3.272.0"
+version = "3.276.0"
 backend = "github:pulumi/pulumi"
 specifiers = ["3"]
 
 [tools."github:pulumi/pulumi"."platforms.linux-x64"]
-checksum = "sha256:58d545f2b98761051922008ebd381ecef95484d7f7a5ff7faa15d7a780ea84f6"
-url = "https://github.com/pulumi/pulumi/releases/download/v3.272.0/pulumi-v3.272.0-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/666858847"
+checksum = "sha256:99f6b4626be083a3326517a46ba33b995f44812058143a018d9dffaa027ec3bf"
+checksum_source = "mise-versions"
+url = "https://github.com/pulumi/pulumi/releases/download/v3.276.0/pulumi-v3.276.0-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/739645293"
 
 [tools."github:pulumi/pulumi"."platforms.macos-arm64"]
-checksum = "sha256:1fb554bf39ad83ba6eef6ecb7ac5a14b8158941ccd97d201837d13dc09806014"
-url = "https://github.com/pulumi/pulumi/releases/download/v3.272.0/pulumi-v3.272.0-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/666858216"
+checksum = "sha256:e85bc0a62950d07bf1a5ff2fde30fe7367dc16b6b0ac20ad67ae3e0af80e32f1"
+checksum_source = "mise-versions"
+url = "https://github.com/pulumi/pulumi/releases/download/v3.276.0/pulumi-v3.276.0-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/739644470"
 
 [tools."github:pulumi/pulumi"."platforms.macos-x64"]
-checksum = "sha256:2c11154168e4dc58d43c2b70b0941fa3335d911af2806feac7bf3b8072a5f09a"
-url = "https://github.com/pulumi/pulumi/releases/download/v3.272.0/pulumi-v3.272.0-darwin-x64.tar.gz"
-url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/666858417"
+checksum = "sha256:41d2da438cc5cc1ad1f3f5ac917fe40df84970028636c235f83961f399b2390c"
+checksum_source = "mise-versions"
+url = "https://github.com/pulumi/pulumi/releases/download/v3.276.0/pulumi-v3.276.0-darwin-x64.tar.gz"
+url_api = "https://api.github.com/repos/pulumi/pulumi/releases/assets/739644692"
 
 [[tools.golangci-lint]]
 version = "2.15.0"
@@ -167,27 +170,30 @@ url_api = "https://api.github.com/repos/golangci/golangci-lint/releases/assets/6
 provenance = "github-attestations"
 
 [[tools.node]]
-version = "26.13.0"
+version = "26.13.1"
 backend = "core:node"
 specifiers = ["26"]
 
 [tools.node."platforms.linux-x64"]
-checksum = "sha256:5848553868b402d3fabb5b09270649977780a390f832155721025a08b5104455"
-url = "https://nodejs.org/dist/v26.13.0/node-v26.13.0-linux-x64.tar.gz"
+checksum = "sha256:518674de2b621728a5e4486f5fb3b7d2900bb3cc4aa97969edaa463db99f9778"
+url = "https://nodejs.org/dist/v26.13.1/node-v26.13.1-linux-x64.tar.gz"
 
 [tools.node."platforms.macos-arm64"]
-checksum = "sha256:d38bd5e5a2ddce6bbb5ce45e46e208337da4d51fffe611e567fd32073d6439f6"
-url = "https://nodejs.org/dist/v26.13.0/node-v26.13.0-darwin-arm64.tar.gz"
+checksum = "sha256:aec2514ea1ceb2ba52455e9ec65986f6749a06dd759e5db2a72e6889668c9735"
+url = "https://nodejs.org/dist/v26.13.1/node-v26.13.1-darwin-arm64.tar.gz"
 
 [tools.node."platforms.macos-x64"]
-checksum = "sha256:525c9b29bb0263d687de60a4cec0e2a6db876a8eb032369e5795eca71e7c358e"
-url = "https://nodejs.org/dist/v26.13.0/node-v26.13.0-darwin-x64.tar.gz"
+checksum = "sha256:82bb96078a24ca50b9c9a38f2379e6be6d87171fcd400fc14c8934b3bce96e2f"
+url = "https://nodejs.org/dist/v26.13.1/node-v26.13.1-darwin-x64.tar.gz"
 
 [[tools."npm:@opencode/browse"]]
 version = "0.1.0"
-aube = { path = "locks/npm-opencode-browse/0.1.0", digest = "sha256:00a12557c97666f34098a52296914fa5c06c11ad7174f2e3b3d634a062994663" }
+aube = { path = "locks/npm-opencode-browse/0.1.0~fcb60795", digest = "sha256:00a12557c97666f34098a52296914fa5c06c11ad7174f2e3b3d634a062994663" }
 backend = "npm:@opencode/browse"
 specifiers = ["0.1.0"]
+
+[tools."npm:@opencode/browse".options]
+allow_low_downloads = "true"
 
 [[tools."npm:npm-check-updates"]]
 version = "23.1.1"
@@ -196,8 +202,8 @@ backend = "npm:npm-check-updates"
 specifiers = ["latest"]
 
 [[tools."npm:tree-sitter-cli"]]
-version = "0.27.1"
-aube = { path = "locks/npm-tree-sitter-cli/0.27.1", digest = "sha256:32b6d50ae81db6efbba01c9a5674a088e0ec4b799644e83e0ecb5f51358e49f1" }
+version = "0.27.2"
+aube = { path = "locks/npm-tree-sitter-cli/0.27.2", digest = "sha256:7862fa575594f3aabf451adadc8249d19c4be3b9089cb0c883392c5a41d9f872" }
 backend = "npm:tree-sitter-cli"
 specifiers = ["latest"]
 
@@ -222,21 +228,21 @@ url = "https://github.com/astral-sh/python-build-standalone/releases/download/20
 provenance = "github-attestations"
 
 [[tools.terraform]]
-version = "1.17.0"
+version = "1.17.2"
 backend = "aqua:hashicorp/terraform"
 specifiers = ["1"]
 
 [tools.terraform."platforms.linux-x64"]
-checksum = "sha256:c168cab7c637a8769fdb90089ddd19de701bc6ff8aca64dc2e2185fe46f59f67"
-url = "https://releases.hashicorp.com/terraform/1.17.0/terraform_1.17.0_linux_amd64.zip"
+checksum = "sha256:e6f16b2f0b137ee5729caa8c4e79a3bae4ee261acd198a1fcfa8584a6296605b"
+url = "https://releases.hashicorp.com/terraform/1.17.2/terraform_1.17.2_linux_amd64.zip"
 
 [tools.terraform."platforms.macos-arm64"]
-checksum = "sha256:7472a54cca911d46c0e399a5ebbce44444912d0d4dad7495f37f1fa51e7ca6b7"
-url = "https://releases.hashicorp.com/terraform/1.17.0/terraform_1.17.0_darwin_arm64.zip"
+checksum = "sha256:da0c7ef278a911347862758e7573a5907365e66485c2637cf5c217c5e227992e"
+url = "https://releases.hashicorp.com/terraform/1.17.2/terraform_1.17.2_darwin_arm64.zip"
 
 [tools.terraform."platforms.macos-x64"]
-checksum = "sha256:3773397524196e4ebbf7167e2b9fb478dff1962d555d649f616ba97ca446a143"
-url = "https://releases.hashicorp.com/terraform/1.17.0/terraform_1.17.0_darwin_amd64.zip"
+checksum = "sha256:66b472dcc36cf770d83757ed4d002c476174842c05c68637b40a7e99519cf3e1"
+url = "https://releases.hashicorp.com/terraform/1.17.2/terraform_1.17.2_darwin_amd64.zip"
 
 [[tools.yarn]]
 version = "4.18.0"

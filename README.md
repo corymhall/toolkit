@@ -290,11 +290,15 @@ want both resource sources configured.
 [Browse](https://github.com/anomalyco/browse) replaces the retired `browser-tools`
 skill. Its MCP server is declared in `agent-config/mcp-servers.json` and composed
 for Pi, Codex, and Claude. The executable is pinned in the workstation mise
-configuration; MCP launches it through `mise exec`. Browse's self-updater is
-disabled for that server so mise remains the version owner.
+configuration; MCP launches it through `mise exec` with project hooks and
+dependency preparation disabled. The pinned Browse package has an explicit
+`allow_low_downloads` approval for mise's new-package reputation check, including
+when launched outside toolkit's locked environment. Other packages retain their
+normal checks. Browse's self-updater is disabled so mise remains the version owner.
 
 Install the Browse Chromium extension from the upstream README, then run
-`mise exec npm:@opencode/browse@0.1.0 -- browse pair` and enter its one-time code
+`mise --no-hooks exec --no-deps 'npm:@opencode/browse[allow_low_downloads=true]@0.1.0' -- browse pair`
+and enter its one-time code
 in the extension's options. Reload Pi after configuration changes. No browser
 skill or remote-debugging Chrome profile is required.
 
