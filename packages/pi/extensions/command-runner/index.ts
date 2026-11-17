@@ -1,4 +1,5 @@
 import { createBackend, runTokens } from "./backends.ts";
+import { BackgroundTerminalStatus } from "../program-status.ts";
 import { randomUUID } from "node:crypto";
 import { stat } from "node:fs/promises";
 import type {
@@ -325,6 +326,7 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
   // Saved completion messages remain renderable outside the originating terminal backend.
   const backend = createBackend(pi, { ...process.env }, dependencies.stateDirectory);
   if (!backend) return;
+  const terminalStatus = new BackgroundTerminalStatus();
   const callerPaneId = backend.callerPaneId;
   const callerWorkspaceId = backend.callerWorkspaceId;
   let managedPane: ManagedPane | undefined;
@@ -734,6 +736,7 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
     cancelTick = undefined;
     monitor?.controller.abort();
     monitor = undefined;
+    terminalStatus.updateStatus();
   };
 
   const inspectMonitor = async () => {
@@ -775,6 +778,8 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
       },
       { deliverAs: "followUp", triggerTurn: true },
     );
+    // Keep working across dispatch until the resumed agent fully settles.
+    terminalStatus.agentQueued();
     // This receipt records dispatch into Pi's follow-up queue, not agent processing.
     notified.add(active.run.runId);
     pi.appendEntry(NOTIFICATION_ENTRY, { runId: active.run.runId });
@@ -786,6 +791,7 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
     if (!["tui", "rpc"].includes(ctx.mode) || notified.has(run.runId)) return;
     const active = { run, controller: new AbortController() };
     monitor = active;
+    terminalStatus.updateStatus({ state: "working", message: "Waiting for command" });
     const tick = async () => {
       try {
         await exclusive(async () => {
@@ -804,7 +810,17 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
     cancelTick = schedule(tick);
   };
 
+  pi.on("agent_start", (_event, ctx) => {
+    if (ctx.mode === "tui") terminalStatus.agentStarted(pi.getSessionName?.());
+  });
+  pi.on("agent_settled", (_event, ctx) => {
+    if (ctx.mode === "tui" && ctx.isIdle()) terminalStatus.agentSettled();
+  });
+
   pi.on("session_shutdown", async (event, ctx) => {
+    terminalStatus.detach();
+    terminalStatus.agentSettled();
+    ctx?.ui.setWidget?.("command-runner-status", undefined);
     stopMonitor();
     await launchQueue;
     stopMonitor();
@@ -819,6 +835,20 @@ export default function commandRunnerExtension(pi: ExtensionAPI, dependencies: D
 
   const restore = async (ctx: ExtensionContext) => {
     stopMonitor();
+    terminalStatus.detach();
+    terminalStatus.agentSettled();
+    if (ctx.mode === "tui") {
+      if (ctx.isIdle?.() === false) terminalStatus.agentQueued();
+      // A zero-height widget gives us the public terminal without displaying UI.
+      ctx.ui.setWidget?.("command-runner-status", (tui) => {
+        terminalStatus.attach(tui.terminal, {
+          state: ctx.isIdle?.() === false ? "working" : "idle",
+          app: "pi",
+          message: pi.getSessionName?.(),
+        });
+        return { render: () => [], invalidate() {} };
+      });
+    }
     await launchQueue;
     notified.clear();
     managedPane = undefined;

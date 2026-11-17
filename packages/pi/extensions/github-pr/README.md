@@ -108,8 +108,10 @@ implementation owns support detection, encoding, and delivery. Unsupported
 terminals and older Pi versions keep the widget/watch behavior without this
 reporting. RPC, print, and JSON modes never emit terminal status.
 
-The extension composes one root record through the public
-`Terminal.setProgramStatus` method. It does not send competing child records,
+The extension shares a terminal status compositor with the command runner,
+composing one root record through the public `Terminal.setProgramStatus` method.
+While Pi rests, blocked CI wins over pending commands, and pending commands win
+over green CI. It does not send competing child records,
 write raw escapes, or change Rex configuration. Pi's active work and compaction
 win over CI. Native dialogs, authentication prompts, errors, and clears retain
 their original meaning.

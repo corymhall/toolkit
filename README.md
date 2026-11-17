@@ -264,7 +264,9 @@ with the exit code and a short output tail. Continue other work or end the turn
 until notified. `command_status` provides immediate process and output diagnostics,
 with an optional explicit bounded wait. Notification receipts survive reloads.
 The backend is selected from the terminal environment and reported by the tools.
-Both tools share Pi UI cards.
+Both tools share Pi UI cards. Pending commands keep Rex's OSC 7501 agent status
+working until their completion follow-up has been handled. Command and CI status
+share one compositor, preserving native Pi prompts and errors.
 New Pi sessions in the same terminal can adopt its existing command pane.
 Rex command panes float in the caller's tab and start minimized. Orderly Pi quit
 closes completed idle Rex panes while preserving running or uncertain work.

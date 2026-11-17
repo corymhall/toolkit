@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import commandRunner from "../index.ts";
+import type { ProgramStatus } from "../../program-status.ts";
 import { CompactToolCard } from "../../pi-ui/tool-cards/rendering.ts";
 import {
   buildRunMarkers,
@@ -43,6 +44,9 @@ function fixture(nextRunId = run.runId) {
   let deliveryError = false;
   let readHook: (() => Promise<void>) | undefined;
   let backendRun = run;
+  const reports: ProgramStatus[] = [];
+  const terminal = { setProgramStatus: (status: ProgramStatus) => reports.push(status) };
+  const nativeSetter = terminal.setProgramStatus;
   const messages: any[] = [];
   const notices: string[] = [];
   const entries: any[] = [];
@@ -147,11 +151,22 @@ function fixture(nextRunId = run.runId) {
   const context = (history: any[], mode = "tui") => ({
     cwd: process.cwd(),
     mode,
-    ui: { notify: (message: string) => notices.push(message) },
+    isIdle: () => true,
+    ui: {
+      notify: (message: string) => notices.push(message),
+      setWidget: (_name: string, factory: any) => factory?.({ terminal }),
+    },
     sessionManager: { getBranch: () => history.map((entry) => ({ type: "custom", ...entry })) },
   });
   return {
     messages,
+    terminal,
+    nativeSetter,
+    reports,
+    settle() {
+      handlers.get("agent_settled")!({}, context([]));
+      terminal.setProgramStatus({ state: "done", app: "pi" });
+    },
     render(message: any, expanded = false) {
       return renderers.get("command-result")(
         message,
@@ -211,6 +226,43 @@ function fixture(nextRunId = run.runId) {
     },
   };
 }
+
+test("pending commands keep terminal working across agent settlement and completion dispatch", async () => {
+  const f = fixture();
+  await f.restore();
+  f.settle();
+  assert.deepEqual(f.reports.at(-1), {
+    state: "working",
+    app: "pi",
+    message: "Waiting for command",
+  });
+  const before = f.reports.length;
+  f.complete();
+  await f.tick();
+  assert.equal(f.messages.length, 1);
+  assert.ok(f.reports.slice(before).every((report) => report.state === "working"));
+  assert.equal(f.reports.at(-1)?.state, "working");
+  f.settle();
+  assert.equal(f.reports.at(-1)?.state, "done");
+  await f.shutdown();
+  assert.equal(f.terminal.setProgramStatus, f.nativeSetter);
+});
+
+test("explicit acknowledgement and branch navigation release command attention", async () => {
+  const f = fixture();
+  await f.restore();
+  f.settle();
+  f.complete();
+  await f.status();
+  assert.equal(f.reports.at(-1)?.state, "done");
+  await f.restore(saved);
+  f.settle();
+  assert.equal(f.reports.at(-1)?.state, "working");
+  await f.restore([], "tui", "session_tree");
+  f.settle();
+  assert.equal(f.reports.at(-1)?.state, "done");
+  await f.shutdown();
+});
 
 test("automatically watches a newly submitted command without blocking start", async () => {
   const f = fixture();

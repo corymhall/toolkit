@@ -126,6 +126,18 @@ An explicit terminal `command_status` result acknowledges the outcome without a
 duplicate follow-up. Starting another command delivers any pending previous
 outcome before reusing the pane.
 
+In interactive TUI sessions, commands awaiting automatic notification also keep
+Pi's OSC 7501 program status `working`, with “Waiting for command” while the
+agent rests. Rex therefore does not show the agent as done while a command can
+still wake it. Completion hands status to the queued agent until it fully
+settles. Explicit acknowledgement, branch changes, and shutdown release the
+command's attention. RPC, print, and JSON modes emit no terminal status.
+
+Commands and GitHub CI share one terminal status compositor. Native Pi work,
+compaction, prompts, and errors retain priority. While Pi rests, blocked CI wins
+over pending commands, and pending commands win over green CI. Pi owns protocol
+support detection and delivery. No Rex configuration changes are required.
+
 Never restart or terminate work solely because output is quiet. Confirm a
 successful completion notification or status result before relying on artifacts
 or reporting success.
