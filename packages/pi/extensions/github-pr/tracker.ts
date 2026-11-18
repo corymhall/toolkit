@@ -1,3 +1,4 @@
+import { followsHead, structuredTarget, targetState, workingEntries } from "./working-set.ts";
 import { GitHubError, type GitHubClient } from "./github.ts";
 import {
   checkKey,
@@ -22,7 +23,8 @@ import {
 export interface TrackerHooks {
   changed(): void;
   persist(watches: Watch[], automatic: AutomaticState): void;
-  outcome(watch: Watch, outcome: Outcome): void;
+  /** One delivery per poll cycle. Throwing pauses affected watches without retrying. */
+  outcomes(results: { watch: Watch; outcome: Outcome }[], allPassed: boolean): void;
 }
 const signature = (s: Snapshot, failedOnly = false) =>
   observationKey(failedOnly ? { ...s, checks: s.checks.filter((c) => c.state === "failed") } : s);
@@ -42,6 +44,9 @@ export class Tracker {
   private running = false;
   private disposed = false;
   private cancellations = new Map<string, number>();
+  private pending: { entry: Tracked; watch: Watch; outcome: Outcome }[] = [];
+  private workingSetCompleted?: string;
+  private ticking?: Promise<void>;
 
   private client: GitHubClient;
   private hooks: TrackerHooks;
@@ -53,11 +58,14 @@ export class Tracker {
   }
 
   restore(watches: Watch[], automatic?: AutomaticState): void {
-    if (automatic) this.autoWatch = automatic.enabled;
+    if (automatic) {
+      this.autoWatch = automatic.enabled;
+      this.workingSetCompleted = automatic.workingSetCompleted;
+    }
     for (const watch of watches)
       this.entries.set(watch.target.url, {
         target: watch.target,
-        watch: { ...watch, status: "paused" },
+        watch: { ...watch, status: watch.subscription ? watch.status : "paused" },
         due: 0,
         failures: 0,
       });
@@ -79,7 +87,7 @@ export class Tracker {
           ...entry.watch,
           status: enabled && entry.target.url === this.current ? "watching" : "cancelled",
         };
-      if (enabled && entry.receipt) entry.receipt.paused = false;
+      if (enabled && entry.receipt && !entry.watch?.subscription) entry.receipt.paused = false;
       if (entry.target.url === this.current) entry.due = 0;
     }
     this.discoveryDue = 0;
@@ -120,6 +128,7 @@ export class Tracker {
         ),
         {
           enabled: this.autoWatch,
+          workingSetCompleted: this.workingSetCompleted,
           receipts: [...this.entries.values()].flatMap((e) =>
             e.receipt ? [{ target: e.target, receipt: structuredClone(e.receipt) }] : [],
           ),
@@ -185,6 +194,13 @@ export class Tracker {
     return this.discovery;
   }
   async tick(): Promise<void> {
+    if (this.ticking) return this.ticking;
+    this.ticking = this.cycle().finally(() => {
+      this.ticking = undefined;
+    });
+    return this.ticking;
+  }
+  private async cycle(): Promise<void> {
     if (this.disposed) return;
     if (this.now() >= this.discoveryDue) await this.discover();
     await Promise.all(
@@ -199,6 +215,47 @@ export class Tracker {
         )
         .map((e) => this.refresh(e)),
     );
+    if (this.pending.some((result) => result.watch.automatic)) await this.discover();
+    this.flush();
+  }
+  async subscribe(
+    target: Target,
+    metadata: { label?: string; order?: number } = {},
+    signal?: AbortSignal,
+  ): Promise<Watch> {
+    if (target.kind !== "pr") throw new Error("Persistent subscriptions require a PR URL.");
+    if (this.disposed || signal?.aborted) throw new Error("Watch setup cancelled.");
+    const entry = this.ensure(target);
+    const cancellation = this.cancellations.get(target.url);
+    await this.refresh(entry, true);
+    if (
+      !this.valid(entry) ||
+      signal?.aborted ||
+      this.cancellations.get(target.url) !== cancellation
+    )
+      throw new Error("Watch setup cancelled.");
+    if (!entry.snapshot || entry.error) throw new Error(entry.error || "Cannot read target.");
+    entry.receipt = syncReceipt(entry.snapshot, entry.receipt);
+    entry.receipt.paused = false;
+    if (entry.watch?.subscription && entry.watch.status === "watching") {
+      entry.watch.label = metadata.label ?? entry.watch.label;
+      entry.watch.order = metadata.order ?? entry.watch.order;
+      this.changed(true);
+      return { ...entry.watch };
+    }
+    entry.watch = {
+      target,
+      head: entry.snapshot.head,
+      startedAt: this.now(),
+      subscription: true,
+      label: metadata.label ?? entry.watch?.label,
+      order: metadata.order ?? entry.watch?.order,
+      status: "watching",
+    };
+    entry.settled = undefined;
+    entry.due = this.now();
+    this.changed(true);
+    return { ...entry.watch };
   }
   async startWatch(
     target?: Target,
@@ -219,6 +276,8 @@ export class Tracker {
         );
     }
     const entry = this.ensure(target);
+    if (resume && entry.watch?.subscription && entry.watch.status === "paused")
+      return this.subscribe(target, entry.watch, signal);
     if (
       this.autoWatch &&
       target.url === this.current &&
@@ -289,24 +348,30 @@ export class Tracker {
       (!watch ||
         (entry.watch === watch &&
           watch.status === "watching" &&
-          (!watch.automatic ||
-            (this.autoWatch && this.current === entry.target.url && !entry.receipt?.paused))))
+          (!followsHead(watch) ||
+            (!entry.receipt?.paused &&
+              (watch.subscription || (this.autoWatch && this.current === entry.target.url))))))
     );
   }
   private syncAutomatic(entry: Tracked, snapshot: Snapshot): void {
     if (
-      !this.autoWatch ||
-      entry.target.url !== this.current ||
+      (!(entry.watch?.subscription && entry.watch.status !== "cancelled") &&
+        (!this.autoWatch || entry.target.url !== this.current)) ||
       snapshot.target.kind !== "pr" ||
       snapshot.lifecycle !== "open"
     )
       return;
+    const subscription = entry.watch?.subscription && entry.watch.status !== "cancelled";
     const previous = entry.receipt;
     const recovered = previous?.error !== undefined;
     entry.receipt = syncReceipt(snapshot, previous);
     entry.receipt.error = undefined;
+    const invalidated =
+      entry.receipt.completed !== undefined && entry.receipt.completed !== observationKey(snapshot);
+    if (invalidated) entry.receipt.completed = undefined;
     if (
-      !entry.watch?.automatic ||
+      !entry.watch ||
+      !followsHead(entry.watch) ||
       entry.watch.head !== snapshot.head ||
       entry.watch.status === "cancelled"
     ) {
@@ -314,17 +379,20 @@ export class Tracker {
         target: entry.target,
         head: snapshot.head,
         startedAt: this.now(),
-        automatic: true,
+        automatic: subscription ? undefined : true,
+        subscription: subscription || undefined,
+        label: entry.watch?.label,
+        order: entry.watch?.order,
         status: entry.receipt.paused ? "paused" : "watching",
       };
       entry.settled = undefined;
     }
-    if (previous !== entry.receipt || recovered) this.changed(true);
+    if (previous !== entry.receipt || recovered || invalidated) this.changed(true);
   }
   private decision(entry: Tracked, watch: Watch, snapshot: Snapshot): Outcome | undefined {
     const now = this.now();
-    if (watch.automatic && snapshot.lifecycle !== "open") return evaluate(watch, snapshot, now);
-    if (watch.automatic && entry.receipt) {
+    if (followsHead(watch) && snapshot.lifecycle !== "open") return evaluate(watch, snapshot, now);
+    if (followsHead(watch) && entry.receipt) {
       const problems = unseenProblems(snapshot, entry.receipt);
       if (problems.length) return evaluate(watch, { ...snapshot, checks: problems }, now);
       if (snapshot.checks.some((c) => c.state === "failed" || c.state === "blocked"))
@@ -385,7 +453,7 @@ export class Tracker {
         if (outcome) {
           if (outcome.kind === "failed") {
             const diagnostics =
-              watch.automatic && entry.receipt
+              followsHead(watch) && entry.receipt
                 ? {
                     ...snapshot,
                     checks: unseenProblems(snapshot, entry.receipt).filter(
@@ -409,7 +477,8 @@ export class Tracker {
           if (!this.valid(entry, watch)) return;
           const identity = await this.client.identity(entry.target, signal);
           if (!this.valid(entry, watch)) return;
-          if (identity.head !== watch.head && watch.automatic) {
+          if (identity.head !== watch.head && followsHead(watch)) {
+            entry.snapshot = undefined;
             entry.due = this.now();
             entry.settled = undefined;
             return;
@@ -450,7 +519,7 @@ export class Tracker {
         else if (
           !signal.aborted &&
           !(error instanceof GitHubError && error.transient) &&
-          (!watch.automatic || entry.receipt?.error !== fingerprint(entry.error))
+          (!followsHead(watch) || entry.receipt?.error !== fingerprint(entry.error))
         ) {
           if (watch.automatic) await this.discover();
           if (this.valid(entry, watch))
@@ -464,9 +533,11 @@ export class Tracker {
   private finish(entry: Tracked, watch: Watch, outcome: Outcome): void {
     if (!this.valid(entry, watch)) return;
     watch.outcome = outcome;
-    if (watch.automatic && entry.receipt && entry.snapshot) {
-      const receipt = entry.receipt;
-      if (outcome.kind === "failed" || outcome.kind === "blocked") {
+    if (followsHead(watch)) {
+      // Restored subscriptions have intent and receipts before their first
+      // snapshot. Access errors must stay recoverable even without observations.
+      const receipt = (entry.receipt ??= { head: watch.head, problems: {} });
+      if (entry.snapshot && (outcome.kind === "failed" || outcome.kind === "blocked")) {
         for (const check of unseenProblems(entry.snapshot, receipt)) {
           if (
             (outcome.kind === "failed" && check.state === "failed") ||
@@ -474,27 +545,90 @@ export class Tracker {
           )
             receipt.problems[checkKey(check)] = executionKey(check);
         }
-      } else if (outcome.kind === "passed" || outcome.kind === "completed")
+      } else if (entry.snapshot && (outcome.kind === "passed" || outcome.kind === "completed"))
         receipt.completed = observationKey(entry.snapshot);
       else if (outcome.kind === "error")
         receipt.error = fingerprint(entry.error || outcome.summary);
       else if (outcome.kind === "closed" || outcome.kind === "merged") watch.status = "ended";
     } else watch.status = "ended";
     this.changed(true);
+    this.pending.push({ entry, watch, outcome });
+  }
+  private deliver(
+    results: { entry: Tracked; watch: Watch; outcome: Outcome }[],
+    allPassed: boolean,
+  ): void {
     try {
-      this.hooks.outcome({ ...watch }, outcome);
+      this.hooks.outcomes(
+        results.map((r) => ({ watch: { ...r.watch }, outcome: r.outcome })),
+        allPassed,
+      );
     } catch {
-      // Failed delivery must be visible and require explicit resumption, not a retry loop.
-      watch.status = "paused";
-      if (watch.automatic && entry.receipt) entry.receipt.paused = true;
-      entry.error = "Agent notification could not be delivered. Resume explicitly.";
+      for (const { entry, watch } of results) {
+        watch.status = "paused";
+        if (followsHead(watch) && entry.receipt) entry.receipt.paused = true;
+        entry.error = "Agent notification could not be delivered. Resume explicitly.";
+      }
       this.changed(true);
     }
+  }
+  private flush(): void {
+    const results = this.pending
+      .splice(0)
+      .filter(
+        (r) =>
+          !this.disposed &&
+          this.entries.get(r.entry.target.url) === r.entry &&
+          r.entry.watch === r.watch &&
+          ["watching", "ended"].includes(r.watch.status),
+      );
+    const active = workingEntries(this.entries.values(), this.current).filter(
+      (e) =>
+        e.watch &&
+        e.watch.status !== "cancelled" &&
+        e.target.kind === "pr" &&
+        e.snapshot?.lifecycle !== "closed" &&
+        e.snapshot?.lifecycle !== "merged",
+    );
+    const key =
+      active.length > 1 && active.every((e) => targetState(e, this.now()) === "passed")
+        ? fingerprint(
+            active
+              .map((e) => [e.target.url, observationKey(e.snapshot!)])
+              .sort((a, b) => a[0].localeCompare(b[0])),
+          )
+        : undefined;
+    if (!key && this.workingSetCompleted) {
+      this.workingSetCompleted = undefined;
+      this.changed(true);
+    }
+    if (!results.length) return;
+    const allPassed = !!key && key !== this.workingSetCompleted;
+    if (key && allPassed) {
+      this.workingSetCompleted = key;
+      this.changed(true);
+    }
+    this.deliver(results, allPassed);
+  }
+  structuredStatus(urls?: string[]) {
+    return {
+      automatic: this.autoWatch,
+      current: this.current,
+      discoveryError: this.discoveryError,
+      targets: [...this.entries.values()]
+        .filter((e) => !urls || urls.includes(e.target.url))
+        .map((e) => structuredTarget(e, this.now(), this.current)),
+    };
   }
   status(): string {
     const rows = [...this.entries.values()].map((entry) => {
       const watch = entry.watch;
-      return `${label(entry.target)} ${watch ? `${watch.status} at ${watch.head.slice(0, 7)}` : "passive"}: ${entry.error || watch?.outcome?.summary || (entry.snapshot ? checkSummary(entry.snapshot) : "not yet observed")}`;
+      const state = targetState(entry, this.now());
+      const summary =
+        entry.error ||
+        (watch?.status === "ended" ? watch.outcome?.summary : undefined) ||
+        (entry.snapshot ? checkSummary(entry.snapshot) : "not yet observed");
+      return `${label(entry.target)}${watch?.label ? ` · ${watch.label}` : ""} ${watch ? `${watch.status} at ${watch.head.slice(0, 7)}` : "passive"} · ${state}: ${summary.slice(0, 1000)}`;
     });
     return `Automatic current-PR watching: ${this.autoWatch ? "on" : "off"}\n${rows.join("\n") || this.discoveryError || "No PR or CI watches."}`;
   }

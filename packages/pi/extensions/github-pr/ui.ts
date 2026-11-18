@@ -1,3 +1,4 @@
+import { targetState, workingEntries } from "./working-set.ts";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { getCapabilities, hyperlink, truncateToWidth } from "@earendil-works/pi-tui";
 import {
@@ -18,6 +19,12 @@ export function age(time: number, now: number): string {
 export function watchLabel(entry: Tracked): string {
   const watch = entry.watch;
   if (!watch) return "Agent watch off";
+  if (watch.subscription)
+    return watch.status === "watching"
+      ? "◉ Subscribed"
+      : watch.status === "paused"
+        ? "Ⅱ Subscription paused · /pr subscribe URL"
+        : `Subscription ${watch.status}`;
   if (watch.automatic)
     return watch.status === "cancelled"
       ? "Auto-watch off"
@@ -101,11 +108,87 @@ export function widgetLines(
   now: number,
   discoveryError?: string,
   maxLines = 14,
+  focused?: string,
 ): string[] {
   if (width < 1 || maxLines < 1) return [];
   const fit = (lines: string[]) =>
     lines.slice(0, maxLines).map((line) => truncateToWidth(line.replace(/[\r\n\t]/g, " "), width));
+  const working = workingEntries(entries, current);
+  if (working.length > 1) {
+    const states = working.map((entry) => targetState(entry, now));
+    const totals = [...new Set(states)]
+      .map((state) => `${states.filter((s) => s === state).length} ${state}`)
+      .join(" · ");
+    const header = `CI · ${working.length} targets · ${totals}`;
+    const row = (entry: Tracked) => {
+      const state = targetState(entry, now);
+      const glyph =
+        state === "passed"
+          ? "✓"
+          : state === "failed"
+            ? "✗"
+            : ["blocked", "stale"].includes(state)
+              ? "!"
+              : state === "paused"
+                ? "Ⅱ"
+                : state === "off"
+                  ? "○"
+                  : "◐";
+      const summary =
+        entry.snapshot &&
+        !["paused", "off", "stale", "closed", "merged", "superseded"].includes(state)
+          ? ` · ${checkSummary(entry.snapshot)}`
+          : "";
+      const name = truncateToWidth(clean(entry.watch?.label || entry.snapshot?.title || ""), 28);
+      const color = state === "passed" ? "success" : state === "failed" ? "error" : "warning";
+      return `${theme.fg(color, glyph)} ${linked(label(entry.target), entry.target.url)} · ${theme.fg(color, state)}${entry.target.url === current ? " ← current" : ""}${entry.target.url === focused ? " ← details" : ""} · ${name}${summary}`;
+    };
+    const severity = (entry: Tracked) =>
+      ({
+        failed: 0,
+        blocked: 1,
+        stale: 2,
+        paused: 3,
+        running: 4,
+        completed: 5,
+        superseded: 5,
+        off: 6,
+        closed: 7,
+        merged: 7,
+        passed: 8,
+      })[targetState(entry, now)];
+    const attention = [...working].sort((a, b) => severity(a) - severity(b))[0];
+    if (!expanded || maxLines < 5)
+      return fit([header, row(attention), " /pr details · /pr focus URL"]);
+    const selected =
+      entries.find((entry) => entry.target.url === focused) ||
+      working.find((entry) => entry.target.url === current) ||
+      attention;
+    // Keep ordered overview rows stable. Reserve space for selected-target details.
+    const room = Math.max(0, maxLines - 4);
+    const shown = working.slice(0, room);
+    const overview = [header, ...shown.map(row)];
+    if (shown.length < working.length)
+      overview.push(
+        `+${working.length - shown.length} other targets · github_ci_watch status for all`,
+      );
+    const detailBudget = maxLines - overview.length;
+    return fit([
+      ...overview,
+      ...widgetLines(
+        [selected],
+        selected.target.url,
+        true,
+        width,
+        theme,
+        now,
+        undefined,
+        detailBudget,
+      ),
+    ]);
+  }
   const primary =
+    entries.find((e) => e.target.url === focused) ||
     entries.find((e) => e.target.url === current) ||
     entries.find((e) => e.watch?.status === "watching") ||
     entries.find((e) => e.watch);
@@ -122,13 +205,23 @@ export function widgetLines(
   const status =
     primary.error || stale
       ? theme.fg("warning", "! GitHub state stale")
-      : snapshot
-        ? ci(snapshot, theme)
-        : theme.fg("muted", "Not yet observed");
+      : targetState(primary, now) === "superseded"
+        ? theme.fg("warning", "Wait superseded")
+        : primary.watch?.status === "paused"
+          ? theme.fg("warning", "Ⅱ Paused")
+          : primary.watch &&
+              targetState(primary, now) === "running" &&
+              !!snapshot?.checks.length &&
+              snapshot.checks.every((c) => c.state !== "pending") &&
+              snapshot?.target.kind === "pr"
+            ? theme.fg("warning", "Confirming observed checks")
+            : snapshot
+              ? ci(snapshot, theme)
+              : theme.fg("muted", "Not yet observed");
   const lines = [
     `${expanded ? theme.fg("borderMuted", "── ") : ""}${targetLabel(primary, theme)}${snapshot?.draft ? theme.fg("dim", " Draft") : ""} · ${status}`,
   ];
-  if (width >= 60 && maxLines >= 4)
+  if (width >= 60 && maxLines >= 7)
     lines.push(
       theme.fg(
         "dim",
@@ -162,7 +255,8 @@ export function widgetLines(
   const details: string[] = [];
   const budget = Math.max(0, maxLines - lines.length - footer.length);
   if (expanded && snapshot) {
-    details.push(clean(snapshot.title), theme.fg("muted", checkSummary(snapshot)));
+    if (budget >= 4) details.push(clean(snapshot.title));
+    if (budget >= 5) details.push(theme.fg("muted", checkSummary(snapshot)));
     const priority = { failed: 0, blocked: 1, pending: 2, cancelled: 3, passed: 4, skipped: 5 };
     const checks = [...snapshot.checks].sort((a, b) => priority[a.state] - priority[b.state]);
     const review =

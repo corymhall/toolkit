@@ -10,6 +10,7 @@ export interface AutoReceipt {
 }
 export interface AutomaticState {
   enabled: boolean;
+  workingSetCompleted?: string;
   receipts: { target: Target; receipt: AutoReceipt }[];
 }
 export const fingerprint = (value: unknown): string =>
@@ -52,7 +53,7 @@ export function restoreAutomatic(data: unknown): AutomaticState {
     !data ||
     typeof data !== "object" ||
     !("version" in data) ||
-    data.version !== 2 ||
+    (data.version !== 2 && data.version !== 3) ||
     !("automatic" in data)
   )
     return result;
@@ -61,6 +62,8 @@ export function restoreAutomatic(data: unknown): AutomaticState {
   result.enabled = raw.enabled !== false;
   if (!Array.isArray(raw.receipts)) return result;
   const hash = /^[a-f0-9]{64}$/;
+  if (typeof raw.workingSetCompleted === "string" && hash.test(raw.workingSetCompleted))
+    result.workingSetCompleted = raw.workingSetCompleted;
   for (const item of raw.receipts.slice(0, 8)) {
     try {
       const target = parseTarget(item.target.url);

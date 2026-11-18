@@ -42,9 +42,11 @@ function fixture(saved?: unknown, deliver?: (result: Outcome) => void) {
       changed() {},
       persist: (watches, automatic) =>
         states.push(structuredClone({ version: 2, watches, automatic })),
-      outcome: (_watch, result) => {
-        deliver?.(result);
-        results.push(result);
+      outcomes: (batch) => {
+        for (const { outcome } of batch) {
+          deliver?.(outcome);
+          results.push(outcome);
+        }
       },
     },
     () => now,

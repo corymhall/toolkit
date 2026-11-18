@@ -39,7 +39,7 @@ function fixture() {
     {
       changed() {},
       persist: (w) => persisted.push(structuredClone(w)),
-      outcome: (_w, o) => outcomes.push(o),
+      outcomes: (batch) => outcomes.push(...batch.map((result) => result.outcome)),
     },
     () => now,
   );

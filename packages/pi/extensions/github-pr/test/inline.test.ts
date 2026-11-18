@@ -136,3 +136,82 @@ test("/pr toggles an above-editor widget without opening a popup or touching the
   );
   handlers.get("session_shutdown")!({}, ctx);
 });
+
+test("agent batch status and cancellation preserve per-target data across the tool boundary", async () => {
+  let tool: Parameters<ExtensionAPI["registerTool"]>[0] | undefined;
+  const handlers = new Map<string, (event: unknown, ctx: ExtensionContext) => void>();
+  const urls = [41, 42].map((n) => `https://github.com/acme/widget/pull/${n}`);
+  const saved = {
+    version: 3,
+    automatic: { enabled: false, receipts: [] },
+    watches: urls.map((url, i) => ({
+      target: { url },
+      head: "a".repeat(40),
+      startedAt: 1,
+      subscription: true,
+      status: "paused",
+      label: `Layer ${i}`,
+      order: i,
+    })),
+  };
+  githubPrExtension({
+    registerTool: (value: Parameters<ExtensionAPI["registerTool"]>[0]) => {
+      tool = value;
+    },
+    registerCommand() {},
+    registerMessageRenderer() {},
+    appendEntry() {},
+    on: (name: string, handler: (event: unknown, ctx: ExtensionContext) => void) => {
+      handlers.set(name, handler);
+    },
+  } as unknown as ExtensionAPI);
+  const ctx = {
+    mode: "print",
+    cwd: "/tmp",
+    ui: { setWidget() {} },
+    sessionManager: {
+      getBranch: () => [{ type: "custom", customType: "toolkit-github-ci-watches", data: saved }],
+    },
+  } as unknown as ExtensionContext;
+  handlers.get("session_start")!({}, ctx);
+  const rpc = { ...ctx, mode: "rpc" } as Parameters<NonNullable<typeof tool>["execute"]>[4];
+  const execute = (args: unknown) =>
+    tool!.execute("batch", args, new AbortController().signal, undefined, rpc);
+  const status = await execute({ action: "status" });
+  const data = status.structuredContent as {
+    tracking: { targets: { label: string; state: string; mode: string; status: string }[] };
+  };
+  assert.deepEqual(
+    data.tracking.targets.map((t) => [t.label, t.state, t.mode]),
+    [
+      ["Layer 0", "paused", "subscription"],
+      ["Layer 1", "paused", "subscription"],
+    ],
+  );
+  await assert.rejects(
+    execute({ action: "cancel", target: urls[0], targets: [{ url: urls[1] }] }),
+    /not both/,
+  );
+  await assert.rejects(
+    execute({
+      action: "cancel",
+      targets: [{ url: urls[0] }, { url: "https://example.com/not-github" }],
+    }),
+    /GitHub.com/,
+  );
+  const unchanged = await execute({ action: "status" });
+  assert.ok(
+    (unchanged.structuredContent as typeof data).tracking.targets.every(
+      (t) => t.status === "paused",
+    ),
+  );
+  const cancelled = await execute({ action: "cancel", targets: urls.map((url) => ({ url })) });
+  const result = cancelled.structuredContent as {
+    results: { ok: boolean }[];
+    tracking: { targets: { status: string }[] };
+  };
+  assert.ok(result.results.every((r) => r.ok));
+  assert.equal(result.results.length, 2);
+  assert.ok(result.tracking.targets.every((t) => t.status === "cancelled"));
+  handlers.get("session_shutdown")!({}, ctx);
+});

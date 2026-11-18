@@ -232,8 +232,13 @@ the current branch PR across new commits and CI reruns. `/pr` toggles inline
 details without taking focus. `/pr unwatch` disables automatic watching until
 `/pr watch`, including across reloads and resumes. Saved delivery receipts keep
 unchanged failures and green results from repeating. The codemode tool
-`github_ci_watch` also supports bounded, commit-pinned waits for other PRs and
-workflow runs. Results arrive as follow-ups without model-driven polling.
+`github_ci_watch` supports persistent multi-PR subscriptions with optional labels
+and stack order, plus bounded, commit-pinned waits for PRs and workflow runs.
+Use `/pr subscribe URL...` to keep PRs watched across branch switches and
+`/pr focus URL` to select their check details. The panel summarizes the working
+set, and results from each polling cycle arrive in one follow-up, including
+confirmed all-green status when appropriate. Batch controls return structured
+status without model-driven polling.
 Nothing reruns jobs, edits PRs, or intercepts shell commands. Explicit unfinished
 waits restore paused. On Pi 1.4+, watched CI also feeds Rex's OSC 7501 status.
 Pending is working, green is done, and red is blocked while Pi rests. Active

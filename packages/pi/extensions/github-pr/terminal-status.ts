@@ -1,4 +1,5 @@
 import { checkSummary, clean, counts, type Tracked } from "./model.ts";
+import { followsHead } from "./working-set.ts";
 import { observationKey } from "./auto-watch.ts";
 
 import { BackgroundTerminalStatus, type ProgramStatus } from "../program-status.ts";
@@ -45,7 +46,7 @@ export function ciProgramStatus(
         };
       } else if (
         (watch.status === "watching" &&
-          !(watch.automatic && entry.receipt?.completed === observationKey(snapshot))) ||
+          !(followsHead(watch) && entry.receipt?.completed === observationKey(snapshot))) ||
         c.pending
       ) {
         // The wait itself owns confirmation, including the two-observation grace

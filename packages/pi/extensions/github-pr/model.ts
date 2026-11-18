@@ -53,9 +53,13 @@ export interface Watch {
   target: Target;
   head: string;
   startedAt: number;
-  /** Only bounded, explicit waits have a deadline. Automatic subscriptions do not. */
+  /** Only bounded, explicit waits have a deadline. Subscriptions do not. */
   deadline?: number;
   automatic?: boolean;
+  /** Explicit working-set subscription, independent of the checked-out branch. */
+  subscription?: boolean;
+  label?: string;
+  order?: number;
   status: "watching" | "paused" | "ended" | "cancelled";
   outcome?: Outcome;
 }
@@ -176,13 +180,13 @@ export function evaluate(watch: Watch, snapshot: Snapshot, now: number): Outcome
   return undefined;
 }
 
-/** Restore only validated watch intent. Restoring never authorizes agent wakeups. */
+/** Restore validated intent. Persistent subscriptions resume; bounded waits pause. */
 export function restoreWatches(data: unknown): Watch[] {
   if (
     !data ||
     typeof data !== "object" ||
     !("version" in data) ||
-    (data.version !== 1 && data.version !== 2) ||
+    (data.version !== 1 && data.version !== 2 && data.version !== 3) ||
     !("watches" in data) ||
     !Array.isArray(data.watches)
   )
@@ -195,9 +199,10 @@ export function restoreWatches(data: unknown): Watch[] {
       const target = parseTarget(raw.target.url);
       if (
         !/^[a-f0-9]{40}$/i.test(raw.head) ||
-        !Number.isFinite(raw.deadline) ||
         !Number.isFinite(raw.startedAt) ||
-        raw.deadline <= raw.startedAt
+        (raw.subscription !== true &&
+          (!Number.isFinite(raw.deadline) || raw.deadline <= raw.startedAt)) ||
+        (raw.subscription === true && target.kind !== "pr")
       )
         continue;
       if (raw.automatic || (raw.status !== "watching" && raw.status !== "paused")) continue;
@@ -205,8 +210,11 @@ export function restoreWatches(data: unknown): Watch[] {
         target,
         head: raw.head,
         startedAt: raw.startedAt,
-        deadline: raw.deadline,
-        status: "paused",
+        deadline: raw.subscription === true ? undefined : raw.deadline,
+        subscription: raw.subscription === true || undefined,
+        label: typeof raw.label === "string" ? clean(raw.label).slice(0, 100) : undefined,
+        order: Number.isFinite(raw.order) ? raw.order : undefined,
+        status: raw.subscription === true && raw.status === "watching" ? "watching" : "paused",
       });
     } catch {
       /* Invalid saved intent must not start GitHub requests. */
